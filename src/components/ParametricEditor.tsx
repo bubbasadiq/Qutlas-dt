@@ -199,9 +199,9 @@ export function ParametricEditor() {
       ref={setContainerRef}
     >
       <PanelGroup
+        key={hasArtifact ? 'with-params' : 'no-params'}
         direction="horizontal"
         className="h-full w-full"
-        autoSaveId="editor-panels"
       >
         <Panel
           collapsible
