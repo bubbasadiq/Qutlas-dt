@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
+import { Logo } from "@/components/logo"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -45,12 +46,9 @@ export default function SignupPage() {
       {/* Left Panel - Brand */}
       <div className="hidden lg:flex lg:w-1/2 bg-[var(--accent-500)] items-center justify-center p-12">
         <div className="max-w-md">
-          <Link href="/" className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-[var(--neutral-900)]/10 flex items-center justify-center">
-              <span className="text-[var(--neutral-900)] font-bold text-2xl">Q</span>
-            </div>
-            <span className="font-serif font-semibold text-2xl text-[var(--neutral-900)]">Qutlas</span>
-          </Link>
+          <div className="mb-12">
+            <Logo variant="blue" size="lg" href="/" />
+          </div>
           <h1 className="text-4xl font-serif text-[var(--neutral-900)] mb-6 leading-tight">
             Start building
             <br />
@@ -66,13 +64,9 @@ export default function SignupPage() {
       {/* Right Panel - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-[var(--bg-50)]">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
-          <Link href="/" className="flex items-center gap-3 mb-10 lg:hidden">
-            <div className="w-10 h-10 rounded-xl bg-[var(--primary-700)] flex items-center justify-center">
-              <span className="text-white font-bold text-lg">Q</span>
-            </div>
-            <span className="font-serif font-semibold text-xl text-[var(--neutral-900)]">Qutlas</span>
-          </Link>
+          <div className="mb-10 lg:hidden">
+            <Logo variant="blue" size="md" href="/" />
+          </div>
 
           <div className="mb-8">
             <h2 className="text-3xl font-serif text-[var(--neutral-900)] mb-2">Create your account</h2>

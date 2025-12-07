@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/logo"
 
 export default function StudioLayout({
   children,
@@ -17,12 +17,7 @@ export default function StudioLayout({
       {/* Top bar */}
       <header className="bg-white border-b border-[var(--neutral-200)] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--primary-700)] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">Q</span>
-            </div>
-            <span className="font-serif font-semibold text-lg text-[var(--neutral-900)] hidden sm:inline">Qutlas</span>
-          </Link>
+          <Logo variant="blue" size="sm" href="/dashboard" />
 
           <div className="h-6 w-px bg-[var(--neutral-200)]" />
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Icon } from "@/components/ui/icon"
+import { Logo } from "@/components/logo"
 
 const partData = {
   id: "part-001",
@@ -56,12 +57,7 @@ export default function PartDetailPage() {
       <header className="sticky top-0 z-50 bg-white border-b border-[var(--neutral-200)]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[var(--primary-700)] flex items-center justify-center">
-                <span className="text-white font-bold text-lg">Q</span>
-              </div>
-              <span className="font-serif font-semibold text-xl text-[var(--neutral-900)]">Qutlas</span>
-            </Link>
+            <Logo variant="blue" size="md" href="/" />
             <div className="hidden sm:flex items-center gap-2 text-sm text-[var(--neutral-400)]">
               <span>/</span>
               <Link href="/catalog" className="hover:text-[var(--neutral-700)]">

@@ -1,6 +1,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
+import { Logo } from "@/components/logo"
+import { IntentChat } from "@/components/intent-chat"
+import Image from "next/image"
 
 export default function LandingPage() {
   return (
@@ -8,12 +11,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--primary-700)] flex items-center justify-center">
-              <span className="text-white font-bold text-lg">Q</span>
-            </div>
-            <span className="font-serif font-semibold text-xl text-[var(--neutral-900)]">Qutlas</span>
-          </Link>
+          <Logo variant="blue" size="md" href="/" />
 
           <div className="hidden md:flex items-center gap-8">
             <Link
@@ -52,44 +50,52 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section - Primary Color Block */}
-      <section className="min-h-screen flex items-center justify-center bg-[var(--primary-700)] pt-20">
-        <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-          <p className="inline-block px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm font-medium mb-8">
+      <section className="min-h-screen flex items-center justify-center pt-20 relative overflow-hidden">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
+
+        <div className="max-w-4xl mx-auto px-6 py-24 text-center relative z-10">
+          <p className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-medium mb-8">
             The future of manufacturing
           </p>
 
           <h1 className="text-5xl md:text-7xl font-serif font-semibold text-white mb-8 text-balance leading-[1.1]">
-            Design.
+            Build yours,
             <br />
-            <span className="text-[var(--accent-500)]">Validate.</span>
-            <br />
-            Produce.
+            <span className="text-[var(--accent-500)]">Become</span>
           </h1>
 
           <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto leading-relaxed text-pretty">
-            Transform your ideas into manufactured parts. Upload your design, get instant manufacturability feedback,
-            and route to certified production hubs worldwide.
+            Describe what you want to create. Our AI transforms your ideas into manufacturable parts.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
-              <Button
-                size="lg"
-                className="bg-[var(--accent-500)] hover:bg-[var(--accent-600)] text-[var(--neutral-900)] font-semibold px-8 h-14 text-lg"
-              >
-                Start Building
-              </Button>
-            </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 bg-transparent px-8 h-14 text-lg"
-            >
-              Watch Demo
-            </Button>
-          </div>
+          <IntentChat variant="hero" placeholder="Describe what you want to create..." className="mb-8" />
+
+          <p className="text-sm text-white/50">
+            Or{" "}
+            <Link href="/auth/signup" className="text-[var(--accent-500)] hover:underline">
+              sign up
+            </Link>{" "}
+            to upload your CAD files directly
+          </p>
         </div>
       </section>
+
+      <div className="relative h-24 bg-white overflow-hidden">
+        <Image
+          src="/images/brand-shape-orange.png"
+          alt=""
+          width={400}
+          height={200}
+          className="absolute left-1/2 -translate-x-1/2 -top-12 w-[300px] md:w-[400px] h-auto opacity-20"
+          aria-hidden="true"
+        />
+      </div>
 
       {/* Trusted By - Light Section */}
       <section className="py-16 bg-white">
@@ -107,9 +113,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="relative h-20 bg-[var(--bg-200)] overflow-hidden">
+        <Image
+          src="/images/brand-shape-blue.png"
+          alt=""
+          width={350}
+          height={175}
+          className="absolute right-[10%] -top-8 w-[250px] md:w-[350px] h-auto opacity-15"
+          aria-hidden="true"
+        />
+      </div>
+
       {/* How It Works - Ice Blue Section */}
-      <section id="how-it-works" className="py-32 bg-[var(--bg-200)]">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="how-it-works" className="py-32 bg-[var(--bg-200)] relative overflow-hidden">
+        <Image
+          src="/images/brand-shape-orange.png"
+          alt=""
+          width={600}
+          height={300}
+          className="absolute -left-40 bottom-20 w-[400px] md:w-[600px] h-auto opacity-5 rotate-12"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
             <p className="text-sm font-semibold text-[var(--accent-600)] uppercase tracking-wider mb-4">How It Works</p>
             <h2 className="text-4xl md:text-5xl font-serif text-[var(--neutral-900)] text-balance">
@@ -122,9 +148,9 @@ export default function LandingPage() {
               {
                 icon: "upload",
                 color: "var(--primary-700)",
-                title: "Upload",
+                title: "Describe or Upload",
                 description:
-                  "Drop your CAD file — STEP, IGES, or STL. Our system analyzes it instantly for manufacturability.",
+                  "Tell us what you want to create or drop your CAD file. Our AI understands your intent instantly.",
               },
               {
                 icon: "quality-check",
@@ -156,9 +182,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="relative h-16 bg-white overflow-hidden">
+        <Image
+          src="/images/brand-shape-orange.png"
+          alt=""
+          width={300}
+          height={150}
+          className="absolute left-[15%] -top-6 w-[200px] md:w-[300px] h-auto opacity-10 -rotate-6"
+          aria-hidden="true"
+        />
+      </div>
+
       {/* Features - White Section with Cards */}
-      <section className="py-32 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
+      <section className="py-32 bg-white relative overflow-hidden">
+        <Image
+          src="/images/brand-shape-blue.png"
+          alt=""
+          width={500}
+          height={250}
+          className="absolute -right-32 top-40 w-[350px] md:w-[500px] h-auto opacity-5 -rotate-12"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
             <p className="text-sm font-semibold text-[var(--accent-600)] uppercase tracking-wider mb-4">Features</p>
             <h2 className="text-4xl md:text-5xl font-serif text-[var(--neutral-900)] text-balance">
@@ -170,9 +216,9 @@ export default function LandingPage() {
             {[
               {
                 icon: "mesh",
-                title: "Instant DFM Analysis",
+                title: "AI-Powered Creation",
                 description:
-                  "Know if your design is manufacturable before you commit. AI-powered analysis catches issues early.",
+                  "Describe your part in plain language. Our AI generates manufacturable geometry instantly.",
               },
               {
                 icon: "payment",
@@ -212,9 +258,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="relative h-20 bg-[var(--accent-500)] overflow-hidden">
+        <Image
+          src="/images/brand-shape-blue.png"
+          alt=""
+          width={400}
+          height={200}
+          className="absolute left-1/2 -translate-x-1/2 -top-10 w-[300px] md:w-[400px] h-auto opacity-20"
+          aria-hidden="true"
+        />
+      </div>
+
       {/* CTA - Accent Color Block */}
-      <section className="py-32 bg-[var(--accent-500)]">
-        <div className="max-w-3xl mx-auto px-6 text-center">
+      <section className="py-32 bg-[var(--accent-500)] relative overflow-hidden">
+        <Image
+          src="/images/brand-shape-blue.png"
+          alt=""
+          width={800}
+          height={400}
+          className="absolute -left-60 -bottom-20 w-[500px] md:w-[800px] h-auto opacity-10 rotate-6"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
           <h2 className="text-4xl md:text-5xl font-serif text-[var(--neutral-900)] mb-6 text-balance">
             Ready to transform your workflow?
           </h2>
@@ -233,15 +299,21 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 bg-[var(--neutral-900)]">
-        <div className="max-w-6xl mx-auto px-6">
+      <footer className="py-16 bg-[var(--neutral-900)] relative overflow-hidden">
+        <Image
+          src="/images/brand-shape-orange.png"
+          alt=""
+          width={500}
+          height={250}
+          className="absolute -right-40 top-10 w-[350px] md:w-[500px] h-auto opacity-5 -rotate-12"
+          aria-hidden="true"
+        />
+
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-[var(--primary-700)] flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">Q</span>
-                </div>
-                <span className="font-serif font-semibold text-xl text-white">Qutlas</span>
+              <div className="mb-6">
+                <Logo variant="orange" size="md" href="/" />
               </div>
               <p className="text-[var(--neutral-400)] text-sm leading-relaxed">
                 Design. Validate. Produce.
