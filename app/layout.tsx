@@ -18,13 +18,13 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: "Qutlas:Build Yours, Become",
+  title: "Qutlas: Build Yours, Become",
   description:
     "Transform your designs into manufactured parts. Upload CAD, validate manufacturability instantly, and route to certified production hubs.",
   keywords: ["CAD", "manufacturing", "CNC", "3D printing", "design", "production"],
   authors: [{ name: "Qutlas" }],
   openGraph: {
-    title: "Qutlas :Build Yours, Become",
+    title: "Qutlas: Build Yours, Become",
     description: "Transform your designs into manufactured parts.",
     type: "website",
   },
