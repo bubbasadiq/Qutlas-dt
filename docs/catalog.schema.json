@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qutlas.com/schemas/catalog.json",
+  "title": "Qutlas Catalog Item Schema v1.0",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique catalog item ID (UUID)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Item name (e.g., 'M12 Stainless Steel Bolt')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed item description"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category slug (e.g., 'fasteners', 'bearings', 'shafts')"
+    },
+    "qdf_ref": {
+      "type": "string",
+      "description": "Reference to QDF document or S3 asset ID"
+    },
+    "supplier": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "contact_email": {
+          "type": "string",
+          "format": "email"
+        }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "description": "Product variants with parameter configs",
+      "items": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "M12x60 Grade 8.8"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Parametric configuration",
+            "additionalProperties": {
+              "type": ["number", "string", "boolean"]
+            }
+          },
+          "material": {
+            "type": "string",
+            "example": "Stainless Steel 316L"
+          },
+          "price_base": {
+            "type": "number",
+            "minimum": 0
+          },
+          "price_currency": {
+            "type": "string",
+            "enum": ["CAD", "USD", "EUR"]
+          },
+          "lead_time_days": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "manufacturing_methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "cnc_milling",
+                "cnc_turning",
+                "laser_cutting",
+                "waterjet",
+                "3d_printing",
+                "stamping",
+                "forging",
+                "injection_molding"
+              ]
+            }
+          },
+          "tolerances": {
+            "type": "object",
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "example": "±0.05 mm"
+              },
+              "surface_finish": {
+                "type": "string",
+                "example": "Ra 1.6 µm"
+              }
+            }
+          },
+          "hub_tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Hub capability tags for matching"
+            }
+          },
+          "in_stock": {
+            "type": "boolean"
+          }
+        },
+        "required": ["variant_id", "parameters"]
+      },
+      "minItems": 1
+    },
+    "ai_metrics": {
+      "type": "object",
+      "properties": {
+        "manufacturability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall manufacturability score"
+        },
+        "complexity_index": {
+          "type": "number"
+        },
+        "estimated_cost_factor": {
+          "type": "number",
+          "description": "Relative cost difficulty multiplier"
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "description": "Associated media: renders, CAD files, datasheets",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["thumbnail", "rendering", "cad_file", "datasheet", "drawing"]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "mime_type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["public", "private", "hub-only"],
+      "description": "Access control"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User ID of catalog entry creator"
+    }
+  },
+  "required": ["id", "title", "qdf_ref", "variants"]
+}

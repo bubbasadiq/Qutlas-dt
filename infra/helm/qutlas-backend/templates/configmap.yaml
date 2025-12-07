@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qutlas-config
+data:
+  DATABASE_URL: "postgresql://qutlas_admin@qutlas-db:5432/qutlas"
+  PORT: "3001"
+  ENVIRONMENT: "production"

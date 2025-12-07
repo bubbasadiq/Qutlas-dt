@@ -1,37 +1,53 @@
 import type React from "react"
-import type { Metadata } from "next"
-import { Playfair_Display, Rubik } from "next/font/google"
+import type { Metadata, Viewport } from "next"
+import { Rubik, Playfair_Display } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
+import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-display",
-})
 
 const rubik = Rubik({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-rubik",
+  display: "swap",
+})
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
 })
 
 export const metadata: Metadata = {
-  title: "QUTLAS - Build Yours. Become.",
-  description: "Distributed fabrication network. Design, validate, and manufacture locally.",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
+  title: "Qutlas — Design to Manufacturing Platform",
+  description:
+    "Transform your designs into manufactured parts. Upload CAD, validate manufacturability instantly, and route to certified production hubs.",
+  keywords: ["CAD", "manufacturing", "CNC", "3D printing", "design", "production"],
+  authors: [{ name: "Qutlas" }],
+  openGraph: {
+    title: "Qutlas — Design to Manufacturing Platform",
+    description: "Transform your designs into manufactured parts.",
+    type: "website",
   },
     generator: 'v0.app'
 }
 
+export const viewport: Viewport = {
+  themeColor: "#2a2a72",
+  width: "device-width",
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" className={`${playfair.variable} ${rubik.variable}`}>
-      <body className="antialiased">{children}</body>
+    <html lang="en" className={`${rubik.variable} ${playfair.variable}`}>
+      <body className="font-sans antialiased">
+        <AuthProvider>{children}</AuthProvider>
+        <Analytics />
+      </body>
     </html>
   )
 }
