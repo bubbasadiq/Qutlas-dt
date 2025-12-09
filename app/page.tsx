@@ -58,8 +58,6 @@ export default function LandingPage() {
         />
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
-      
-          </p>
 
           <h1 className="text-5xl md:text-7xl font-serif font-semibold text-white mb-8 text-balance leading-[1.1]">
             Build yours,
