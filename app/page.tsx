@@ -58,10 +58,7 @@ export default function LandingPage() {
         />
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
-
-        <div className="max-w-4xl mx-auto px-6 py-24 text-center relative z-10">
-          <p className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-medium mb-8">
-            The future of manufacturing
+      
           </p>
 
           <h1 className="text-5xl md:text-7xl font-serif font-semibold text-white mb-8 text-balance leading-[1.1]">
@@ -150,7 +147,7 @@ export default function LandingPage() {
                 color: "var(--primary-700)",
                 title: "Describe or Upload",
                 description:
-                  "Tell us what you want to create or drop your CAD file. Our AI understands your intent instantly.",
+                  "Tell us what you want to create or drop your CAD file. We understand your intent instantly.",
               },
               {
                 icon: "quality-check",
@@ -218,12 +215,12 @@ export default function LandingPage() {
                 icon: "mesh",
                 title: "AI-Powered Creation",
                 description:
-                  "Describe your part in plain language. Our AI generates manufacturable geometry instantly.",
+                  "Describe your part in plain language. We generate manufacturable geometry instantly.",
               },
               {
                 icon: "payment",
                 title: "Real-time Quotes",
-                description: "See exact pricing and lead times instantly. No waiting for vendor responses.",
+                description: "See exact pricing and lead times instantly. No waiting for long responses.",
               },
               {
                 icon: "toolpath",
