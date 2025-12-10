@@ -56,6 +56,7 @@ export default function LandingPage() {
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
         />
+        <div className="relative z-10 text-center"> 
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
 
