@@ -24,34 +24,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Check if user is logged in on mount
   useEffect(() => {
-    const session = supabase.auth.session()
-    if (session?.user) setUser(session.user as any)
-    setIsLoading(false)
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session?.user) {
+        const u = data.session.user
+        setUser({ id: u.id, email: u.email || "", name: u.user_metadata?.name, company: u.user_metadata?.company })
+      }
+      setIsLoading(false)
+    }
+    getSession()
 
-    // Subscribe to auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user as any || null)
+      if (session?.user) {
+        const u = session.user
+        setUser({ id: u.id, email: u.email || "", name: u.user_metadata?.name, company: u.user_metadata?.company })
+      } else {
+        setUser(null)
+      }
     })
     return () => listener?.unsubscribe()
   }, [])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
-    const { error } = await supabase.auth.signIn({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     setIsLoading(false)
     if (error) throw error
   }
 
   const signup = async (email: string, password: string, name: string, company: string) => {
     setIsLoading(true)
-    const { user, error } = await supabase.auth.signUp(
+    const { error } = await supabase.auth.signUp(
       { email, password },
-      {
-        data: { name, company },
-        redirectTo: `${window.location.origin}/auth/verify-email`
-      }
+      { data: { name, company }, redirectTo: `${window.location.origin}/auth/verify-email` }
     )
     setIsLoading(false)
     if (error) throw error
