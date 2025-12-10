@@ -148,7 +148,6 @@ export function IntentChat({
 
   const suggestions = [
     "Create a bracket with mounting holes",
-    "Design a phone stand with cable management",
     "Make a gear with 24 teeth",
   ]
 
