@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
+import type React from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,7 +11,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Logo } from "@/components/logo"
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({ name: "", company: "", email: "", password: "" })
+  const [formData, setFormData] = useState({ name: "", email: "", password: "", company: "" })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { signup } = useAuth()
@@ -25,10 +26,20 @@ export default function SignupPage() {
     setError("")
 
     try {
-      await signup(formData.email, formData.password, formData.name, formData.company)
+      await signup(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.company
+      )
       router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed")
+      // Handle unconfirmed email gracefully
+      if (err instanceof Error && err.message.includes("already registered")) {
+        setError("Email already exists. Did you forget to verify it?")
+      } else {
+        setError(err instanceof Error ? err.message : "Signup failed")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -66,28 +77,29 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSignup} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-[var(--neutral-700)]">Full Name</Label>
-              <Input
-                id="name"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                required
-                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="company" className="text-[var(--neutral-700)]">Company</Label>
-              <Input
-                id="company"
-                placeholder="Acme Inc"
-                value={formData.company}
-                onChange={(e) => handleChange("company", e.target.value)}
-                required
-                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-[var(--neutral-700)]">Full Name</Label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  required
+                  className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company" className="text-[var(--neutral-700)]">Company</Label>
+                <Input
+                  id="company"
+                  placeholder="Acme Inc"
+                  value={formData.company}
+                  onChange={(e) => handleChange("company", e.target.value)}
+                  required
+                  className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -135,10 +147,7 @@ export default function SignupPage() {
           <div className="mt-8 text-center">
             <p className="text-[var(--neutral-500)]">
               Already have an account?{" "}
-              <Link
-                href="/auth/login"
-                className="text-[var(--primary-700)] hover:text-[var(--primary-800)] font-medium"
-              >
+              <Link href="/auth/login" className="text-[var(--primary-700)] hover:text-[var(--primary-800)] font-medium">
                 Sign in
               </Link>
             </p>
