@@ -2,9 +2,10 @@
 
 import type React from "react"
 import { useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
+import { useWorkspace } from "@/lib/workspace-hook" // central state
+import { useOcctWorker } from "@/lib/occt-worker-client"
 
 interface Tool {
   id: string
@@ -22,19 +23,31 @@ const tools: Tool[] = [
   { id: "section", label: "Section", icon: "fixture", shortcut: "X" },
 ]
 
-export interface ToolbarProps {
-  onToolSelect: (toolId: string) => void
-  activeTool?: string
-}
-
-export const SidebarTools: React.FC<ToolbarProps> = ({ onToolSelect, activeTool }) => {
+export const SidebarTools: React.FC = () => {
   const [isUploadHover, setIsUploadHover] = useState(false)
+  const { activeTool, selectTool, selectObject, objects, addObject } = useWorkspace()
+  const { loadFile } = useOcctWorker()
+
+  // handle CAD file upload
+  const handleUpload = async (file: File) => {
+    const objectId = await loadFile(file) // OCCT worker parses file & returns object ID
+    addObject(objectId, { params: { length: 100, width: 50, height: 25 } })
+    selectObject(objectId)
+  }
 
   return (
     <div className="w-56 bg-white border-r border-[var(--neutral-200)] flex flex-col">
       {/* Upload Area */}
       <div className="p-4 border-b border-[var(--neutral-200)]">
-        <div
+        <input
+          type="file"
+          accept=".stp,.step,.iges,.stl"
+          className="hidden"
+          id="cad-upload"
+          onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+        />
+        <label
+          htmlFor="cad-upload"
           onMouseEnter={() => setIsUploadHover(true)}
           onMouseLeave={() => setIsUploadHover(false)}
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
@@ -50,7 +63,7 @@ export const SidebarTools: React.FC<ToolbarProps> = ({ onToolSelect, activeTool 
           />
           <p className="text-sm font-medium text-[var(--neutral-700)]">Upload CAD</p>
           <p className="text-xs text-[var(--neutral-400)] mt-1">STEP, IGES, STL</p>
-        </div>
+        </label>
       </div>
 
       {/* Tools */}
@@ -60,7 +73,7 @@ export const SidebarTools: React.FC<ToolbarProps> = ({ onToolSelect, activeTool 
           {tools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => onToolSelect(tool.id)}
+              onClick={() => selectTool(tool.id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 activeTool === tool.id
                   ? "bg-[var(--primary-700)] text-white"
@@ -85,16 +98,26 @@ export const SidebarTools: React.FC<ToolbarProps> = ({ onToolSelect, activeTool 
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Insert Catalog */}
-      <div className="p-4 border-t border-[var(--neutral-200)]">
-        <Link href="/catalog">
-          <Button className="w-full bg-[var(--accent-500)] hover:bg-[var(--accent-600)] text-[var(--neutral-900)]">
-            <Icon name="catalog" size={18} className="mr-2" />
-            Insert from Catalog
-          </Button>
-        </Link>
+        {/* Objects List */}
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2">
+            Scene Objects
+          </h4>
+          <div className="space-y-1">
+            {Object.keys(objects).map((id) => (
+              <button
+                key={id}
+                onClick={() => selectObject(id)}
+                className={`w-full flex justify-between px-3 py-2 rounded-md text-sm ${
+                  objects[id].selected ? "bg-[var(--primary-50)] text-[var(--primary-700)]" : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+                }`}
+              >
+                <span>{id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
