@@ -52,11 +52,8 @@ export default function LandingPage() {
       {/* Hero Section - Primary Color Block */}
       <section className="min-h-screen flex items-center justify-center pt-20 relative overflow-hidden">
         {/* Background Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
-        />
-        <div className="relative z-10 text-center"> 
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/images/hero-bg.jpg')" }} />
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
 
