@@ -1,40 +1,86 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
+import * as THREE from "three"
 
-export interface CanvasViewerProps {
-  activeTool?: string
-  onViewChange?: (viewType: string) => void
-}
-
-export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange }) => {
+export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange, shapes = [], meshGetter }) => {
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(true)
+  const mountRef = useRef<HTMLDivElement>(null)
+  const sceneRef = useRef<THREE.Scene>()
+  const meshRefs = useRef<Map<any, THREE.Mesh>>(new Map())
 
   const handleViewChange = (view: string) => {
     setViewType(view)
     onViewChange?.(view)
   }
 
+  // Initialize Three.js scene
+  useEffect(() => {
+    const scene = new THREE.Scene()
+    sceneRef.current = scene
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    camera.position.set(20, 20, 20)
+    camera.lookAt(0, 0, 0)
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    mountRef.current?.appendChild(renderer.domElement)
+
+    const light = new THREE.DirectionalLight(0xffffff, 1)
+    light.position.set(30, 30, 30)
+    scene.add(light)
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3)
+    scene.add(ambient)
+
+    const grid = new THREE.GridHelper(100, 100)
+    grid.visible = showGrid
+    scene.add(grid)
+
+    const animate = () => {
+      requestAnimationFrame(animate)
+      renderer.render(scene, camera)
+    }
+    animate()
+
+    return () => {
+      renderer.dispose()
+      mountRef.current?.removeChild(renderer.domElement)
+    }
+  }, [])
+
+  // Update meshes whenever shapes change
+  useEffect(() => {
+    if (!sceneRef.current || !meshGetter) return
+
+    shapes.forEach(async (shape) => {
+      if (!meshRefs.current.has(shape)) {
+        const meshData = await meshGetter(shape)
+        const geometry = new THREE.BufferGeometry()
+        geometry.setAttribute("position", new THREE.BufferAttribute(meshData.vertices, 3))
+        geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1))
+
+        const material = new THREE.MeshStandardMaterial({ color: 0x0077ff, wireframe: true })
+        const mesh = new THREE.Mesh(geometry, material)
+
+        sceneRef.current!.add(mesh)
+        meshRefs.current.set(shape, mesh)
+      }
+    })
+  }, [shapes, meshGetter])
+
   return (
     <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
-      {/* Canvas Placeholder */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-24 h-24 rounded-2xl bg-white shadow-lg mx-auto mb-6 flex items-center justify-center">
-            <Icon name="mesh" size={48} className="text-[var(--primary-700)]" />
-          </div>
-          <h3 className="text-lg font-serif text-[var(--neutral-900)] mb-2">3D Viewport Ready</h3>
-          <p className="text-sm text-[var(--neutral-500)] max-w-xs mx-auto">
-            Upload a CAD file or use the sketch tools to start designing
-          </p>
-        </div>
-      </div>
+      {/* Three.js Canvas */}
+      <div ref={mountRef} className="flex-1" />
 
-      {/* View Controls - Bottom Left */}
+      {/* Rest of the UI remains unchanged */}
+      {/* View Controls */}
       <div className="absolute bottom-4 left-4 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
         <div className="flex gap-1">
           {["iso", "top", "front", "right"].map((view) => (
@@ -63,7 +109,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
         </button>
       </div>
 
-      {/* Active Tool Indicator - Top Right */}
+      {/* Active Tool Indicator */}
       {activeTool && (
         <div className="absolute top-4 right-4 bg-white rounded-lg shadow-md px-4 py-2">
           <p className="text-sm">
@@ -75,7 +121,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
         </div>
       )}
 
-      {/* Toolbar - Top Center */}
+      {/* Toolbar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-lg px-4 py-2 flex items-center gap-2">
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
           <Icon name="simulation" size={18} />
