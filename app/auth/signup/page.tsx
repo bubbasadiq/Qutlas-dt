@@ -1,15 +1,16 @@
 "use client"
 
 import React, { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { useAuth } from "@/lib/auth-context"
+import { Logo } from "@/components/logo"
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({ name: "", email: "", password: "", company: "" })
+  const [formData, setFormData] = useState({ name: "", company: "", email: "", password: "" })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { signup } = useAuth()
@@ -22,6 +23,7 @@ export default function SignupPage() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+
     try {
       await signup(formData.email, formData.password, formData.name, formData.company)
       router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
@@ -33,35 +35,116 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-50)]">
-      <form className="max-w-md w-full p-8 bg-white rounded shadow-lg space-y-5" onSubmit={handleSignup}>
-        <h2 className="text-2xl font-semibold text-center">Create your account</h2>
-
-        <div>
-          <Label htmlFor="name">Full Name</Label>
-          <Input id="name" value={formData.name} onChange={(e) => handleChange("name", e.target.value)} required />
+    <div className="min-h-screen flex">
+      {/* Left Panel - Brand */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[var(--primary-700)] items-center justify-center p-12">
+        <div className="max-w-md">
+          <div className="mb-12">
+            <Logo variant="orange" size="lg" href="/" />
+          </div>
+          <h1 className="text-4xl font-serif text-white mb-6 leading-tight">
+            Design. Validate. <span className="text-[var(--accent-500)]">Produce.</span>
+          </h1>
+          <p className="text-white/70 text-lg leading-relaxed">
+            Transform your ideas into manufactured parts. Upload your design, get instant manufacturability feedback,
+            and route to certified production hubs worldwide.
+          </p>
         </div>
-        <div>
-          <Label htmlFor="company">Company</Label>
-          <Input id="company" value={formData.company} onChange={(e) => handleChange("company", e.target.value)} required />
-        </div>
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={formData.email} onChange={(e) => handleChange("email", e.target.value)} required />
-        </div>
-        <div>
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" value={formData.password} onChange={(e) => handleChange("password", e.target.value)} required />
-        </div>
+      </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-[var(--bg-50)]">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo */}
+          <div className="mb-10 lg:hidden">
+            <Logo variant="blue" size="md" href="/" />
+          </div>
 
-        <Button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create Account"}</Button>
+          <div className="mb-8">
+            <h2 className="text-3xl font-serif text-[var(--neutral-900)] mb-2">Create your account</h2>
+            <p className="text-[var(--neutral-500)]">Start designing and manufacturing in minutes</p>
+          </div>
 
-        <p className="text-sm text-center">
-          Already have an account? <Link href="/auth/login" className="text-[var(--primary-700)]">Sign in</Link>
-        </p>
-      </form>
+          <form onSubmit={handleSignup} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-[var(--neutral-700)]">Full Name</Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                required
+                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company" className="text-[var(--neutral-700)]">Company</Label>
+              <Input
+                id="company"
+                placeholder="Acme Inc"
+                value={formData.company}
+                onChange={(e) => handleChange("company", e.target.value)}
+                required
+                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-[var(--neutral-700)]">Work Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@company.com"
+                value={formData.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                required
+                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-[var(--neutral-700)]">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => handleChange("password", e.target.value)}
+                required
+                className="h-12 bg-white border-[var(--neutral-200)] focus:border-[var(--primary-500)] focus:ring-[var(--primary-500)]"
+              />
+              <p className="text-xs text-[var(--neutral-400)]">Must be at least 8 characters</p>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 bg-[var(--primary-700)] hover:bg-[var(--primary-800)] text-white font-medium"
+            >
+              {isLoading ? "Creating account..." : "Create Account"}
+            </Button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-[var(--neutral-500)]">
+              Already have an account?{" "}
+              <Link
+                href="/auth/login"
+                className="text-[var(--primary-700)] hover:text-[var(--primary-800)] font-medium"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
