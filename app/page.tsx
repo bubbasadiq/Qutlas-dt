@@ -66,7 +66,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto leading-relaxed text-pretty">
-            Describe what you want to create. Our AI transforms your ideas into manufacturable parts.
+            Describe what you want to create. Transform your ideas into manufacturable parts.
           </p>
 
           <IntentChat variant="hero" placeholder="Describe what you want to create..." className="mb-8" />
@@ -82,8 +82,7 @@ export default function LandingPage() {
       </section>
 
       <div className="relative h-24 bg-white overflow-hidden">
-        <Image
-          src="/images/brand-shape-orange.png"
+        <Image src="/images/brand-shape-orange.png"
           alt=""
           width={400}
           height={200}
