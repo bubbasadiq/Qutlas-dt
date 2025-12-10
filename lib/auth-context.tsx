@@ -1,14 +1,13 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
-import { supabase } from "./supabaseClient"
+import React, { createContext, useContext, useState, useEffect } from "react"
+import { supabase } from "./supabase"
 
 interface User {
   id: string
   email: string
-  name?: string
+  name: string
   company?: string
-  role: "user" | "hub" | "admin"
 }
 
 interface AuthContextType {
@@ -21,65 +20,41 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load session on mount
+  // Check if user is logged in on mount
   useEffect(() => {
-    const loadSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) mapSupabaseUser(data.session.user)
-      setIsLoading(false)
-    }
+    const session = supabase.auth.session()
+    if (session?.user) setUser(session.user as any)
+    setIsLoading(false)
 
-    loadSession()
-
-    // Realtime session updates
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) mapSupabaseUser(session.user)
-      else setUser(null)
+    // Subscribe to auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user as any || null)
     })
-
-    return () => subscription.unsubscribe()
+    return () => listener?.unsubscribe()
   }, [])
-
-  const mapSupabaseUser = (sUser: any) => {
-    setUser({
-      id: sUser.id,
-      email: sUser.email,
-      name: sUser.user_metadata?.name || "",
-      company: sUser.user_metadata?.company || "",
-      role: "user", // you can extend this later with RLS or metadata
-    })
-  }
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (error) throw new Error(error.message)
-    if (data.user) mapSupabaseUser(data.user)
+    const { error } = await supabase.auth.signIn({ email, password })
     setIsLoading(false)
+    if (error) throw error
   }
 
   const signup = async (email: string, password: string, name: string, company: string) => {
     setIsLoading(true)
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
+    const { user, error } = await supabase.auth.signUp(
+      { email, password },
+      {
         data: { name, company },
-      },
-    })
-
-    if (error) throw new Error(error.message)
-    // User must verify email before login
+        redirectTo: `${window.location.origin}/auth/verify-email`
+      }
+    )
     setIsLoading(false)
+    if (error) throw error
   }
 
   const logout = async () => {
@@ -94,8 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider")
-  return ctx
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error("useAuth must be used within AuthProvider")
+  return context
 }
