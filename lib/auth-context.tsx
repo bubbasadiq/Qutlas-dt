@@ -53,15 +53,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error
   }
 
-  const signup = async (email: string, password: string, name: string, company: string) => {
-    setIsLoading(true)
-    const { error } = await supabase.auth.signUp(
-      { email, password },
-      { data: { name, company }, redirectTo: `${window.location.origin}/auth/verify-email` }
-    )
-    setIsLoading(false)
-    if (error) throw error
-  }
+const signup = async (email: string, password: string, name: string, company: string) => {
+  setIsLoading(true)
+
+  const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+
+  const { error } = await supabase.auth.signUp(
+    { email, password },
+    {
+      data: { name, company },
+      redirectTo: `${redirectUrl}/auth/verify-email`
+    }
+  )
+
+  setIsLoading(false)
+  if (error) throw error
+}
+
 
   const logout = async () => {
     await supabase.auth.signOut()
