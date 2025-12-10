@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent } fro
 import { useChat } from "@ai-sdk/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Sparkles, Send, Loader2, ArrowRight, Paperclip, X } from "lucide-react"
+import { Send, Loader2, ArrowRight, Paperclip, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
