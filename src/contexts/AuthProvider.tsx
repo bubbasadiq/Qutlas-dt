@@ -85,13 +85,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithEmail = async (email: string) => {
-    const { error } = await supabase.auth.updateUser({ email });
-    if (error) {
-      if (error.code === 'email_exists') {
-        await supabase.auth.signInWithOtp({ email });
-      } else {
-        throw error;
+    // Check if we have an anonymous session to upgrade
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+
+    if (currentUser?.is_anonymous) {
+      // Try to add email to anonymous user
+      const { error } = await supabase.auth.updateUser({ email });
+      if (error) {
+        if (error.code === 'email_exists') {
+          // Email belongs to another account, send OTP to sign in
+          await supabase.auth.signInWithOtp({ email });
+        } else {
+          throw error;
+        }
       }
+    } else {
+      // No anonymous session, just send OTP
+      await supabase.auth.signInWithOtp({ email });
     }
   };
 
