@@ -40,6 +40,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Clean up empty hash from URL after OAuth redirect
+  useEffect(() => {
+    if (window.location.hash === '#' || window.location.hash === '') {
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + window.location.search,
+      );
+    }
+  }, []);
+
   // Initialize auth state and set up session listener
   useEffect(() => {
     const initializeAuth = async () => {
@@ -119,15 +130,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // Track that we're attempting to link, so we can handle errors on redirect
-    sessionStorage.setItem('pending_link_identity', 'google');
-    // Always try to link identity first (for anonymous users)
-    // If the identity already exists, the redirect will return an error
-    // which is handled by the useEffect above
-    await supabase.auth.linkIdentity({
-      provider: 'google',
-      options: { redirectTo: getRedirectUrl() },
-    });
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+
+    const redirectTo = getRedirectUrl();
+
+    if (currentUser?.is_anonymous) {
+      // Track that we're attempting to link, so we can handle errors on redirect
+      sessionStorage.setItem('pending_link_identity', 'google');
+      // Link identity to upgrade anonymous user
+      await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: { redirectTo },
+      });
+    } else {
+      // No anonymous session, do regular OAuth
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+    }
   };
 
   const verifyOtp = async (email: string, token: string) => {
