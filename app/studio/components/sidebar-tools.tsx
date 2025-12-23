@@ -4,8 +4,8 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
-import { useWorkspace } from "@/lib/workspace-hook" // central state
-import { useOcctWorker } from "@/lib/occt-worker-client"
+import { useWorkspace } from "@/hooks/use-workspace"
+import { useOcctWorker } from "@/hooks/use-occt-worker"
 
 interface Tool {
   id: string

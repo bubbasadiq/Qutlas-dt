@@ -5,7 +5,7 @@ let occtInstance: OCCT | null = null;
 let wasmReady = false;
 
 const loadOCCT = async () => {
-  const Module = await import("/occt/occt.js"); // path in public/
+  const Module = await import(/* webpackIgnore: true */ "/occt/occt.js"); // path in public/
   occtInstance = new OCCT(Module);
   await occtInstance.init();
   wasmReady = true;
