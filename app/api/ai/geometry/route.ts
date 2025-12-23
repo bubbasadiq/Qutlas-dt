@@ -1,5 +1,10 @@
 import { streamText, tool } from "ai"
+import { createAnthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
+
+const anthropic = createAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
 
 export const maxDuration = 30
 
@@ -156,12 +161,12 @@ Always be helpful, precise with dimensions (default to mm), and consider manufac
 If you see an image, describe what you see and how you'll interpret it for CAD creation.`
 
   const result = streamText({
-    model: "anthropic/claude-sonnet-4-20250514",
+    model: anthropic("claude-sonnet-4-20250514"),
     system: systemPrompt,
     messages,
     tools,
     maxTokens: 2000,
   })
 
-  return result.toUIMessageStreamResponse()
+  return result.toDataStreamResponse()
 }
