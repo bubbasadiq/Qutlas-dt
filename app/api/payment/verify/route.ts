@@ -5,13 +5,13 @@ import { NextResponse } from "next/server"
 import Flutterwave from "flutterwave-node-v3"
 import { supabase } from "@/lib/supabaseClient"
 
-const flutterwave = new Flutterwave(
-  process.env.FLUTTERWAVE_PUBLIC_KEY!,
-  process.env.FLUTTERWAVE_SECRET_KEY!
-)
-
 export async function POST(req: Request) {
   try {
+    const flutterwave = new Flutterwave(
+      process.env.FLUTTERWAVE_PUBLIC_KEY!,
+      process.env.FLUTTERWAVE_SECRET_KEY!
+    )
+
     const { transaction_id, tx_ref } = await req.json()
 
     if (!transaction_id && !tx_ref) {
