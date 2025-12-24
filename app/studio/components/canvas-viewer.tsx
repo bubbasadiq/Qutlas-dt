@@ -247,15 +247,32 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     Object.entries(workspaceObjects).forEach(([id, objectData]) => {
       const existingMesh = meshRefs.current.get(id)
       
-      if (!existingMesh) {
+      // Check if dimensions have changed by comparing stringified dimensions
+      const needsRebuild = existingMesh && 
+        JSON.stringify(existingMesh.userData.dimensions) !== JSON.stringify(objectData.dimensions)
+      
+      if (!existingMesh || needsRebuild) {
+        // Remove old mesh if rebuilding
+        if (existingMesh && needsRebuild) {
+          scene.remove(existingMesh)
+          existingMesh.geometry.dispose()
+          if (Array.isArray(existingMesh.material)) {
+            existingMesh.material.forEach(m => m.dispose())
+          } else {
+            existingMesh.material.dispose()
+          }
+          meshRefs.current.delete(id)
+        }
+        
         // Create new mesh
         const mesh = createMeshFromGeometry(objectData)
         mesh.userData.id = id
+        mesh.userData.dimensions = objectData.dimensions // Store for comparison
         mesh.visible = objectData.visible !== false
         scene.add(mesh)
         meshRefs.current.set(id, mesh)
       } else {
-        // Update existing mesh
+        // Update existing mesh properties without rebuilding
         existingMesh.visible = objectData.visible !== false
         
         // Update selection highlight

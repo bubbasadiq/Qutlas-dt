@@ -7,11 +7,12 @@ import { CanvasViewer } from "./components/canvas-viewer"
 import { PropertiesPanel } from "./components/properties-panel"
 import { TreeView } from "./components/tree-view"
 import { Toolbar } from "./components/toolbar"
-import { ViewportControls } from "./components/viewport-controls"
 import { ContextMenu } from "./components/context-menu"
 import { IntentChat } from "@/components/intent-chat"
 import { AuthGuard } from "@/components/auth-guard"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { toast } from "sonner"
 
 function StudioContent() {
   const searchParams = useSearchParams()
@@ -22,6 +23,8 @@ function StudioContent() {
     position: { x: number; y: number }
     actions: any[]
   } | null>(null)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [showLoadDialog, setShowLoadDialog] = useState(false)
   
   const { 
     objects, 
@@ -39,6 +42,29 @@ function StudioContent() {
       setInitialIntent(decodeURIComponent(intent))
     }
   }, [searchParams])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete key to delete selected object
+      if (e.key === 'Delete' && selectedObjectId) {
+        deleteObject(selectedObjectId)
+        toast.success('Object deleted')
+      }
+      
+      // Escape to deselect
+      if (e.key === 'Escape') {
+        if (contextMenu) {
+          setContextMenu(null)
+        } else if (selectedObjectId) {
+          selectObject('')
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedObjectId, deleteObject, selectObject, contextMenu])
 
   const handleGeometryGenerated = (geometry: any) => {
     // Extract geometry data from AI response
@@ -64,25 +90,34 @@ function StudioContent() {
   const handleContextMenuAction = (action: any) => {
     if (action.label === 'Delete' && action.objectId) {
       deleteObject(action.objectId)
+      toast.success('Object deleted')
+    } else if (action.label === 'Duplicate' && action.objectId) {
+      const obj = objects[action.objectId]
+      if (obj) {
+        const newId = `${action.objectId}_copy_${Date.now()}`
+        addObject(newId, { ...obj, selected: false })
+        toast.success('Object duplicated')
+      }
     } else if (action.label === 'Hide' && action.objectId) {
       const obj = objects[action.objectId]
       if (obj) {
         updateObject(action.objectId, { ...obj, visible: !obj.visible })
+        toast.success(obj.visible ? 'Object hidden' : 'Object shown')
       }
+    } else if (action.label === 'Properties' && action.objectId) {
+      selectObject(action.objectId)
+      toast.info('Properties panel updated')
     } else if (action.label === 'Clear All') {
-      clearWorkspace()
+      if (confirm('Clear all objects from workspace?')) {
+        clearWorkspace()
+        toast.success('Workspace cleared')
+      }
+    } else if (action.label === 'Select All') {
+      // Select first object (proper multi-select would need more work)
+      const firstId = Object.keys(objects)[0]
+      if (firstId) selectObject(firstId)
     } else if (action.onClick) {
       action.onClick()
-    }
-  }
-
-  const viewportController = {
-    viewFront: () => setViewType('front'),
-    viewTop: () => setViewType('top'),
-    viewRight: () => setViewType('right'),
-    viewIsometric: () => setViewType('iso'),
-    toggleGrid: () => {
-      console.log('Toggle grid')
     }
   }
 
@@ -141,7 +176,6 @@ function StudioContent() {
               setContextMenu({ position, actions })
             }}
           />
-          <ViewportControls viewportController={viewportController} />
           <ContextMenu
             position={contextMenu?.position || null}
             actions={contextMenu?.actions || []}
@@ -171,18 +205,20 @@ function StudioContent() {
 export default function StudioWorkspacePage() {
   return (
     <AuthGuard>
-      <Suspense
-        fallback={
-          <div className="flex h-full w-full items-center justify-center bg-gray-100">
-            <div className="text-center">
-              <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
-              <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
+      <ErrorBoundary>
+        <Suspense
+          fallback={
+            <div className="flex h-full w-full items-center justify-center bg-gray-100">
+              <div className="text-center">
+                <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
+                <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
+              </div>
             </div>
-          </div>
-        }
-      >
-        <StudioContent />
-      </Suspense>
+          }
+        >
+          <StudioContent />
+        </Suspense>
+      </ErrorBoundary>
     </AuthGuard>
   )
 }

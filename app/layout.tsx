@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Rubik, Playfair_Display } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/auth-context"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const rubik = Rubik({
@@ -46,6 +47,7 @@ export default function RootLayout({
     <html lang="en" className={`${rubik.variable} ${playfair.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>{children}</AuthProvider>
+        <Toaster position="top-right" richColors />
         <Analytics />
       </body>
     </html>

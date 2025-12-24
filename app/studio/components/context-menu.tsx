@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/icon"
 export interface ContextMenuProps {
   position: { x: number; y: number } | null
   actions: ContextMenuAction[]
-  onActionClick: () => void
+  onActionClick: (action: ContextMenuAction) => void
   onClose: () => void
 }
 
