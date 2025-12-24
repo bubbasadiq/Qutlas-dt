@@ -6,16 +6,132 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import * as THREE from "three"
 
-export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange, shapes = [], meshGetter }) => {
+interface CanvasViewerProps {
+  activeTool: string
+  onViewChange?: (view: string) => void
+  shapes?: any[]
+  meshGetter?: (shape: any) => Promise<{ vertices: Float32Array; indices: Uint32Array }>
+  onContextMenu?: (position: { x: number; y: number }, actions: any[]) => void
+}
+
+export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange, shapes = [], meshGetter, onContextMenu }) => {
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(true)
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene>()
   const meshRefs = useRef<Map<any, THREE.Mesh>>(new Map())
+  const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster())
+  const mouse = useRef<THREE.Vector2>(new THREE.Vector2())
+  const cameraRef = useRef<THREE.PerspectiveCamera>()
+  const rendererRef = useRef<THREE.WebGLRenderer>()
 
   const handleViewChange = (view: string) => {
     setViewType(view)
     onViewChange?.(view)
+  }
+
+  const handleCanvasRightClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    
+    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return
+    
+    // Calculate mouse position in normalized device coordinates
+    const rect = rendererRef.current.domElement.getBoundingClientRect()
+    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    
+    // Raycast to find object under cursor
+    raycaster.current.setFromCamera(mouse.current, cameraRef.current)
+    const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
+    const pickedObject = intersects.length > 0 ? intersects[0].object : null
+    
+    let actions: any[] = []
+    
+    if (pickedObject && pickedObject.userData.id) {
+      // Right-clicked on object
+      const objectId = pickedObject.userData.id
+      actions = [
+        {
+          label: 'Delete',
+          icon: 'trash',
+          objectId: objectId,
+          onClick: () => {
+            console.log('Delete object:', objectId)
+          },
+        },
+        {
+          label: 'Duplicate',
+          icon: 'copy',
+          objectId: objectId,
+          onClick: () => {
+            console.log('Duplicate object:', objectId)
+          },
+        },
+        {
+          label: 'Properties',
+          icon: 'settings',
+          objectId: objectId,
+          onClick: () => {
+            console.log('Show properties for:', objectId)
+          },
+        },
+        { divider: true },
+        {
+          label: 'Hide',
+          icon: 'eye-off',
+          objectId: objectId,
+          onClick: () => {
+            console.log('Hide object:', objectId)
+          },
+        },
+        {
+          label: 'Lock',
+          icon: 'lock',
+          objectId: objectId,
+          onClick: () => {
+            console.log('Lock object:', objectId)
+          },
+        },
+      ]
+    } else {
+      // Right-clicked on empty space
+      actions = [
+        {
+          label: 'Paste',
+          icon: 'clipboard',
+          onClick: () => {
+            console.log('Paste object')
+          },
+          disabled: true, // No clipboard functionality yet
+        },
+        {
+          label: 'Select All',
+          icon: 'select-all',
+          onClick: () => {
+            console.log('Select all objects')
+          },
+        },
+        { divider: true },
+        {
+          label: 'Fit View',
+          icon: 'maximize',
+          onClick: () => {
+            console.log('Fit view to all')
+          },
+        },
+        {
+          label: 'Clear All',
+          icon: 'trash',
+          onClick: () => {
+            console.log('Clear workspace')
+          },
+        },
+      ]
+    }
+    
+    if (onContextMenu) {
+      onContextMenu({ x: event.clientX, y: event.clientY }, actions)
+    }
   }
 
   // Initialize Three.js scene
@@ -26,10 +142,12 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.set(20, 20, 20)
     camera.lookAt(0, 0, 0)
+    cameraRef.current = camera
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(window.innerWidth, window.innerHeight)
     mountRef.current?.appendChild(renderer.domElement)
+    rendererRef.current = renderer
 
     const light = new THREE.DirectionalLight(0xffffff, 1)
     light.position.set(30, 30, 30)
@@ -77,7 +195,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
   return (
     <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
       {/* Three.js Canvas */}
-      <div ref={mountRef} className="flex-1" />
+      <div 
+        ref={mountRef} 
+        className="flex-1" 
+        onContextMenu={handleCanvasRightClick}
+      />
 
       {/* Rest of the UI remains unchanged */}
       {/* View Controls */}

@@ -5,11 +5,15 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 interface WorkspaceState {
   activeTool: string;
   objects: Record<string, any>;
+  selectedObjectId: string | null;
   selectTool: (id: string) => void;
   selectObject: (id: string) => void;
   addObject: (id: string, data: any) => void;
+  deleteObject: (id: string) => void;
+  updateObject: (id: string, data: any) => void;
   getObjectParameters: (id: string) => any;
   updateObjectParameters: (id: string, params: any) => void;
+  clearWorkspace: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -17,6 +21,7 @@ const WorkspaceContext = createContext<WorkspaceState | null>(null);
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const [activeTool, setActiveTool] = useState("select");
   const [objects, setObjects] = useState<Record<string, any>>({});
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
 
   const selectTool = (id: string) => setActiveTool(id);
 
@@ -29,10 +34,28 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       });
       return next;
     });
+    setSelectedObjectId(id);
   };
 
   const addObject = (id: string, data: any) => {
-    setObjects((prev) => ({ ...prev, [id]: { ...data, selected: false } }));
+    setObjects((prev) => ({ ...prev, [id]: { ...data, selected: false, visible: true } }));
+  };
+
+  const deleteObject = (id: string) => {
+    setObjects((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+    if (selectedObjectId === id) {
+      setSelectedObjectId(null);
+    }
+  };
+
+  const updateObject = (id: string, data: any) => {
+    setObjects((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], ...data }
+    }));
   };
 
   const getObjectParameters = (id: string) => {
@@ -49,16 +72,25 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const clearWorkspace = () => {
+    setObjects({});
+    setSelectedObjectId(null);
+  };
+
   return (
     <WorkspaceContext.Provider
       value={{
         activeTool,
         objects,
+        selectedObjectId,
         selectTool,
         selectObject,
         addObject,
+        deleteObject,
+        updateObject,
         getObjectParameters,
         updateObjectParameters,
+        clearWorkspace,
       }}
     >
       {children}
@@ -80,11 +112,15 @@ export function useWorkspace() {
     return {
         activeTool: "select",
         objects: {},
+        selectedObjectId: null,
         selectTool: () => {},
         selectObject: () => {},
         addObject: () => {},
+        deleteObject: () => {},
+        updateObject: () => {},
         getObjectParameters: () => null,
-        updateObjectParameters: () => {}
+        updateObjectParameters: () => {},
+        clearWorkspace: () => {}
     };
   }
   return context;
