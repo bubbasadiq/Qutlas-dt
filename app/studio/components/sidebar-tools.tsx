@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useOcctWorker } from "@/hooks/use-occt-worker"
+import { toast } from "sonner"
 
 interface Tool {
   id: string
@@ -30,6 +31,7 @@ interface SidebarToolsProps {
 
 export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: externalActiveTool, onToolSelect }) => {
   const [isUploadHover, setIsUploadHover] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
   const { loadFile } = useOcctWorker()
   
@@ -37,13 +39,25 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
 
   // handle CAD file upload
   const handleUpload = async (file: File) => {
-    const objectId = await loadFile(file) // OCCT worker parses file & returns object ID
-    addObject(objectId, { 
-      type: 'compound',
-      dimensions: {},
-      params: { length: 100, width: 50, height: 25 } 
-    })
-    selectObject(objectId)
+    setIsUploading(true)
+    const uploadToast = toast.loading(`Uploading ${file.name}...`)
+    
+    try {
+      const objectId = await loadFile(file) // OCCT worker parses file & returns object ID
+      addObject(objectId, { 
+        type: 'compound',
+        dimensions: {},
+        params: { length: 100, width: 50, height: 25 },
+        description: file.name,
+      })
+      selectObject(objectId)
+      toast.success('File uploaded successfully', { id: uploadToast })
+    } catch (error) {
+      toast.error('Failed to upload file', { id: uploadToast })
+      console.error('Upload error:', error)
+    } finally {
+      setIsUploading(false)
+    }
   }
   
   const handleToolSelect = (toolId: string) => {
@@ -69,18 +83,29 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
           onMouseEnter={() => setIsUploadHover(true)}
           onMouseLeave={() => setIsUploadHover(false)}
           className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors block ${
-            isUploadHover
+            isUploading 
+              ? "border-[var(--neutral-200)] bg-[var(--bg-100)] cursor-wait"
+              : isUploadHover
               ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
               : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
           }`}
         >
-          <Icon
-            name="upload"
-            size={24}
-            className={`mx-auto mb-1 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
-          />
-          <p className="text-xs font-medium text-[var(--neutral-700)]">Upload CAD</p>
-          <p className="text-xs text-[var(--neutral-400)] mt-0.5">STEP, IGES, STL</p>
+          {isUploading ? (
+            <>
+              <div className="w-6 h-6 mx-auto mb-1 border-2 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-medium text-[var(--neutral-700)]">Uploading...</p>
+            </>
+          ) : (
+            <>
+              <Icon
+                name="upload"
+                size={24}
+                className={`mx-auto mb-1 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
+              />
+              <p className="text-xs font-medium text-[var(--neutral-700)]">Upload CAD</p>
+              <p className="text-xs text-[var(--neutral-400)] mt-0.5">STEP, IGES, STL</p>
+            </>
+          )}
         </label>
       </div>
 

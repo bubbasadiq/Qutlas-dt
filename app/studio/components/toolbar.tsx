@@ -1,22 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { toast } from "sonner"
+import { SaveWorkspaceDialog } from "./save-workspace-dialog"
+import { LoadWorkspaceDialog } from "./load-workspace-dialog"
 
 export function Toolbar() {
-  const { objects, clearWorkspace } = useWorkspace()
+  const { objects, clearWorkspace, addObject } = useWorkspace()
   const router = useRouter()
   const [saved, setSaved] = useState(true)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [showLoadDialog, setShowLoadDialog] = useState(false)
+  const [objectsSnapshot, setObjectsSnapshot] = useState<string>("")
   
+  // Track changes to objects to update saved state
+  useEffect(() => {
+    const currentSnapshot = JSON.stringify(objects)
+    if (objectsSnapshot && currentSnapshot !== objectsSnapshot) {
+      setSaved(false)
+    }
+    if (!objectsSnapshot) {
+      setObjectsSnapshot(currentSnapshot)
+    }
+  }, [objects, objectsSnapshot])
+
+  // Warn on page unload if unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!saved) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [saved])
+
   const handleNew = () => {
     if (!saved && !confirm('Discard unsaved changes?')) return
     clearWorkspace()
     setSaved(true)
+    setObjectsSnapshot("{}")
   }
   
-  const handleSave = async () => {
+  const handleSaveWorkspace = async (name: string) => {
     try {
       const data = JSON.stringify(Object.keys(objects).map(id => ({
         id,
@@ -25,47 +56,59 @@ export function Toolbar() {
       const response = await fetch('/api/workspace/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `Workspace ${new Date().toISOString()}`, data }),
+        body: JSON.stringify({ name, data }),
       })
       if (response.ok) {
         setSaved(true)
-        alert('Workspace saved')
+        setObjectsSnapshot(JSON.stringify(objects))
+        toast.success('Workspace saved successfully')
       } else {
-        alert('Save failed')
+        toast.error('Failed to save workspace')
       }
     } catch (error) {
-      alert('Error saving workspace')
+      toast.error('Error saving workspace')
     }
   }
   
-  const handleLoad = async () => {
-    try {
-      const response = await fetch('/api/workspace/list')
-      const workspaces = await response.json()
-      // Show dialog to select workspace...
-      alert('Load functionality would show workspace selection dialog')
-    } catch (error) {
-      alert('Error loading workspaces')
-    }
+  const handleLoadWorkspace = (objectsData: any[]) => {
+    clearWorkspace()
+    objectsData.forEach(obj => {
+      addObject(obj.id, obj)
+    })
+    setSaved(true)
+    setObjectsSnapshot(JSON.stringify(objects))
   }
   
   const handleExport = async () => {
+    if (Object.keys(objects).length === 0) {
+      toast.error('No objects to export')
+      return
+    }
+
+    const exportToast = toast.loading('Exporting workspace...')
+    
     try {
-      // Export to STEP file
       const response = await fetch('/api/workspace/export-step', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ objects: Object.keys(objects).map(id => objects[id]) }),
       })
       
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = `design-${Date.now()}.stp`
       a.click()
+      window.URL.revokeObjectURL(url)
+      
+      toast.success('Workspace exported successfully', { id: exportToast })
     } catch (error) {
-      alert('Export failed')
+      toast.error('Failed to export workspace', { id: exportToast })
     }
   }
   
@@ -90,7 +133,7 @@ export function Toolbar() {
         </button>
         
         <button
-          onClick={handleLoad}
+          onClick={() => setShowLoadDialog(true)}
           className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
           title="Open (Ctrl+O)"
         >
@@ -98,7 +141,7 @@ export function Toolbar() {
         </button>
         
         <button
-          onClick={handleSave}
+          onClick={() => setShowSaveDialog(true)}
           className={`px-3 py-2 text-sm rounded transition ${
             saved
               ? 'hover:bg-gray-100'
@@ -122,7 +165,7 @@ export function Toolbar() {
       {/* View controls */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => alert('Fit View functionality')}
+          onClick={() => toast.info('Fit View - Coming soon')}
           className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
           title="Fit View"
         >
@@ -147,6 +190,18 @@ export function Toolbar() {
           Logout
         </button>
       </div>
+
+      {/* Dialogs */}
+      <SaveWorkspaceDialog 
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSave={handleSaveWorkspace}
+      />
+      <LoadWorkspaceDialog
+        isOpen={showLoadDialog}
+        onClose={() => setShowLoadDialog(false)}
+        onLoad={handleLoadWorkspace}
+      />
     </div>
   )
 }

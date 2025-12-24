@@ -5,13 +5,20 @@ import { NextResponse } from "next/server"
 import Flutterwave from "flutterwave-node-v3"
 import { supabase } from "@/lib/supabaseClient"
 
-const flutterwave = new Flutterwave(
-  process.env.FLUTTERWAVE_PUBLIC_KEY!,
-  process.env.FLUTTERWAVE_SECRET_KEY!
-)
+function getFlutterwave() {
+  const publicKey = process.env.FLUTTERWAVE_PUBLIC_KEY
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY
+  
+  if (!publicKey || !secretKey) {
+    throw new Error("Flutterwave keys not configured")
+  }
+  
+  return new Flutterwave(publicKey, secretKey)
+}
 
 export async function POST(req: Request) {
   try {
+    const flutterwave = getFlutterwave()
     const { jobId, amount, email, name, phone, description } = await req.json()
 
     if (!jobId || !amount || !email || !name) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 
 export interface WorkspaceObject {
   id: string;
@@ -34,8 +34,9 @@ interface WorkspaceState {
   activeTool: string;
   objects: Record<string, WorkspaceObject>;
   selectedObjectId: string | null;
+  selectedObjectIds: string[];
   selectTool: (id: string) => void;
-  selectObject: (id: string) => void;
+  selectObject: (id: string, multi?: boolean) => void;
   addObject: (id: string, data: Partial<WorkspaceObject>) => void;
   deleteObject: (id: string) => void;
   updateObject: (id: string, data: Partial<WorkspaceObject>) => void;
@@ -44,30 +45,79 @@ interface WorkspaceState {
   updateObjectGeometry: (id: string, geometry: Partial<WorkspaceObject>) => void;
   getObjectGeometry: (id: string) => WorkspaceObject | undefined;
   clearWorkspace: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
+
+interface HistoryEntry {
+  objects: Record<string, WorkspaceObject>;
+  selectedObjectId: string | null;
+}
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const [activeTool, setActiveTool] = useState("select");
   const [objects, setObjects] = useState<Record<string, any>>({});
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  
+  // Undo/Redo history
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Save state to history
+  const saveHistory = useCallback(() => {
+    const newEntry: HistoryEntry = {
+      objects: JSON.parse(JSON.stringify(objects)),
+      selectedObjectId,
+    };
+    
+    // Remove any future history if we're not at the end
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newEntry);
+    
+    // Limit history to 50 entries
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    } else {
+      setHistoryIndex(historyIndex + 1);
+    }
+    
+    setHistory(newHistory);
+  }, [objects, selectedObjectId, history, historyIndex]);
 
   const selectTool = (id: string) => setActiveTool(id);
 
-  const selectObject = (id: string) => {
+  const selectObject = (id: string, multi: boolean = false) => {
+    if (multi) {
+      // Multi-select with Ctrl/Cmd
+      setSelectedObjectIds((prev) => {
+        if (prev.includes(id)) {
+          return prev.filter(objId => objId !== id);
+        } else {
+          return [...prev, id];
+        }
+      });
+    } else {
+      // Single select
+      setSelectedObjectIds([id]);
+      setSelectedObjectId(id);
+    }
+    
     setObjects((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((k) => {
-        // Create new object to avoid mutation if strict mode
-        next[k] = { ...next[k], selected: k === id };
+        next[k] = { ...next[k], selected: k === id || (multi && selectedObjectIds.includes(k)) };
       });
       return next;
     });
-    setSelectedObjectId(id);
   };
 
   const addObject = (id: string, data: Partial<WorkspaceObject>) => {
+    saveHistory();
     setObjects((prev) => ({ 
       ...prev, 
       [id]: { 
@@ -87,6 +137,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteObject = (id: string) => {
+    saveHistory();
     setObjects((prev) => {
       const { [id]: _, ...rest } = prev;
       return rest;
@@ -94,9 +145,11 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     if (selectedObjectId === id) {
       setSelectedObjectId(null);
     }
+    setSelectedObjectIds((prev) => prev.filter(objId => objId !== id));
   };
 
   const updateObject = (id: string, data: Partial<WorkspaceObject>) => {
+    saveHistory();
     setObjects((prev) => ({
       ...prev,
       [id]: { ...prev[id], ...data } as WorkspaceObject
@@ -108,6 +161,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateObjectParameters = (id: string, params: any) => {
+    saveHistory();
     setObjects((prev) => {
       if (!prev[id]) return prev;
       return {
@@ -122,6 +176,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateObjectGeometry = (id: string, geometry: Partial<WorkspaceObject>) => {
+    saveHistory();
     setObjects((prev) => {
       if (!prev[id]) return prev;
       return {
@@ -141,9 +196,31 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearWorkspace = () => {
+    saveHistory();
     setObjects({});
     setSelectedObjectId(null);
+    setSelectedObjectIds([]);
   };
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const prevState = history[prevIndex];
+      setObjects(prevState.objects);
+      setSelectedObjectId(prevState.selectedObjectId);
+      setHistoryIndex(prevIndex);
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const nextState = history[nextIndex];
+      setObjects(nextState.objects);
+      setSelectedObjectId(nextState.selectedObjectId);
+      setHistoryIndex(nextIndex);
+    }
+  }, [history, historyIndex]);
 
   return (
     <WorkspaceContext.Provider
@@ -151,6 +228,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         activeTool,
         objects,
         selectedObjectId,
+        selectedObjectIds,
         selectTool,
         selectObject,
         addObject,
@@ -161,6 +239,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         updateObjectGeometry,
         getObjectGeometry,
         clearWorkspace,
+        undo,
+        redo,
+        canUndo: historyIndex > 0,
+        canRedo: historyIndex < history.length - 1,
       }}
     >
       {children}

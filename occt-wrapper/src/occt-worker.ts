@@ -15,9 +15,9 @@ const loadOCCT = async () => {
 loadOCCT();
 
 self.onmessage = async (event: MessageEvent<any>) => {
-  const { id, type, data } = event.data;
+  const { id, type, data, objectId, params } = event.data;
 
-  if (!wasmReady) {
+  if (!wasmReady && type !== "status") {
     postMessage({ id, error: "OCCT not ready" });
     return;
   }
@@ -25,6 +25,19 @@ self.onmessage = async (event: MessageEvent<any>) => {
   try {
     let result;
     switch (type) {
+      case "status":
+        result = { ready: wasmReady };
+        break;
+      case "load-object":
+        // Handle CAD file loading (STEP, IGES, STL)
+        // For now, return a mock object ID
+        result = { objectId: `obj_${Date.now()}`, success: true };
+        break;
+      case "update-parameters":
+        // Handle parameter updates for an object
+        // This would regenerate geometry with new parameters
+        result = { objectId, params, success: true };
+        break;
       case "make-box":
         result = occtInstance!.makeBox(data.width, data.height, data.depth);
         break;
@@ -38,7 +51,7 @@ self.onmessage = async (event: MessageEvent<any>) => {
         result = occtInstance!.exportSTEP(data.shape);
         break;
       default:
-        throw new Error("Unknown message type");
+        throw new Error("Unknown message type: " + type);
     }
     postMessage({ id, result });
   } catch (err) {
