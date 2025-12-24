@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build --webpack",
+    "build": "npm run build:occt && next build --webpack",
+    "build:occt": "cd occt-wrapper && bash compile-wasm.sh || echo 'OCCT compilation skipped - using mock module'",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"

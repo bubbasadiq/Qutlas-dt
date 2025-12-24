@@ -32,6 +32,8 @@ async function ensureOCCTInitialized(): Promise<OCCTClient> {
 export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mesh> {
   const { type, dimensions, features = [], selected, color } = input;
   
+  let geometry: THREE.BufferGeometry;
+  
   try {
     const occt = await ensureOCCTInitialized();
     

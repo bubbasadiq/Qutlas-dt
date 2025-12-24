@@ -38,3 +38,9 @@ next-env.d.ts
 # misc
 .DS_Store
 *.pem
+
+# OCCT build artifacts
+/occt-wrapper/build/
+
+# Note: Mock OCCT files are kept in git for development
+# Real compiled WASM should replace these when available

@@ -48,9 +48,10 @@ emcc \
   -lTKSTL \
   -s WASM=1 \
   -s ALLOW_MEMORY_GROWTH=1 \
-  -s TOTAL_MEMORY=536870912 \
-  -s EXPORTED_FUNCTIONS='["_malloc","_free"]" \
-  -s EXPORTED_RUNTIME_METHODS='["cwrap","ccall","getValue","setValue"]" \
+  -s INITIAL_MEMORY=536870912 \
+  -s MAXIMUM_MEMORY=2147483648 \
+  -s EXPORTED_FUNCTIONS='["_malloc","_free"]' \
+  -s EXPORTED_RUNTIME_METHODS='["cwrap","ccall","getValue","setValue"]' \
   -s MODULARIZE=1 \
   -s EXPORT_NAME='OCCTModule' \
   -lembind \
@@ -63,3 +64,11 @@ echo "Output files:"
 echo "  - occt.wasm"
 echo "  - occt.js"
 echo "  - occt.d.ts (automatically generated)"
+
+# Copy compiled files to public directory for Next.js serving
+echo ""
+echo "📦 Copying WASM files to public/occt/..."
+mkdir -p ../public/occt
+cp occt.wasm ../public/occt/
+cp occt.js ../public/occt/
+echo "✅ Files copied to public/occt/"

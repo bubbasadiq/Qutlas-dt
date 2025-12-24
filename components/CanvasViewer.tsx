@@ -4,10 +4,10 @@ import type React from "react"
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 import { CanvasViewerProps } from "@/types/workspace"
-import { useWorkspace } from "@/hooks/useWorkspace"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange }) => {
-  const { objects, selectedObject, selectObject } = useWorkspace()
+  const { objects, selectedObjectId, selectObject } = useWorkspace()
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene>()
   const rendererRef = useRef<THREE.WebGLRenderer>()
@@ -82,14 +82,23 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
     const group = new THREE.Group()
     group.name = "workspace-group"
 
-    objects.forEach((obj) => {
-      if (!obj.mesh) return
-      const geometry = new THREE.BufferGeometry().fromGeometry(obj.mesh) // replace with OCCT mesh conversion
+    Object.values(objects).forEach((obj) => {
+      if (!obj.meshData) return
+      
+      // Create geometry from mesh data
+      const geometry = new THREE.BufferGeometry()
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(obj.meshData.vertices, 3))
+      if (obj.meshData.indices) {
+        geometry.setIndex(new THREE.BufferAttribute(obj.meshData.indices, 1))
+      }
+      geometry.computeVertexNormals()
+      
       const material = new THREE.MeshStandardMaterial({
-        color: obj.id === selectedObject ? 0x0070f0 : 0x999999,
-        transparent: obj.id !== selectedObject,
-        opacity: obj.id === selectedObject ? 1 : 0.8,
+        color: obj.id === selectedObjectId ? 0x0070f0 : 0x999999,
+        transparent: obj.id !== selectedObjectId,
+        opacity: obj.id === selectedObjectId ? 1 : 0.8,
       })
+      
       const mesh = new THREE.Mesh(geometry, material)
       mesh.userData.id = obj.id
       mesh.cursor = "pointer"
@@ -98,7 +107,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
     })
 
     scene.add(group)
-  }, [objects, selectedObject, selectObject])
+  }, [objects, selectedObjectId, selectObject])
 
   return <div ref={mountRef} className="flex-1 w-full h-full" />
 }
