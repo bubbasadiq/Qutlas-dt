@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { toast } from "sonner"
+import { MaterialLibrary, MATERIALS, type Material } from "@/components/material-library"
 
 export interface PropertiesPanelProps {
   selectedObject?: string
@@ -15,9 +16,10 @@ export interface PropertiesPanelProps {
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject }) => {
   const [activeTab, setActiveTab] = useState("properties")
-  const { getObjectParameters, updateObjectParameters, getObjectGeometry } = useWorkspace()
+  const { getObjectParameters, updateObjectParameters, getObjectGeometry, updateObject } = useWorkspace()
   const [params, setParams] = useState<Record<string, number>>({})
   const [applying, setApplying] = useState(false)
+  const [showMaterialLibrary, setShowMaterialLibrary] = useState(false)
 
   useEffect(() => {
     if (selectedObject) {
@@ -46,6 +48,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
     } finally {
       setApplying(false)
     }
+  }
+
+  const handleMaterialSelect = (material: Material) => {
+    if (!selectedObject) return
+    updateObject(selectedObject, { material: material.id })
+    toast.success(`Material changed to ${material.name}`)
   }
 
   // Get dynamic parameters based on object type
@@ -116,6 +124,36 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
               <p className="text-xs text-[var(--neutral-500)]">Parametric Object</p>
             </div>
 
+            {/* Material Selection */}
+            {selectedObject && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                  Material
+                </h4>
+                <button
+                  onClick={() => setShowMaterialLibrary(true)}
+                  className="w-full p-3 rounded-lg border border-[var(--neutral-200)] hover:border-[var(--neutral-300)] transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded border border-[var(--neutral-200)]"
+                      style={{ 
+                        backgroundColor: MATERIALS.find(m => m.id === (getObjectGeometry(selectedObject)?.material || 'aluminum-6061'))?.color || '#C0C0C0'
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--neutral-900)]">
+                        {MATERIALS.find(m => m.id === (getObjectGeometry(selectedObject)?.material || 'aluminum-6061'))?.name || 'Aluminum 6061-T6'}
+                      </p>
+                      <p className="text-xs text-[var(--neutral-500)]">
+                        Click to change
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+
             {/* Transform / Parameters */}
             {selectedObject ? (
               <div className="space-y-3">
@@ -157,6 +195,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
         {activeTab === "toolpath" && <div className="text-sm text-[var(--neutral-500)]">Toolpath UI placeholder</div>}
         {activeTab === "hubs" && <div className="text-sm text-[var(--neutral-500)]">Hubs UI placeholder</div>}
       </div>
+
+      {/* Material Library Modal */}
+      <MaterialLibrary
+        isOpen={showMaterialLibrary}
+        onClose={() => setShowMaterialLibrary(false)}
+        onSelect={handleMaterialSelect}
+        currentMaterial={selectedObject ? getObjectGeometry(selectedObject)?.material : undefined}
+      />
     </div>
   )
 }

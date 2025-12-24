@@ -33,7 +33,11 @@ function StudioContent() {
     deleteObject, 
     updateObject,
     addObject,
-    clearWorkspace 
+    clearWorkspace,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useWorkspace()
 
   useEffect(() => {
@@ -43,28 +47,102 @@ function StudioContent() {
     }
   }, [searchParams])
 
-  // Keyboard shortcuts
+  // Advanced Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      const ctrlKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Ctrl+S / Cmd+S - Save
+      if (ctrlKey && e.key === 's') {
+        e.preventDefault()
+        setShowSaveDialog(true)
+        return
+      }
+
+      // Ctrl+O / Cmd+O - Open
+      if (ctrlKey && e.key === 'o') {
+        e.preventDefault()
+        setShowLoadDialog(true)
+        return
+      }
+
+      // Ctrl+Z / Cmd+Z - Undo
+      if (ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        if (canUndo) {
+          undo()
+          toast.success('Undo')
+        }
+        return
+      }
+
+      // Ctrl+Shift+Z or Ctrl+Y / Cmd+Shift+Z - Redo
+      if ((ctrlKey && e.shiftKey && e.key === 'z') || (ctrlKey && e.key === 'y')) {
+        e.preventDefault()
+        if (canRedo) {
+          redo()
+          toast.success('Redo')
+        }
+        return
+      }
+
+      // Ctrl+D / Cmd+D - Duplicate
+      if (ctrlKey && e.key === 'd' && selectedObjectId) {
+        e.preventDefault()
+        const obj = objects[selectedObjectId]
+        if (obj) {
+          const newId = `${selectedObjectId}_copy_${Date.now()}`
+          addObject(newId, { ...obj, selected: false })
+          selectObject(newId)
+          toast.success('Object duplicated')
+        }
+        return
+      }
+
+      // Ctrl+A / Cmd+A - Select All (first object for now)
+      if (ctrlKey && e.key === 'a') {
+        e.preventDefault()
+        const firstId = Object.keys(objects)[0]
+        if (firstId) {
+          selectObject(firstId)
+          toast.info('Selected first object')
+        }
+        return
+      }
+
       // Delete key to delete selected object
       if (e.key === 'Delete' && selectedObjectId) {
         deleteObject(selectedObjectId)
         toast.success('Object deleted')
+        return
       }
       
-      // Escape to deselect
+      // Escape to deselect or close context menu
       if (e.key === 'Escape') {
         if (contextMenu) {
           setContextMenu(null)
         } else if (selectedObjectId) {
           selectObject('')
         }
+        return
+      }
+
+      // F - Fit view to objects
+      if (e.key === 'f' && !ctrlKey) {
+        e.preventDefault()
+        // Trigger fit view in canvas
+        const fitButton = document.querySelector('[title="Fit view to all objects (F)"]') as HTMLButtonElement
+        if (fitButton) {
+          fitButton.click()
+        }
+        return
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedObjectId, deleteObject, selectObject, contextMenu])
+  }, [selectedObjectId, deleteObject, selectObject, contextMenu, objects, addObject, undo, redo, canUndo, canRedo])
 
   const handleGeometryGenerated = (geometry: any) => {
     // Extract geometry data from AI response

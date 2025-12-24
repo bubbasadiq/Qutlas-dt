@@ -15,6 +15,7 @@ interface CanvasViewerProps {
   onObjectSelect?: (id: string | null) => void
   onViewChange?: (view: string) => void
   onContextMenu?: (position: { x: number; y: number }, actions: any[]) => void
+  onFitView?: () => void
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({ 
@@ -23,7 +24,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   selectedObjectId,
   onObjectSelect,
   onViewChange, 
-  onContextMenu 
+  onContextMenu,
+  onFitView
 }) => {
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(true)
@@ -36,6 +38,38 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const gridRef = useRef<THREE.GridHelper | null>(null)
+
+  const fitCameraToObjects = () => {
+    if (!cameraRef.current || !controlsRef.current || meshRefs.current.size === 0) return
+
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    const box = new THREE.Box3()
+
+    // Calculate bounding box of all visible meshes
+    meshRefs.current.forEach(mesh => {
+      if (mesh.visible) {
+        box.expandByObject(mesh)
+      }
+    })
+
+    if (box.isEmpty()) return
+
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const fov = camera.fov * (Math.PI / 180)
+    let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
+    
+    // Add some padding
+    cameraZ *= 1.5
+
+    camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ * 0.5)
+    controls.target.copy(center)
+    controls.update()
+
+    if (onFitView) onFitView()
+  }
 
   const handleViewChange = (view: string) => {
     setViewType(view)
@@ -324,6 +358,13 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
           }`}
         >
           Grid {showGrid ? "On" : "Off"}
+        </button>
+        <button
+          onClick={fitCameraToObjects}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+          title="Fit view to all objects (F)"
+        >
+          Fit View
         </button>
       </div>
 
