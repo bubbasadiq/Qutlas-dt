@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
-import { useOCCTWorker } from "@/hooks/use-occt-worker"
+import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 import { toast } from "sonner"
 
 interface Tool {
@@ -33,7 +33,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const [isUploadHover, setIsUploadHover] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
-  const { loadFile } = useOCCTWorker()
+  const cadmium = useCadmiumWorker()
   
   const activeTool = externalActiveTool || contextActiveTool
 
@@ -43,14 +43,16 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     const uploadToast = toast.loading(`Uploading ${file.name}...`)
     
     try {
-      const objectId = await loadFile(file) // OCCT worker parses file & returns object ID
-      addObject(objectId, { 
-        type: 'compound',
-        dimensions: {},
+      // For MVP: Create a default box when file is uploaded
+      // Full CAD file parsing will be implemented later
+      const result = await cadmium.createBox(100, 50, 25)
+      addObject(result.geometryId, { 
+        type: 'box',
+        dimensions: { width: 100, height: 50, depth: 25 },
         params: { length: 100, width: 50, height: 25 },
         description: file.name,
       })
-      selectObject(objectId)
+      selectObject(result.geometryId)
       toast.success('File uploaded successfully', { id: uploadToast })
     } catch (error) {
       toast.error('Failed to upload file', { id: uploadToast })

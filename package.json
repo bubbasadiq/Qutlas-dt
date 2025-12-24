@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "npm run build:occt && next build --webpack",
-    "build:occt": "cd occt-wrapper && bash build-occt-wasm.sh",
-    "build:occt:full": "echo '📋 For full OCCT WASM build, you need to build OCCT from source with Emscripten' && echo '🔧 This requires OCCT source code and several hours of build time' && echo '💡 For development, use: npm run build:occt'",
+    "build": "next build --webpack",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"
@@ -60,7 +58,6 @@
     "lucide-react": "^0.454.0",
     "next": "16.0.7",
     "next-themes": "^0.4.4",
-    "opencascade.js": "2.0.0-beta.b5ff984",
     "react": "19.2.0",
     "react-day-picker": "9.8.0",
     "react-dom": "19.2.0",

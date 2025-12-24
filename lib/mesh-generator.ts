@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { initializeOCCT, OCCTClient, Geometry, MeshData, Vector3 } from '@/lib/occt-client';
+import { initializeCadmium, CadmiumClient, Geometry, MeshData, Vector3 } from '@/lib/cadmium-client';
 import type { WorkspaceObject } from '@/hooks/use-workspace';
 
 export interface MeshGeneratorInput {
@@ -15,17 +15,17 @@ export interface MeshGeneratorInput {
   color?: string;
 }
 
-let occtClient: OCCTClient | null = null;
+let cadmiumClient: CadmiumClient | null = null;
 
-async function ensureOCCTInitialized(): Promise<OCCTClient> {
-  if (!occtClient) {
-    occtClient = await initializeOCCT();
+async function ensureCadmiumInitialized(): Promise<CadmiumClient> {
+  if (!cadmiumClient) {
+    cadmiumClient = await initializeCadmium();
   }
-  return occtClient;
+  return cadmiumClient;
 }
 
 /**
- * Generates a THREE.js mesh from geometry metadata using OCCT
+ * Generates a THREE.js mesh from geometry metadata using Cadmium
  * @param input Geometry metadata including type, dimensions, and features
  * @returns Promise<THREE.Mesh> ready to be added to the scene
  */
@@ -35,44 +35,44 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
   let geometry: THREE.BufferGeometry;
   
   try {
-    const occt = await ensureOCCTInitialized();
+    const cadmium = await ensureCadmiumInitialized();
     
-    // Generate base geometry using OCCT
-    let occtGeometry: Geometry;
+    // Generate base geometry using Cadmium
+    let cadmiumGeometry: Geometry;
     
     switch (type) {
       case 'box': {
         const width = dimensions.width || dimensions.length || 100;
         const height = dimensions.height || 100;
         const depth = dimensions.depth || dimensions.width || 100;
-        occtGeometry = occt.createBox(width, height, depth);
+        cadmiumGeometry = cadmium.createBox(width, height, depth);
         break;
       }
       
       case 'cylinder': {
         const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
         const height = dimensions.height || 100;
-        occtGeometry = occt.createCylinder(radius, height);
+        cadmiumGeometry = cadmium.createCylinder(radius, height);
         break;
       }
       
       case 'sphere': {
         const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
-        occtGeometry = occt.createSphere(radius);
+        cadmiumGeometry = cadmium.createSphere(radius);
         break;
       }
       
       case 'cone': {
         const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
         const height = dimensions.height || 100;
-        occtGeometry = occt.createCone(radius, height);
+        cadmiumGeometry = cadmium.createCone(radius, height);
         break;
       }
       
       case 'torus': {
         const majorRadius = dimensions.majorRadius || dimensions.radius || 100;
         const minorRadius = dimensions.minorRadius || dimensions.tube || 30;
-        occtGeometry = occt.createTorus(majorRadius, minorRadius);
+        cadmiumGeometry = cadmium.createTorus(majorRadius, minorRadius);
         break;
       }
       
@@ -80,14 +80,14 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
         const width = dimensions.width || dimensions.length || 100;
         const height = dimensions.height || 100;
         const depth = dimensions.depth || dimensions.width || 100;
-        occtGeometry = occt.createBox(width, height, depth);
+        cadmiumGeometry = cadmium.createBox(width, height, depth);
         break;
       }
     }
     
     // Apply features if any
-    if (features.length > 0 && !occtGeometry.isNull()) {
-      let processedGeometry = occtGeometry;
+    if (features.length > 0 && !cadmiumGeometry.isNull()) {
+      let processedGeometry = cadmiumGeometry;
       
       for (const feature of features) {
         try {
@@ -103,7 +103,7 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
               const diameter = params.diameter || (params.radius ? params.radius * 2 : 20);
               const depth = params.depth || params.height || 100;
               
-              processedGeometry = occt.addHole(processedGeometry, position, diameter, depth);
+              processedGeometry = cadmium.addHole(processedGeometry, position, diameter, depth);
               break;
             }
             
@@ -111,7 +111,7 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
               const edgeIndex = params.edgeIndex || 0;
               const radius = params.radius || 5;
               
-              processedGeometry = occt.addFillet(processedGeometry, edgeIndex, radius);
+              processedGeometry = cadmium.addFillet(processedGeometry, edgeIndex, radius);
               break;
             }
             
@@ -119,7 +119,7 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
               const edgeIndex = params.edgeIndex || 0;
               const distance = params.distance || params.radius || 5;
               
-              processedGeometry = occt.addChamfer(processedGeometry, edgeIndex, distance);
+              processedGeometry = cadmium.addChamfer(processedGeometry, edgeIndex, distance);
               break;
             }
             
@@ -131,19 +131,19 @@ export async function generateMesh(input: MeshGeneratorInput): Promise<THREE.Mes
         }
       }
       
-      occtGeometry = processedGeometry;
+      cadmiumGeometry = processedGeometry;
     }
     
-    // Generate mesh data from OCCT geometry
-    if (!occtGeometry.isNull()) {
-      const meshData = occt.getMeshData(occtGeometry);
+    // Generate mesh data from Cadmium geometry
+    if (!cadmiumGeometry.isNull()) {
+      const meshData = cadmium.getMeshData(cadmiumGeometry);
       geometry = createBufferGeometry(meshData);
     } else {
       throw new Error('Failed to create geometry');
     }
     
   } catch (error) {
-    console.error('OCCT generation failed, falling back to THREE.js primitives:', error);
+    console.error('Cadmium generation failed, falling back to THREE.js primitives:', error);
     
     // Fallback to legacy THREE.js generation if OCCT fails
     switch (type) {
