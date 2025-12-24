@@ -1,23 +1,37 @@
-#!/usr/bin/env bash
-set -euo pipefail
-ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD_DIR="$ROOT_DIR/build"
-INSTALL_LIB_DIR="$ROOT_DIR/../go-server/libs"
+#!/bin/bash
 
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
+set -e
 
-# If OCCT is in a non-standard location, pass -DCMAKE_PREFIX_PATH=/path/to/opencascade to cmake
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -- -j$(nproc)
+echo "🔨 Building OCCT for WASM..."
 
-# Copy produced .so to go-server/libs for easy linking by Go build (adjust paths if needed)
-mkdir -p "$INSTALL_LIB_DIR"
-if [ -f libocct_wrapper.so ]; then
-  cp libocct_wrapper.so "$INSTALL_LIB_DIR/"
-else
-  # Try output under CMake build dir naming
-  cp *.so "$INSTALL_LIB_DIR/" || true
+# Ensure Emscripten is available
+if ! command -v emcc &> /dev/null; then
+  echo "❌ Emscripten not found. Please install it first."
+  echo "Visit https://emscripten.org/docs/getting_started/downloads.html"
+  exit 1
 fi
 
-echo "Built occt_wrapper and copied .so to $INSTALL_LIB_DIR"
+# Create build directory
+mkdir -p build_wasm
+cd build_wasm
+
+# Clean previous build
+rm -rf *
+
+# Configure OCCT
+echo "Configuring OCCT build..."
+cmake .. \
+  -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=$(pwd)/../emscripten/emscripten.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DBUILD_TESTING=OFF \
+  -DBUILD_DOC=OFF \
+  -DBUILD_SAMPLES=OFF
+
+# Build
+echo "Building OCCT libraries..."
+ninja
+
+echo "✅ OCCT built successfully"
+echo "Libraries are in: $(pwd)"
