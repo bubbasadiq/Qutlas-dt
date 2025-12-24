@@ -38,7 +38,17 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addObject = (id: string, data: any) => {
-    setObjects((prev) => ({ ...prev, [id]: { ...data, selected: false, visible: true } }));
+    setObjects((prev) => ({ 
+      ...prev, 
+      [id]: { 
+        ...data, 
+        id,
+        selected: false, 
+        visible: true,
+        geometry: data.geometry || null,
+        params: data.params || data.dimensions || {},
+      } 
+    }));
   };
 
   const deleteObject = (id: string) => {
@@ -101,27 +111,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    // Return dummy state if context is missing (for now, to avoid crash if not wrapped)
-    // Or throw if strict.
-    // For build success, throwing is fine.
-    // But let's return a dummy to be safe for basic rendering if someone forgot provider.
-    // Actually, throwing is better to catch issues.
-    // throw new Error("useWorkspace must be used within a WorkspaceProvider");
-    
-    // For the sake of "fix deployment" and assuming context might not be set up yet:
-    return {
-        activeTool: "select",
-        objects: {},
-        selectedObjectId: null,
-        selectTool: () => {},
-        selectObject: () => {},
-        addObject: () => {},
-        deleteObject: () => {},
-        updateObject: () => {},
-        getObjectParameters: () => null,
-        updateObjectParameters: () => {},
-        clearWorkspace: () => {}
-    };
+    throw new Error("useWorkspace must be used within a WorkspaceProvider");
   }
   return context;
 }

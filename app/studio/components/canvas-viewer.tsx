@@ -5,29 +5,86 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import * as THREE from "three"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 
 interface CanvasViewerProps {
   activeTool: string
+  workspaceObjects: Record<string, any>
+  selectedObjectId: string | null
+  onObjectSelect?: (id: string | null) => void
   onViewChange?: (view: string) => void
-  shapes?: any[]
-  meshGetter?: (shape: any) => Promise<{ vertices: Float32Array; indices: Uint32Array }>
   onContextMenu?: (position: { x: number; y: number }, actions: any[]) => void
 }
 
-export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewChange, shapes = [], meshGetter, onContextMenu }) => {
+export const CanvasViewer: React.FC<CanvasViewerProps> = ({ 
+  activeTool, 
+  workspaceObjects,
+  selectedObjectId,
+  onObjectSelect,
+  onViewChange, 
+  onContextMenu 
+}) => {
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(true)
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene>()
-  const meshRefs = useRef<Map<any, THREE.Mesh>>(new Map())
+  const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map())
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouse = useRef<THREE.Vector2>(new THREE.Vector2())
   const cameraRef = useRef<THREE.PerspectiveCamera>()
   const rendererRef = useRef<THREE.WebGLRenderer>()
+  const controlsRef = useRef<OrbitControls>()
+  const gridRef = useRef<THREE.GridHelper>()
 
   const handleViewChange = (view: string) => {
     setViewType(view)
     onViewChange?.(view)
+    
+    // Animate camera to view position
+    if (cameraRef.current && controlsRef.current) {
+      const camera = cameraRef.current
+      const distance = 100
+      
+      let targetPosition = { x: 0, y: 0, z: 0 }
+      
+      switch (view) {
+        case 'front':
+          targetPosition = { x: 0, y: 0, z: distance }
+          break
+        case 'top':
+          targetPosition = { x: 0, y: distance, z: 0 }
+          break
+        case 'right':
+          targetPosition = { x: distance, y: 0, z: 0 }
+          break
+        case 'iso':
+        default:
+          targetPosition = { x: distance * 0.7, y: distance * 0.7, z: distance * 0.7 }
+          break
+      }
+      
+      camera.position.set(targetPosition.x, targetPosition.y, targetPosition.z)
+      controlsRef.current.update()
+    }
+  }
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return
+    
+    const rect = rendererRef.current.domElement.getBoundingClientRect()
+    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    
+    raycaster.current.setFromCamera(mouse.current, cameraRef.current)
+    const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
+    
+    const pickedObject = intersects.find(i => i.object.userData.id)
+    
+    if (pickedObject && pickedObject.object.userData.id) {
+      onObjectSelect?.(pickedObject.object.userData.id)
+    } else {
+      onObjectSelect?.(null)
+    }
   }
 
   const handleCanvasRightClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -35,97 +92,33 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
     
     if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return
     
-    // Calculate mouse position in normalized device coordinates
     const rect = rendererRef.current.domElement.getBoundingClientRect()
     mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     
-    // Raycast to find object under cursor
     raycaster.current.setFromCamera(mouse.current, cameraRef.current)
     const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
-    const pickedObject = intersects.length > 0 ? intersects[0].object : null
+    const pickedObject = intersects.find(i => i.object.userData.id)
     
     let actions: any[] = []
     
-    if (pickedObject && pickedObject.userData.id) {
-      // Right-clicked on object
-      const objectId = pickedObject.userData.id
+    if (pickedObject && pickedObject.object.userData.id) {
+      const objectId = pickedObject.object.userData.id
       actions = [
-        {
-          label: 'Delete',
-          icon: 'trash',
-          objectId: objectId,
-          onClick: () => {
-            console.log('Delete object:', objectId)
-          },
-        },
-        {
-          label: 'Duplicate',
-          icon: 'copy',
-          objectId: objectId,
-          onClick: () => {
-            console.log('Duplicate object:', objectId)
-          },
-        },
-        {
-          label: 'Properties',
-          icon: 'settings',
-          objectId: objectId,
-          onClick: () => {
-            console.log('Show properties for:', objectId)
-          },
-        },
+        { label: 'Delete', icon: 'trash', objectId },
+        { label: 'Duplicate', icon: 'copy', objectId },
+        { label: 'Properties', icon: 'settings', objectId },
         { divider: true },
-        {
-          label: 'Hide',
-          icon: 'eye-off',
-          objectId: objectId,
-          onClick: () => {
-            console.log('Hide object:', objectId)
-          },
-        },
-        {
-          label: 'Lock',
-          icon: 'lock',
-          objectId: objectId,
-          onClick: () => {
-            console.log('Lock object:', objectId)
-          },
-        },
+        { label: 'Hide', icon: 'eye-off', objectId },
+        { label: 'Lock', icon: 'lock', objectId },
       ]
     } else {
-      // Right-clicked on empty space
       actions = [
-        {
-          label: 'Paste',
-          icon: 'clipboard',
-          onClick: () => {
-            console.log('Paste object')
-          },
-          disabled: true, // No clipboard functionality yet
-        },
-        {
-          label: 'Select All',
-          icon: 'select-all',
-          onClick: () => {
-            console.log('Select all objects')
-          },
-        },
+        { label: 'Paste', icon: 'clipboard', disabled: true },
+        { label: 'Select All', icon: 'select-all' },
         { divider: true },
-        {
-          label: 'Fit View',
-          icon: 'maximize',
-          onClick: () => {
-            console.log('Fit view to all')
-          },
-        },
-        {
-          label: 'Clear All',
-          icon: 'trash',
-          onClick: () => {
-            console.log('Clear workspace')
-          },
-        },
+        { label: 'Fit View', icon: 'maximize' },
+        { label: 'Clear All', icon: 'trash' },
       ]
     }
     
@@ -134,74 +127,227 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({ activeTool, onViewCh
     }
   }
 
+  // Generate THREE.js mesh from geometry metadata
+  const createMeshFromGeometry = (objectData: any): THREE.Mesh => {
+    let geometry: THREE.BufferGeometry
+    const { type, dimensions = {}, features = [] } = objectData
+    
+    switch (type) {
+      case 'box': {
+        const width = dimensions.width || 10
+        const height = dimensions.height || 10
+        const depth = dimensions.depth || 10
+        geometry = new THREE.BoxGeometry(width, height, depth)
+        break
+      }
+      case 'cylinder': {
+        const radius = dimensions.radius || dimensions.diameter / 2 || 5
+        const height = dimensions.height || 10
+        geometry = new THREE.CylinderGeometry(radius, radius, height, 32)
+        break
+      }
+      case 'sphere': {
+        const radius = dimensions.radius || dimensions.diameter / 2 || 5
+        geometry = new THREE.SphereGeometry(radius, 32, 32)
+        break
+      }
+      case 'extrusion':
+      case 'revolution':
+      case 'compound':
+      default: {
+        // Default to box if unknown type
+        geometry = new THREE.BoxGeometry(10, 10, 10)
+        break
+      }
+    }
+    
+    // Apply basic material
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x0088ff,
+      metalness: 0.3,
+      roughness: 0.5,
+    })
+    
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    
+    // Add features as visual indicators
+    if (features.length > 0) {
+      features.forEach((feature: any) => {
+        if (feature.type === 'hole') {
+          // Add a cylinder to represent hole (for visualization)
+          const holeRadius = feature.parameters?.radius || 2
+          const holeDepth = feature.parameters?.depth || 5
+          const holeGeometry = new THREE.CylinderGeometry(holeRadius, holeRadius, holeDepth, 16)
+          const holeMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444, transparent: true, opacity: 0.5 })
+          const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial)
+          
+          // Position the hole
+          if (feature.parameters?.position) {
+            holeMesh.position.set(
+              feature.parameters.position.x || 0,
+              feature.parameters.position.y || 0,
+              feature.parameters.position.z || 0
+            )
+          }
+          
+          mesh.add(holeMesh)
+        }
+      })
+    }
+    
+    return mesh
+  }
+
   // Initialize Three.js scene
   useEffect(() => {
+    if (!mountRef.current) return
+
     const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0xf5f5f5)
     sceneRef.current = scene
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-    camera.position.set(20, 20, 20)
+    const camera = new THREE.PerspectiveCamera(
+      50,
+      mountRef.current.clientWidth / mountRef.current.clientHeight,
+      0.1,
+      10000
+    )
+    camera.position.set(70, 70, 70)
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    mountRef.current?.appendChild(renderer.domElement)
+    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.shadowMap.enabled = true
+    mountRef.current.appendChild(renderer.domElement)
     rendererRef.current = renderer
 
-    const light = new THREE.DirectionalLight(0xffffff, 1)
-    light.position.set(30, 30, 30)
-    scene.add(light)
+    // Lighting
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+    directionalLight.position.set(50, 50, 50)
+    directionalLight.castShadow = true
+    directionalLight.shadow.mapSize.width = 2048
+    directionalLight.shadow.mapSize.height = 2048
+    scene.add(directionalLight)
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.3)
-    scene.add(ambient)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+    scene.add(ambientLight)
 
-    const grid = new THREE.GridHelper(100, 100)
+    // Grid
+    const grid = new THREE.GridHelper(100, 20, 0xcccccc, 0xe0e0e0)
     grid.visible = showGrid
+    gridRef.current = grid
     scene.add(grid)
 
+    // Axes helper
+    const axesHelper = new THREE.AxesHelper(20)
+    scene.add(axesHelper)
+
+    // Orbit controls
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.dampingFactor = 0.05
+    controlsRef.current = controls
+
+    // Animation loop
     const animate = () => {
       requestAnimationFrame(animate)
+      controls.update()
       renderer.render(scene, camera)
     }
     animate()
 
+    // Handle window resize
+    const handleResize = () => {
+      if (!mountRef.current || !camera || !renderer) return
+      camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight
+      camera.updateProjectionMatrix()
+      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
+    }
+    window.addEventListener('resize', handleResize)
+
     return () => {
+      window.removeEventListener('resize', handleResize)
       renderer.dispose()
-      mountRef.current?.removeChild(renderer.domElement)
+      if (mountRef.current) {
+        mountRef.current.removeChild(renderer.domElement)
+      }
     }
   }, [])
 
-  // Update meshes whenever shapes change
+  // Update grid visibility
   useEffect(() => {
-    if (!sceneRef.current || !meshGetter) return
+    if (gridRef.current) {
+      gridRef.current.visible = showGrid
+    }
+  }, [showGrid])
 
-    shapes.forEach(async (shape) => {
-      if (!meshRefs.current.has(shape)) {
-        const meshData = await meshGetter(shape)
-        const geometry = new THREE.BufferGeometry()
-        geometry.setAttribute("position", new THREE.BufferAttribute(meshData.vertices, 3))
-        geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1))
+  // Update meshes when workspace objects change
+  useEffect(() => {
+    if (!sceneRef.current) return
 
-        const material = new THREE.MeshStandardMaterial({ color: 0x0077ff, wireframe: true })
-        const mesh = new THREE.Mesh(geometry, material)
+    const scene = sceneRef.current
+    const currentMeshIds = new Set(Object.keys(workspaceObjects))
+    const existingMeshIds = new Set(meshRefs.current.keys())
 
-        sceneRef.current!.add(mesh)
-        meshRefs.current.set(shape, mesh)
+    // Remove deleted objects
+    existingMeshIds.forEach(id => {
+      if (!currentMeshIds.has(id)) {
+        const mesh = meshRefs.current.get(id)
+        if (mesh) {
+          scene.remove(mesh)
+          mesh.geometry.dispose()
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(m => m.dispose())
+          } else {
+            mesh.material.dispose()
+          }
+          meshRefs.current.delete(id)
+        }
       }
     })
-  }, [shapes, meshGetter])
+
+    // Add or update objects
+    Object.entries(workspaceObjects).forEach(([id, objectData]) => {
+      const existingMesh = meshRefs.current.get(id)
+      
+      if (!existingMesh) {
+        // Create new mesh
+        const mesh = createMeshFromGeometry(objectData)
+        mesh.userData.id = id
+        mesh.visible = objectData.visible !== false
+        scene.add(mesh)
+        meshRefs.current.set(id, mesh)
+      } else {
+        // Update existing mesh
+        existingMesh.visible = objectData.visible !== false
+        
+        // Update selection highlight
+        const material = existingMesh.material as THREE.MeshStandardMaterial
+        if (objectData.selected || id === selectedObjectId) {
+          material.color.setHex(0xff8800)
+          material.emissive.setHex(0x442200)
+        } else {
+          material.color.setHex(0x0088ff)
+          material.emissive.setHex(0x000000)
+        }
+      }
+    })
+  }, [workspaceObjects, selectedObjectId])
 
   return (
     <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
       {/* Three.js Canvas */}
       <div 
         ref={mountRef} 
-        className="flex-1" 
+        className="flex-1 w-full h-full" 
+        onClick={handleCanvasClick}
         onContextMenu={handleCanvasRightClick}
       />
 
-      {/* Rest of the UI remains unchanged */}
       {/* View Controls */}
       <div className="absolute bottom-4 left-4 bg-white rounded-xl shadow-lg p-2 flex flex-col gap-2">
         <div className="flex gap-1">

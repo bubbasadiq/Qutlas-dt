@@ -17,7 +17,6 @@ function StudioContent() {
   const searchParams = useSearchParams()
   const [activeTool, setActiveTool] = useState<string>("select")
   const [viewType, setViewType] = useState("iso")
-  const [geometryData, setGeometryData] = useState<any>(null)
   const [initialIntent, setInitialIntent] = useState<string | undefined>(undefined)
   const [contextMenu, setContextMenu] = useState<{
     position: { x: number; y: number }
@@ -30,6 +29,7 @@ function StudioContent() {
     selectObject, 
     deleteObject, 
     updateObject,
+    addObject,
     clearWorkspace 
   } = useWorkspace()
 
@@ -41,9 +41,23 @@ function StudioContent() {
   }, [searchParams])
 
   const handleGeometryGenerated = (geometry: any) => {
-    setGeometryData(geometry)
-    if (geometry?.geometry?.id) {
-      selectObject(geometry.geometry.id)
+    // Extract geometry data from AI response
+    if (geometry?.geometry) {
+      const geoData = geometry.geometry
+      const id = geoData.id || `geo_${Date.now()}`
+      
+      // Add object to workspace with complete metadata
+      addObject(id, {
+        type: geoData.type || 'box',
+        dimensions: geoData.dimensions || {},
+        features: geoData.features || [],
+        material: geoData.material || 'aluminum',
+        description: geoData.description || '',
+        params: geoData.dimensions || {},
+      })
+      
+      // Select the newly created object
+      selectObject(id)
     }
   }
 
@@ -58,7 +72,6 @@ function StudioContent() {
     } else if (action.label === 'Clear All') {
       clearWorkspace()
     } else if (action.onClick) {
-      // Execute the original click handler
       action.onClick()
     }
   }
@@ -69,35 +82,32 @@ function StudioContent() {
     viewRight: () => setViewType('right'),
     viewIsometric: () => setViewType('iso'),
     toggleGrid: () => {
-      // This would toggle grid visibility
       console.log('Toggle grid')
     }
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-[var(--bg-100)]">
       {/* Toolbar */}
       <Toolbar />
       
-      {/* Main workspace */}
+      {/* Main workspace - 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar tools */}
-        <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
+        {/* Left column: Sidebar tools + AI Assistant */}
+        <div className="flex flex-col w-16 bg-white border-r border-[var(--neutral-200)]">
+          <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
+        </div>
         
-        {/* Canvas */}
+        {/* Center column: Canvas */}
         <div className="flex-1 relative">
           <CanvasViewer 
-            activeTool={activeTool} 
-            onViewChange={setViewType} 
+            activeTool={activeTool}
+            workspaceObjects={objects}
+            selectedObjectId={selectedObjectId}
+            onObjectSelect={selectObject}
+            onViewChange={setViewType}
             onContextMenu={(position, actions) => {
-              // Enhance actions with actual object IDs where needed
-              const enhancedActions = actions.map(action => {
-                if (action.onClick && typeof action.onClick === 'function') {
-                  return action // Keep original click handlers
-                }
-                return action
-              })
-              setContextMenu({ position, actions: enhancedActions })
+              setContextMenu({ position, actions })
             }}
           />
           <ViewportControls viewportController={viewportController} />
@@ -109,26 +119,27 @@ function StudioContent() {
           />
         </div>
         
-        {/* Right panel (split between tree view and properties) */}
-        <div className="w-80 bg-gray-50 border-l border-gray-200 flex flex-col">
-          {/* Tree view */}
-          <div className="flex-1 overflow-y-auto">
+        {/* Right column: Tree view + Properties panel */}
+        <div className="w-80 bg-white border-l border-[var(--neutral-200)] flex flex-col">
+          {/* Tree view - top half */}
+          <div className="flex-1 overflow-y-auto border-b border-[var(--neutral-200)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--neutral-900)] mb-3">Scene</h3>
             <TreeView />
           </div>
           
-          {/* Properties panel */}
-          <div className="flex-1 border-t border-gray-200 overflow-y-auto">
+          {/* Properties panel - bottom half */}
+          <div className="flex-1 overflow-y-auto">
             <PropertiesPanel selectedObject={selectedObjectId || undefined} />
           </div>
         </div>
       </div>
       
-      {/* AI Assistant Panel (bottom left) */}
-      <div className="absolute bottom-4 left-4 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center">
+      {/* AI Assistant Panel - Fixed at bottom left, above sidebar */}
+      <div className="fixed bottom-6 left-20 w-96 bg-white border border-[var(--neutral-200)] rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
             <svg
-              className="w-3.5 h-3.5 text-white"
+              className="w-5 h-5 text-white"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -136,14 +147,19 @@ function StudioContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">AI Assistant</p>
+          <div>
+            <p className="text-sm font-semibold text-white">AI Assistant</p>
+            <p className="text-xs text-white/70">Powered by Claude</p>
+          </div>
         </div>
-        <IntentChat
-          variant="workspace"
-          placeholder="Describe changes..."
-          onGeometryGenerated={handleGeometryGenerated}
-          initialIntent={initialIntent}
-        />
+        <div className="p-4">
+          <IntentChat
+            variant="workspace"
+            placeholder="Describe what to create or modify..."
+            onGeometryGenerated={handleGeometryGenerated}
+            initialIntent={initialIntent}
+          />
+        </div>
       </div>
     </div>
   )
@@ -154,7 +170,12 @@ export default function StudioWorkspacePage() {
     <AuthGuard>
       <Suspense
         fallback={
-          <div className="flex h-full w-full items-center justify-center bg-gray-100">Loading workspace...</div>
+          <div className="flex h-full w-full items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
+            </div>
+          </div>
         }
       >
         <StudioContent />
