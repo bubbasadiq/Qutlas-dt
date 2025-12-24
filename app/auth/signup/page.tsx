@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import { Logo } from "@/components/logo"
+import { toast } from "sonner"
+
+export const dynamic = 'force-dynamic'
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "", company: "" })
@@ -26,12 +29,10 @@ export default function SignupPage() {
    setError("")
 
    try {
-     // Validate email format
      if (!formData.email.includes('@') || !formData.email.includes('.')) {
        throw new Error('Please enter a valid email address.')
      }
 
-     // Validate password strength
      if (formData.password.length < 8) {
        throw new Error('Password must be at least 8 characters.')
      }
@@ -43,12 +44,10 @@ export default function SignupPage() {
        formData.company
      )
 
-     // Store pending intent and redirect path for after email verification
      if (typeof window !== "undefined") {
        const pendingIntent = sessionStorage.getItem("qutlas_pending_intent")
        const redirectPath = sessionStorage.getItem("redirectAfterAuth")
 
-       // Store these in sessionStorage to be used after email verification
        if (pendingIntent) {
          sessionStorage.setItem("qutlas_pending_intent_after_verify", pendingIntent)
        }
@@ -57,10 +56,12 @@ export default function SignupPage() {
        }
      }
 
+     toast.success("Account created! Please check your email to verify.")
      router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
    } catch (err) {
-     // The error is already user-friendly from the auth context
-     setError(err instanceof Error ? err.message : "Signup failed. Please try again.")
+     const message = err instanceof Error ? err.message : "Signup failed. Please try again."
+     setError(message)
+     toast.error(message)
    } finally {
      setIsLoading(false)
    }

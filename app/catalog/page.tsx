@@ -9,6 +9,8 @@ import { Logo } from "@/components/logo"
 import { AuthGuard } from "@/components/auth-guard"
 import { useAuth } from "@/lib/auth-context"
 
+export const dynamic = 'force-dynamic'
+
 const categories = [
   { id: "all", label: "All Parts" },
   { id: "fasteners", label: "Fasteners" },

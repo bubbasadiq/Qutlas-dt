@@ -4,11 +4,15 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+import { LoadingSpinner } from "@/components/loading-spinner"
 
 export function Toolbar() {
   const { objects, clearWorkspace } = useWorkspace()
   const router = useRouter()
   const [saved, setSaved] = useState(true)
+  const [isLoading, setIsLoading] = useState<string | null>(null)
   
   const handleNew = () => {
     if (!saved && !confirm('Discard unsaved changes?')) return
@@ -17,6 +21,7 @@ export function Toolbar() {
   }
   
   const handleSave = async () => {
+    setIsLoading('save')
     try {
       const data = JSON.stringify(Object.keys(objects).map(id => ({
         id,
@@ -29,34 +34,50 @@ export function Toolbar() {
       })
       if (response.ok) {
         setSaved(true)
-        alert('Workspace saved')
+        toast.success('Workspace saved')
       } else {
-        alert('Save failed')
+        toast.error('Save failed')
       }
     } catch (error) {
-      alert('Error saving workspace')
+      toast.error('Error saving workspace')
+    } finally {
+      setIsLoading(null)
     }
   }
   
   const handleLoad = async () => {
+    setIsLoading('load')
     try {
       const response = await fetch('/api/workspace/list')
       const workspaces = await response.json()
-      // Show dialog to select workspace...
-      alert('Load functionality would show workspace selection dialog')
+      if (Array.isArray(workspaces) && workspaces.length > 0) {
+        toast.info(`Found ${workspaces.length} workspaces`)
+      } else {
+        toast.info('No saved workspaces found')
+      }
     } catch (error) {
-      alert('Error loading workspaces')
+      toast.error('Error loading workspaces')
+    } finally {
+      setIsLoading(null)
     }
   }
   
   const handleExport = async () => {
+    if (Object.keys(objects).length === 0) {
+      toast.warning('No objects to export')
+      return
+    }
+    setIsLoading('export')
     try {
-      // Export to STEP file
       const response = await fetch('/api/workspace/export-step', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ objects: Object.keys(objects).map(id => objects[id]) }),
       })
+      
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
       
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
@@ -64,8 +85,20 @@ export function Toolbar() {
       a.href = url
       a.download = `design-${Date.now()}.stp`
       a.click()
+      toast.success('Export complete')
     } catch (error) {
-      alert('Export failed')
+      toast.error('Export failed')
+    } finally {
+      setIsLoading(null)
+    }
+  }
+  
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      window.location.href = '/'
+    } catch (error) {
+      toast.error('Logout failed')
     }
   }
   
@@ -74,78 +107,89 @@ export function Toolbar() {
       {/* Logo */}
       <div className="flex items-center gap-2">
         <Icon name="logo" className="w-6 h-6" />
-        <span className="font-semibold">Qutlas Studio</span>
+        <span className="font-semibold hidden sm:inline">Qutlas Studio</span>
       </div>
       
-      <div className="flex-1" /> {/* Spacer */}
+      <div className="flex-1" />
       
       {/* File operations */}
       <div className="flex items-center gap-2 border-r pr-4">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleNew}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
-          title="New (Ctrl+N)"
+          disabled={isLoading !== null}
         >
           New
-        </button>
+        </Button>
         
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleLoad}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
-          title="Open (Ctrl+O)"
+          disabled={isLoading !== null}
         >
-          Open
-        </button>
+          {isLoading === 'load' ? <LoadingSpinner className="h-4 w-4" /> : 'Open'}
+        </Button>
         
-        <button
+        <Button
+          variant={saved ? 'ghost' : 'default'}
+          size="sm"
           onClick={handleSave}
-          className={`px-3 py-2 text-sm rounded transition ${
-            saved
-              ? 'hover:bg-gray-100'
-              : 'bg-blue-500 text-white hover:bg-blue-600'
-          }`}
-          title="Save (Ctrl+S)"
+          disabled={isLoading !== null}
+          className={!saved ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
         >
-          {saved ? 'Save' : 'Save*'}
-        </button>
+          {isLoading === 'save' ? (
+            <LoadingSpinner className="h-4 w-4" />
+          ) : (
+            'Save'
+          )}
+        </Button>
         
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleExport}
-          disabled={Object.keys(objects).length === 0}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition disabled:opacity-50"
-          title="Export"
+          disabled={Object.keys(objects).length === 0 || isLoading !== null}
         >
-          Export
-        </button>
+          {isLoading === 'export' ? (
+            <LoadingSpinner className="h-4 w-4" />
+          ) : (
+            'Export'
+          )}
+        </Button>
       </div>
       
       {/* View controls */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => alert('Fit View functionality')}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
-          title="Fit View"
+      <div className="flex items-center gap-2 hidden lg:flex">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toast.info('Fit View functionality')}
         >
           Fit View
-        </button>
+        </Button>
       </div>
       
-      <div className="flex-1" /> {/* Spacer */}
+      <div className="flex-1" />
       
       {/* User menu */}
       <div className="flex items-center gap-2 border-l pl-4">
-        <button
-          onClick={() => router.push('/dashboard/profile')}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/dashboard')}
         >
-          Profile
-        </button>
-        <button
-          onClick={() => router.push('/auth/logout')}
-          className="px-3 py-2 text-sm hover:bg-red-50 text-red-600 rounded transition"
+          Dashboard
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50"
         >
           Logout
-        </button>
+        </Button>
       </div>
     </div>
   )

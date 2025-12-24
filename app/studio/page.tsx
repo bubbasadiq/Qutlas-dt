@@ -12,6 +12,10 @@ import { ContextMenu } from "./components/context-menu"
 import { IntentChat } from "@/components/intent-chat"
 import { AuthGuard } from "@/components/auth-guard"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { MobileNav } from "./components/mobile-nav"
+import { LoadingSpinner } from "@/components/loading-spinner"
+
+export const dynamic = 'force-dynamic'
 
 function StudioContent() {
   const searchParams = useSearchParams()
@@ -22,6 +26,7 @@ function StudioContent() {
     position: { x: number; y: number }
     actions: any[]
   } | null>(null)
+  const [rightPanelOpen, setRightPanelOpen] = useState(true)
   
   const { 
     objects, 
@@ -41,12 +46,10 @@ function StudioContent() {
   }, [searchParams])
 
   const handleGeometryGenerated = (geometry: any) => {
-    // Extract geometry data from AI response
     if (geometry?.geometry) {
       const geoData = geometry.geometry
       const id = geoData.id || `geo_${Date.now()}`
       
-      // Add object to workspace with complete metadata
       addObject(id, {
         type: geoData.type || 'box',
         dimensions: geoData.dimensions || {},
@@ -56,7 +59,6 @@ function StudioContent() {
         params: geoData.dimensions || {},
       })
       
-      // Select the newly created object
       selectObject(id)
     }
   }
@@ -88,13 +90,18 @@ function StudioContent() {
 
   return (
     <div className="flex flex-col h-screen bg-[var(--bg-100)]">
-      {/* Toolbar */}
-      <Toolbar />
+      {/* Toolbar - hidden on mobile */}
+      <div className="hidden md:block">
+        <Toolbar />
+      </div>
       
-      {/* Main workspace - 3-column layout */}
+      {/* Mobile navigation */}
+      <MobileNav />
+      
+      {/* Main workspace - responsive layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left column: Sidebar tools + AI Assistant */}
-        <div className="flex flex-col w-16 bg-white border-r border-[var(--neutral-200)]">
+        {/* Left column: Sidebar tools - hidden on mobile */}
+        <div className="hidden md:flex flex-col w-16 bg-white border-r border-[var(--neutral-200)]">
           <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
         </div>
         
@@ -119,8 +126,18 @@ function StudioContent() {
           />
         </div>
         
-        {/* Right column: Tree view + Properties panel */}
-        <div className="w-80 bg-white border-l border-[var(--neutral-200)] flex flex-col">
+        {/* Right column: Tree view + Properties panel - hidden on mobile/tablet */}
+        <div className={`${rightPanelOpen ? 'flex' : 'hidden'} lg:flex w-80 bg-white border-l border-[var(--neutral-200)] flex-col`}>
+          {/* Toggle button for mobile */}
+          <button
+            onClick={() => setRightPanelOpen(!rightPanelOpen)}
+            className="lg:hidden absolute right-0 top-1/2 -translate-y-1/2 translate-x-full bg-white border border-[var(--neutral-200)] p-1 rounded-r"
+          >
+            <svg className={`w-4 h-4 transition-transform ${rightPanelOpen ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
           {/* Tree view - top half */}
           <div className="flex-1 overflow-y-auto border-b border-[var(--neutral-200)] p-4">
             <h3 className="text-sm font-semibold text-[var(--neutral-900)] mb-3">Scene</h3>
@@ -135,8 +152,8 @@ function StudioContent() {
       </div>
       
       {/* AI Assistant Panel - Fixed at bottom left, above sidebar */}
-      <div className="fixed bottom-6 left-20 w-96 bg-white border border-[var(--neutral-200)] rounded-xl shadow-2xl overflow-hidden z-50">
-        <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
+      <div className="fixed bottom-6 left-4 md:left-20 w-[calc(100%-2rem)] md:w-96 bg-white border border-[var(--neutral-200)] rounded-xl shadow-2xl overflow-hidden z-50 max-h-[60vh] flex flex-col">
+        <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
             <svg
               className="w-5 h-5 text-white"
@@ -152,7 +169,7 @@ function StudioContent() {
             <p className="text-xs text-white/70">Powered by Claude</p>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-auto flex-1">
           <IntentChat
             variant="workspace"
             placeholder="Describe what to create or modify..."
@@ -165,19 +182,21 @@ function StudioContent() {
   )
 }
 
+function StudioLoading() {
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <LoadingSpinner className="w-10 h-10 mx-auto mb-4" />
+        <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
+      </div>
+    </div>
+  )
+}
+
 export default function StudioWorkspacePage() {
   return (
     <AuthGuard>
-      <Suspense
-        fallback={
-          <div className="flex h-full w-full items-center justify-center bg-gray-100">
-            <div className="text-center">
-              <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
-              <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
-            </div>
-          </div>
-        }
-      >
+      <Suspense fallback={<StudioLoading />}>
         <StudioContent />
       </Suspense>
     </AuthGuard>

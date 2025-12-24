@@ -1,17 +1,14 @@
 import { AppAuthProvider } from "@/components/app-auth-provider"
-import { WorkspaceProvider } from "@/hooks/use-workspace"
 import { ErrorBoundary } from "@/components/error-boundary"
 
-export default function StudioLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
     <AppAuthProvider>
-      <WorkspaceProvider>
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </WorkspaceProvider>
+      <ErrorBoundary>{children}</ErrorBoundary>
     </AppAuthProvider>
   )
 }
