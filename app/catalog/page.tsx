@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/components/ui/icon"
@@ -21,91 +22,70 @@ const categories = [
 const materials = ["Aluminum", "Steel", "Brass", "ABS", "Nylon"]
 const processes = ["CNC Milling", "Laser Cutting", "3D Printing", "Sheet Metal"]
 
-const sampleParts = [
-  {
-    id: "part-001",
-    name: "Precision Bracket",
-    category: "brackets",
-    material: "Aluminum 6061",
-    process: "CNC Milling",
-    price: "$32",
-    leadTime: "3 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 96,
-  },
-  {
-    id: "part-002",
-    name: "Hex Socket Bolt M8",
-    category: "fasteners",
-    material: "Steel",
-    process: "CNC",
-    price: "$4",
-    leadTime: "2 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 99,
-  },
-  {
-    id: "part-003",
-    name: "Electronics Enclosure",
-    category: "enclosures",
-    material: "ABS",
-    process: "3D Printing",
-    price: "$28",
-    leadTime: "4 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 94,
-  },
-  {
-    id: "part-004",
-    name: "Drive Shaft 20mm",
-    category: "shafts",
-    material: "Steel 1045",
-    process: "CNC Turning",
-    price: "$45",
-    leadTime: "5 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 98,
-  },
-  {
-    id: "part-005",
-    name: "Spur Gear 24T",
-    category: "gears",
-    material: "Brass",
-    process: "CNC Milling",
-    price: "$56",
-    leadTime: "6 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 91,
-  },
-  {
-    id: "part-006",
-    name: "L-Bracket Heavy",
-    category: "brackets",
-    material: "Steel",
-    process: "Sheet Metal",
-    price: "$18",
-    leadTime: "2 days",
-    thumbnail: "/placeholder.svg?height=200&width=200",
-    manufacturability: 97,
-  },
-]
+interface CatalogPart {
+  id: string
+  name: string
+  description?: string
+  category: string
+  material: string
+  process?: string
+  basePrice: number
+  leadTime?: string
+  leadTimeDays?: number
+  manufacturability?: number
+  thumbnail?: string
+  materials?: Array<{ name: string; priceMultiplier: number }>
+}
 
 function CatalogContent() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [unitSystem, setUnitSystem] = useState<"mm" | "in">("mm")
+  const [parts, setParts] = useState<CatalogPart[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const filteredParts = sampleParts.filter((part) => {
-    const matchesSearch = part.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = activeCategory === "all" || part.category === activeCategory
-    return matchesSearch && matchesCategory
-  })
+  const fetchParts = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (activeCategory !== "all") {
+        params.set("category", activeCategory)
+      }
+      if (searchQuery) {
+        params.set("search", searchQuery)
+      }
+
+      const response = await fetch(`/api/catalog?${params.toString()}`)
+      if (response.ok) {
+        const data = await response.json()
+        setParts(data.items || [])
+        setTotalCount(data.total || 0)
+      }
+    } catch (error) {
+      console.error("Failed to fetch catalog:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [activeCategory, searchQuery])
+
+  useEffect(() => {
+    fetchParts()
+  }, [fetchParts])
+
+  const handlePreview = (partId: string) => {
+    router.push(`/catalog/${partId}`)
+  }
+
+  const handleAddToProject = (partId: string) => {
+    router.push(`/catalog/${partId}?action=addToWorkspace`)
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-50)]">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-[var(--neutral-200)]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Logo variant="blue" size="md" href="/" />
@@ -133,14 +113,13 @@ function CatalogContent() {
               <p className="text-sm font-medium text-[var(--neutral-900)]">{user?.name}</p>
               <p className="text-xs text-[var(--neutral-500)]">{user?.company}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => logout()}>
+            <Button variant="outline" size="sm" onClick={() => router.push("/")}>
               Sign Out
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Page Header */}
       <div className="bg-white border-b border-[var(--neutral-200)]">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <h1 className="text-3xl font-serif text-[var(--neutral-900)] mb-2">Parts Catalog</h1>
@@ -150,9 +129,7 @@ function CatalogContent() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex gap-8">
-          {/* Sidebar Filters */}
           <aside className="w-64 flex-shrink-0 hidden lg:block">
-            {/* Search */}
             <div className="mb-6">
               <div className="relative">
                 <Icon
@@ -169,7 +146,6 @@ function CatalogContent() {
               </div>
             </div>
 
-            {/* Categories */}
             <div className="mb-6">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">
                 Categories
@@ -191,7 +167,6 @@ function CatalogContent() {
               </div>
             </div>
 
-            {/* Materials */}
             <div className="mb-6">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">
                 Materials
@@ -206,7 +181,6 @@ function CatalogContent() {
               </div>
             </div>
 
-            {/* Processes */}
             <div className="mb-6">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">Process</h3>
               <div className="space-y-2">
@@ -222,7 +196,6 @@ function CatalogContent() {
               </div>
             </div>
 
-            {/* Unit Toggle */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">Units</h3>
               <div className="flex bg-[var(--neutral-100)] rounded-lg p-1">
@@ -246,11 +219,11 @@ function CatalogContent() {
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="flex-1">
-            {/* Toolbar */}
             <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-[var(--neutral-500)]">{filteredParts.length} parts found</p>
+              <p className="text-sm text-[var(--neutral-500)]">
+                {isLoading ? "Loading..." : `${totalCount} parts found`}
+              </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setViewMode("grid")}
@@ -275,16 +248,20 @@ function CatalogContent() {
               </div>
             </div>
 
-            {/* Parts Grid */}
-            <div
-              className={`grid gap-6 ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}
-            >
-              {filteredParts.map((part) => (
-                <Link key={part.id} href={`/catalog/${part.id}`}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-700)]"></div>
+              </div>
+            ) : (
+              <div
+                className={`grid gap-6 ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}
+              >
+                {parts.map((part) => (
                   <div
-                    className={`bg-white rounded-xl border border-[var(--neutral-200)] overflow-hidden hover:border-[var(--primary-500)] hover:shadow-lg transition-all ${viewMode === "list" ? "flex" : ""}`}
+                    key={part.id}
+                    className={`bg-white rounded-xl border border-[var(--neutral-200)] overflow-hidden hover:border-[var(--primary-500)] hover:shadow-lg transition-all cursor-pointer ${viewMode === "list" ? "flex" : ""}`}
+                    onClick={() => handlePreview(part.id)}
                   >
-                    {/* Thumbnail */}
                     <div className={`bg-[var(--bg-100)] ${viewMode === "list" ? "w-40 h-32" : "aspect-square"}`}>
                       <img
                         src={part.thumbnail || "/placeholder.svg"}
@@ -293,32 +270,41 @@ function CatalogContent() {
                       />
                     </div>
 
-                    {/* Info */}
                     <div className="p-4 flex-1">
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className="font-medium text-[var(--neutral-900)]">{part.name}</h3>
                           <p className="text-xs text-[var(--neutral-500)]">{part.material}</p>
                         </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-[var(--accent-100)] text-[var(--accent-700)]">
-                          {part.manufacturability}%
-                        </span>
+                        {part.manufacturability && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-[var(--accent-100)] text-[var(--accent-700)]">
+                            {part.manufacturability}%
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between mt-4">
                         <div>
-                          <p className="text-lg font-semibold text-[var(--neutral-900)]">{part.price}</p>
-                          <p className="text-xs text-[var(--neutral-500)]">{part.leadTime}</p>
+                          <p className="text-lg font-semibold text-[var(--neutral-900)]">${part.basePrice}</p>
+                          <p className="text-xs text-[var(--neutral-500)]">{part.leadTime || "5 days"}</p>
                         </div>
-                        <Button size="sm" variant="outline" className="bg-transparent">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleAddToProject(part.id)
+                          }}
+                        >
                           Quick Quote
                         </Button>
                       </div>
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </main>
         </div>
       </div>
