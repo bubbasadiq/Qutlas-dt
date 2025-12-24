@@ -21,43 +21,49 @@ export default function SignupPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
 
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+   e.preventDefault()
+   setIsLoading(true)
+   setError("")
 
-    try {
-      await signup(
-        formData.email,
-        formData.password,
-        formData.name,
-        formData.company
-      )
-      
-      // Store pending intent and redirect path for after email verification
-      if (typeof window !== "undefined") {
-        const pendingIntent = sessionStorage.getItem("qutlas_pending_intent")
-        const redirectPath = sessionStorage.getItem("redirectAfterAuth")
-        
-        // Store these in sessionStorage to be used after email verification
-        if (pendingIntent) {
-          sessionStorage.setItem("qutlas_pending_intent_after_verify", pendingIntent)
-        }
-        if (redirectPath) {
-          sessionStorage.setItem("redirectAfterAuth_after_verify", redirectPath)
-        }
-      }
-      
-      router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
-    } catch (err) {
-      // Handle unconfirmed email gracefully
-      if (err instanceof Error && err.message.includes("already registered")) {
-        setError("Email already exists. Did you forget to verify it?")
-      } else {
-        setError(err instanceof Error ? err.message : "Signup failed")
-      }
-    } finally {
-      setIsLoading(false)
-    }
+   try {
+     // Validate email format
+     if (!formData.email.includes('@') || !formData.email.includes('.')) {
+       throw new Error('Please enter a valid email address.')
+     }
+
+     // Validate password strength
+     if (formData.password.length < 8) {
+       throw new Error('Password must be at least 8 characters.')
+     }
+
+     await signup(
+       formData.email,
+       formData.password,
+       formData.name,
+       formData.company
+     )
+
+     // Store pending intent and redirect path for after email verification
+     if (typeof window !== "undefined") {
+       const pendingIntent = sessionStorage.getItem("qutlas_pending_intent")
+       const redirectPath = sessionStorage.getItem("redirectAfterAuth")
+
+       // Store these in sessionStorage to be used after email verification
+       if (pendingIntent) {
+         sessionStorage.setItem("qutlas_pending_intent_after_verify", pendingIntent)
+       }
+       if (redirectPath) {
+         sessionStorage.setItem("redirectAfterAuth_after_verify", redirectPath)
+       }
+     }
+
+     router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
+   } catch (err) {
+     // The error is already user-friendly from the auth context
+     setError(err instanceof Error ? err.message : "Signup failed. Please try again.")
+   } finally {
+     setIsLoading(false)
+   }
   }
 
   return (

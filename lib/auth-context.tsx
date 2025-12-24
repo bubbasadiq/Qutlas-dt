@@ -50,24 +50,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setIsLoading(false)
-    if (error) throw error
+    if (error) {
+      // Provide more user-friendly error messages
+      let errorMessage = error.message
+      if (error.message.includes('invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please try again.'
+      } else if (error.message.includes('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.'
+      } else if (error.message.includes('email not confirmed')) {
+        errorMessage = 'Please verify your email address before signing in.'
+      }
+      throw new Error(errorMessage)
+    }
   }
 
 const signup = async (email: string, password: string, name: string, company: string) => {
   setIsLoading(true)
 
-  const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+  const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 
-  const { error } = await supabase.auth.signUp(
-    { email, password },
-    {
-      data: { name, company },
-      redirectTo: `${redirectUrl}/auth/verify-email`
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${redirectUrl}/auth/verify-email`,
+      data: {
+        name,
+        company
+      }
     }
-  )
+  })
 
   setIsLoading(false)
-  if (error) throw error
+  if (error) {
+    // Provide more user-friendly error messages
+    let errorMessage = error.message
+    if (error.message.includes('already registered')) {
+      errorMessage = 'Email already exists. Did you forget to verify it?'
+    } else if (error.message.includes('network')) {
+      errorMessage = 'Network error. Please check your connection and try again.'
+    } else if (error.message.includes('invalid email')) {
+      errorMessage = 'Please enter a valid email address.'
+    } else if (error.message.includes('weak password')) {
+      errorMessage = 'Password is too weak. Please use at least 8 characters.'
+    }
+    throw new Error(errorMessage)
+  }
+  
+  return data
 }
 
 
