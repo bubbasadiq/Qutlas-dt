@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { generateMesh, workspaceObjectToMeshInput } from "@/lib/mesh-generator"
 
 interface CanvasViewerProps {
   activeTool: string
@@ -27,14 +28,14 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(true)
   const mountRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<THREE.Scene>()
+  const sceneRef = useRef<THREE.Scene | null>(null)
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map())
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouse = useRef<THREE.Vector2>(new THREE.Vector2())
-  const cameraRef = useRef<THREE.PerspectiveCamera>()
-  const rendererRef = useRef<THREE.WebGLRenderer>()
-  const controlsRef = useRef<OrbitControls>()
-  const gridRef = useRef<THREE.GridHelper>()
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
+  const controlsRef = useRef<OrbitControls | null>(null)
+  const gridRef = useRef<THREE.GridHelper | null>(null)
 
   const handleViewChange = (view: string) => {
     setViewType(view)
@@ -127,77 +128,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     }
   }
 
-  // Generate THREE.js mesh from geometry metadata
+  // Generate THREE.js mesh from geometry metadata using the utility
   const createMeshFromGeometry = (objectData: any): THREE.Mesh => {
-    let geometry: THREE.BufferGeometry
-    const { type, dimensions = {}, features = [] } = objectData
-    
-    switch (type) {
-      case 'box': {
-        const width = dimensions.width || 10
-        const height = dimensions.height || 10
-        const depth = dimensions.depth || 10
-        geometry = new THREE.BoxGeometry(width, height, depth)
-        break
-      }
-      case 'cylinder': {
-        const radius = dimensions.radius || dimensions.diameter / 2 || 5
-        const height = dimensions.height || 10
-        geometry = new THREE.CylinderGeometry(radius, radius, height, 32)
-        break
-      }
-      case 'sphere': {
-        const radius = dimensions.radius || dimensions.diameter / 2 || 5
-        geometry = new THREE.SphereGeometry(radius, 32, 32)
-        break
-      }
-      case 'extrusion':
-      case 'revolution':
-      case 'compound':
-      default: {
-        // Default to box if unknown type
-        geometry = new THREE.BoxGeometry(10, 10, 10)
-        break
-      }
-    }
-    
-    // Apply basic material
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x0088ff,
-      metalness: 0.3,
-      roughness: 0.5,
-    })
-    
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    
-    // Add features as visual indicators
-    if (features.length > 0) {
-      features.forEach((feature: any) => {
-        if (feature.type === 'hole') {
-          // Add a cylinder to represent hole (for visualization)
-          const holeRadius = feature.parameters?.radius || 2
-          const holeDepth = feature.parameters?.depth || 5
-          const holeGeometry = new THREE.CylinderGeometry(holeRadius, holeRadius, holeDepth, 16)
-          const holeMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444, transparent: true, opacity: 0.5 })
-          const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial)
-          
-          // Position the hole
-          if (feature.parameters?.position) {
-            holeMesh.position.set(
-              feature.parameters.position.x || 0,
-              feature.parameters.position.y || 0,
-              feature.parameters.position.z || 0
-            )
-          }
-          
-          mesh.add(holeMesh)
-        }
-      })
-    }
-    
-    return mesh
+    return generateMesh(workspaceObjectToMeshInput(objectData))
   }
 
   // Initialize Three.js scene

@@ -8,6 +8,7 @@ import { Sparkles, Send, Loader2, ArrowRight, Paperclip, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 interface AttachedFile {
   file: File
@@ -37,16 +38,52 @@ export function IntentChat({
   const [showAuthModal, setShowAuthModal] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Use workspace context for workspace variant
+  let workspace: ReturnType<typeof useWorkspace> | null = null
+  try {
+    if (variant === "workspace") {
+      workspace = useWorkspace()
+    }
+  } catch (error) {
+    // Workspace context not available, will use callback instead
+    console.warn("Workspace context not available in IntentChat")
+  }
 
   const { messages, append, status } = useChat({
     api: "/api/ai/geometry",
     onFinish: (message) => {
-      if (onGeometryGenerated && message.toolInvocations) {
+      if (message.toolInvocations) {
         const geometryResult = message.toolInvocations.find(
           (t) => t.toolName === "generateGeometry" && t.state === "result",
         )
         if (geometryResult && "result" in geometryResult) {
-          onGeometryGenerated(geometryResult.result)
+          const result = geometryResult.result
+          
+          // Add to workspace if context available
+          if (workspace && result?.geometry) {
+            const geoData = result.geometry
+            const id = geoData.id || `geo_${Date.now()}`
+            
+            workspace.addObject(id, {
+              type: geoData.type || 'box',
+              dimensions: geoData.dimensions || {},
+              features: geoData.features || [],
+              material: geoData.material || 'aluminum',
+              description: geoData.description || '',
+              color: '#0077ff',
+              visible: true,
+              selected: false,
+            })
+            
+            // Select the newly created object
+            workspace.selectObject(id)
+          }
+          
+          // Also call the callback if provided
+          if (onGeometryGenerated) {
+            onGeometryGenerated(result)
+          }
         }
       }
     },

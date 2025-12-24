@@ -93,9 +93,40 @@ function StudioContent() {
       
       {/* Main workspace - 3-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left column: Sidebar tools + AI Assistant */}
-        <div className="flex flex-col w-16 bg-white border-r border-[var(--neutral-200)]">
-          <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
+        {/* Left column: Sidebar with tools and AI Assistant */}
+        <div className="flex flex-col w-80 bg-white border-r border-[var(--neutral-200)]">
+          {/* Tool Icons at Top */}
+          <div className="border-b border-[var(--neutral-200)] p-2">
+            <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
+          </div>
+          
+          {/* AI Assistant - Takes remaining space */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">AI Assistant</p>
+                <p className="text-xs text-white/70">Powered by Claude</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <IntentChat
+                variant="workspace"
+                placeholder="Describe what to create or modify..."
+                onGeometryGenerated={handleGeometryGenerated}
+                initialIntent={initialIntent}
+              />
+            </div>
+          </div>
         </div>
         
         {/* Center column: Canvas */}
@@ -104,7 +135,7 @@ function StudioContent() {
             activeTool={activeTool}
             workspaceObjects={objects}
             selectedObjectId={selectedObjectId}
-            onObjectSelect={selectObject}
+            onObjectSelect={(id) => id && selectObject(id)}
             onViewChange={setViewType}
             onContextMenu={(position, actions) => {
               setContextMenu({ position, actions })
@@ -114,7 +145,7 @@ function StudioContent() {
           <ContextMenu
             position={contextMenu?.position || null}
             actions={contextMenu?.actions || []}
-            onActionClick={handleContextMenuAction}
+            onActionClick={(action) => handleContextMenuAction(action)}
             onClose={() => setContextMenu(null)}
           />
         </div>
@@ -131,34 +162,6 @@ function StudioContent() {
           <div className="flex-1 overflow-y-auto">
             <PropertiesPanel selectedObject={selectedObjectId || undefined} />
           </div>
-        </div>
-      </div>
-      
-      {/* AI Assistant Panel - Fixed at bottom left, above sidebar */}
-      <div className="fixed bottom-6 left-20 w-96 bg-white border border-[var(--neutral-200)] rounded-xl shadow-2xl overflow-hidden z-50">
-        <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-            <svg
-              className="w-5 h-5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white">AI Assistant</p>
-            <p className="text-xs text-white/70">Powered by Claude</p>
-          </div>
-        </div>
-        <div className="p-4">
-          <IntentChat
-            variant="workspace"
-            placeholder="Describe what to create or modify..."
-            onGeometryGenerated={handleGeometryGenerated}
-            initialIntent={initialIntent}
-          />
         </div>
       </div>
     </div>
