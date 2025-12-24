@@ -1,6 +1,7 @@
 import { streamText, tool } from "ai"
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
+import { GEOMETRY_INTENT_SYSTEM_PROMPT } from "@/lib/prompts/geometry-intent-parser"
 
 const anthropic = createAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
