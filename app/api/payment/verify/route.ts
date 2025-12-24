@@ -2,7 +2,7 @@
 // Payment verification endpoint using Flutterwave
 
 import { NextResponse } from "next/server"
-import { Flutterwave } from "flutterwave-node-v3"
+import Flutterwave from "flutterwave-node-v3"
 import { supabase } from "@/lib/supabaseClient"
 
 const flutterwave = new Flutterwave(
