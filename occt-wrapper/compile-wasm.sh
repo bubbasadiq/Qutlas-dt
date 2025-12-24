@@ -21,11 +21,7 @@ emcc \
   -o occt.js \
   ../src/occt_bindings.cpp \
   -I/usr/include/opencascade \
-  -I/usr/local/include/opencascade \
-  -I/opt/opencascade/inc \
-  -L/usr/lib \
-  -L/usr/local/lib \
-  -L/opt/opencascade/lib \
+  -L/usr/lib/x86_64-linux-gnu \
   -lTKernel \
   -lTKMath \
   -lTKG3d \
