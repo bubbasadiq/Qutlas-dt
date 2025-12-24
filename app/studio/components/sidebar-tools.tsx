@@ -23,22 +23,40 @@ const tools: Tool[] = [
   { id: "section", label: "Section", icon: "fixture", shortcut: "X" },
 ]
 
-export const SidebarTools: React.FC = () => {
+interface SidebarToolsProps {
+  activeTool?: string
+  onToolSelect?: (toolId: string) => void
+}
+
+export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: externalActiveTool, onToolSelect }) => {
   const [isUploadHover, setIsUploadHover] = useState(false)
-  const { activeTool, selectTool, selectObject, objects, addObject } = useWorkspace()
+  const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
   const { loadFile } = useOcctWorker()
+  
+  const activeTool = externalActiveTool || contextActiveTool
 
   // handle CAD file upload
   const handleUpload = async (file: File) => {
     const objectId = await loadFile(file) // OCCT worker parses file & returns object ID
-    addObject(objectId, { params: { length: 100, width: 50, height: 25 } })
+    addObject(objectId, { 
+      type: 'compound',
+      dimensions: {},
+      params: { length: 100, width: 50, height: 25 } 
+    })
     selectObject(objectId)
+  }
+  
+  const handleToolSelect = (toolId: string) => {
+    selectTool(toolId)
+    if (onToolSelect) {
+      onToolSelect(toolId)
+    }
   }
 
   return (
-    <div className="w-56 bg-white border-r border-[var(--neutral-200)] flex flex-col">
+    <div className="w-full bg-white flex flex-col">
       {/* Upload Area */}
-      <div className="p-4 border-b border-[var(--neutral-200)]">
+      <div className="p-3">
         <input
           type="file"
           accept=".stp,.step,.iges,.stl"
@@ -50,7 +68,7 @@ export const SidebarTools: React.FC = () => {
           htmlFor="cad-upload"
           onMouseEnter={() => setIsUploadHover(true)}
           onMouseLeave={() => setIsUploadHover(false)}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors block ${
             isUploadHover
               ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
               : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
@@ -58,30 +76,30 @@ export const SidebarTools: React.FC = () => {
         >
           <Icon
             name="upload"
-            size={32}
-            className={`mx-auto mb-2 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
+            size={24}
+            className={`mx-auto mb-1 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
           />
-          <p className="text-sm font-medium text-[var(--neutral-700)]">Upload CAD</p>
-          <p className="text-xs text-[var(--neutral-400)] mt-1">STEP, IGES, STL</p>
+          <p className="text-xs font-medium text-[var(--neutral-700)]">Upload CAD</p>
+          <p className="text-xs text-[var(--neutral-400)] mt-0.5">STEP, IGES, STL</p>
         </label>
       </div>
 
       {/* Tools */}
-      <div className="flex-1 p-4 overflow-y-auto">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">Tools</h3>
+      <div className="flex-1 px-3 pb-3 overflow-y-auto">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2">Tools</h3>
         <div className="space-y-1">
           {tools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => selectTool(tool.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              onClick={() => handleToolSelect(tool.id)}
+              className={`w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs transition-colors ${
                 activeTool === tool.id
                   ? "bg-[var(--primary-700)] text-white"
                   : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Icon name={tool.icon} size={18} className={activeTool === tool.id ? "text-white" : ""} />
+              <div className="flex items-center gap-2">
+                <Icon name={tool.icon} size={16} className={activeTool === tool.id ? "text-white" : ""} />
                 <span className="font-medium">{tool.label}</span>
               </div>
               {tool.shortcut && (
@@ -97,26 +115,6 @@ export const SidebarTools: React.FC = () => {
               )}
             </button>
           ))}
-        </div>
-
-        {/* Objects List */}
-        <div className="mt-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2">
-            Scene Objects
-          </h4>
-          <div className="space-y-1">
-            {Object.keys(objects).map((id) => (
-              <button
-                key={id}
-                onClick={() => selectObject(id)}
-                className={`w-full flex justify-between px-3 py-2 rounded-md text-sm ${
-                  objects[id].selected ? "bg-[var(--primary-50)] text-[var(--primary-700)]" : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
-                }`}
-              >
-                <span>{id}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>

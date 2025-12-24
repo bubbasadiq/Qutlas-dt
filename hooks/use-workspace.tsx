@@ -2,17 +2,47 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
+export interface WorkspaceObject {
+  id: string;
+  type: 'box' | 'cylinder' | 'sphere' | 'extrusion' | 'revolution' | 'compound' | string;
+  dimensions: {
+    width?: number;
+    height?: number;
+    depth?: number;
+    radius?: number;
+    diameter?: number;
+    length?: number;
+    [key: string]: number | undefined;
+  };
+  features?: Array<{
+    type: string;
+    parameters: Record<string, any>;
+  }>;
+  material?: string;
+  visible: boolean;
+  selected: boolean;
+  meshData?: {
+    vertices: Float32Array;
+    indices: Uint32Array;
+  };
+  color?: string;
+  params?: Record<string, any>;
+  description?: string;
+}
+
 interface WorkspaceState {
   activeTool: string;
-  objects: Record<string, any>;
+  objects: Record<string, WorkspaceObject>;
   selectedObjectId: string | null;
   selectTool: (id: string) => void;
   selectObject: (id: string) => void;
-  addObject: (id: string, data: any) => void;
+  addObject: (id: string, data: Partial<WorkspaceObject>) => void;
   deleteObject: (id: string) => void;
-  updateObject: (id: string, data: any) => void;
+  updateObject: (id: string, data: Partial<WorkspaceObject>) => void;
   getObjectParameters: (id: string) => any;
   updateObjectParameters: (id: string, params: any) => void;
+  updateObjectGeometry: (id: string, geometry: Partial<WorkspaceObject>) => void;
+  getObjectGeometry: (id: string) => WorkspaceObject | undefined;
   clearWorkspace: () => void;
 }
 
@@ -37,17 +67,22 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     setSelectedObjectId(id);
   };
 
-  const addObject = (id: string, data: any) => {
+  const addObject = (id: string, data: Partial<WorkspaceObject>) => {
     setObjects((prev) => ({ 
       ...prev, 
       [id]: { 
-        ...data, 
         id,
-        selected: false, 
-        visible: true,
-        geometry: data.geometry || null,
+        type: data.type || 'box',
+        dimensions: data.dimensions || {},
+        features: data.features || [],
+        material: data.material || 'aluminum',
+        visible: data.visible !== false,
+        selected: false,
+        color: data.color || '#0077ff',
         params: data.params || data.dimensions || {},
-      } 
+        description: data.description || '',
+        ...data,
+      } as WorkspaceObject
     }));
   };
 
@@ -61,15 +96,15 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const updateObject = (id: string, data: any) => {
+  const updateObject = (id: string, data: Partial<WorkspaceObject>) => {
     setObjects((prev) => ({
       ...prev,
-      [id]: { ...prev[id], ...data }
+      [id]: { ...prev[id], ...data } as WorkspaceObject
     }));
   };
 
   const getObjectParameters = (id: string) => {
-    return objects[id]?.params;
+    return objects[id]?.params || objects[id]?.dimensions;
   };
 
   const updateObjectParameters = (id: string, params: any) => {
@@ -77,9 +112,32 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       if (!prev[id]) return prev;
       return {
         ...prev,
-        [id]: { ...prev[id], params: { ...prev[id].params, ...params } },
+        [id]: { 
+          ...prev[id], 
+          params: { ...prev[id].params, ...params },
+          dimensions: { ...prev[id].dimensions, ...params }
+        },
       };
     });
+  };
+
+  const updateObjectGeometry = (id: string, geometry: Partial<WorkspaceObject>) => {
+    setObjects((prev) => {
+      if (!prev[id]) return prev;
+      return {
+        ...prev,
+        [id]: {
+          ...prev[id],
+          ...geometry,
+          dimensions: { ...prev[id].dimensions, ...geometry.dimensions },
+          features: geometry.features || prev[id].features,
+        } as WorkspaceObject,
+      };
+    });
+  };
+
+  const getObjectGeometry = (id: string): WorkspaceObject | undefined => {
+    return objects[id];
   };
 
   const clearWorkspace = () => {
@@ -100,6 +158,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         updateObject,
         getObjectParameters,
         updateObjectParameters,
+        updateObjectGeometry,
+        getObjectGeometry,
         clearWorkspace,
       }}
     >
