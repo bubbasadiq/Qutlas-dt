@@ -6,6 +6,7 @@ import { SidebarTools } from "./components/sidebar-tools"
 import { CanvasViewer } from "./components/canvas-viewer"
 import { PropertiesPanel } from "./components/properties-panel"
 import { IntentChat } from "@/components/intent-chat"
+import { AuthGuard } from "@/components/auth-guard"
 
 function StudioContent() {
   const searchParams = useSearchParams()
@@ -69,12 +70,14 @@ function StudioContent() {
 
 export default function StudioWorkspacePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-full w-full items-center justify-center bg-[var(--bg-200)]">Loading workspace...</div>
-      }
-    >
-      <StudioContent />
-    </Suspense>
+    <AuthGuard>
+      <Suspense
+        fallback={
+          <div className="flex h-full w-full items-center justify-center bg-[var(--bg-200)]">Loading workspace...</div>
+        }
+      >
+        <StudioContent />
+      </Suspense>
+    </AuthGuard>
   )
 }

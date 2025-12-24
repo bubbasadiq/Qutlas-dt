@@ -32,6 +32,21 @@ export default function SignupPage() {
         formData.name,
         formData.company
       )
+      
+      // Store pending intent and redirect path for after email verification
+      if (typeof window !== "undefined") {
+        const pendingIntent = sessionStorage.getItem("qutlas_pending_intent")
+        const redirectPath = sessionStorage.getItem("redirectAfterAuth")
+        
+        // Store these in sessionStorage to be used after email verification
+        if (pendingIntent) {
+          sessionStorage.setItem("qutlas_pending_intent_after_verify", pendingIntent)
+        }
+        if (redirectPath) {
+          sessionStorage.setItem("redirectAfterAuth_after_verify", redirectPath)
+        }
+      }
+      
       router.push("/auth/verify-email?email=" + encodeURIComponent(formData.email))
     } catch (err) {
       // Handle unconfirmed email gracefully

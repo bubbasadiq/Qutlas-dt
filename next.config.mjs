@@ -21,6 +21,9 @@ const nextConfig = {
     })
     return config
   },
+  turbopack: {
+    // Empty turbopack config to silence the warning
+  },
 }
 
 export default nextConfig
