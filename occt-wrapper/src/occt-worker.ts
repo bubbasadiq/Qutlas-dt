@@ -333,10 +333,11 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 }
 
 // Handle worker errors
-self.onerror = (error) => {
+self.onerror = (error: ErrorEvent | string) => {
   console.error('❌ Worker error:', error)
+  const errorMessage = typeof error === 'string' ? error : error.message || 'Unknown worker error'
   postMessage({
     type: 'ERROR',
-    error: `Worker error: ${error.message}`
+    error: `Worker error: ${errorMessage}`
   } as WorkerResponse)
 }

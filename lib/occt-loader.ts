@@ -60,16 +60,17 @@ export async function initializeOCCTModule(): Promise<OCCTModuleType> {
       console.log('🔧 Initializing OCCT WASM module...')
       
       // Determine if we're in a worker context
-      const isWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope
+      const isWorker = typeof self !== 'undefined' && typeof importScripts === 'function'
       
       // Load the OCCT module factory
       let OCCTModuleFactory: any
       
       if (isWorker) {
-        // In worker: use importScripts or dynamic import
+        // In worker: use dynamic import
         try {
-          OCCTModuleFactory = await import(/* webpackIgnore: true */ '/occt/occt.js')
-          OCCTModuleFactory = OCCTModuleFactory.default || OCCTModuleFactory
+          // @ts-ignore - Dynamic import of WASM glue code
+          const module = await import('/occt/occt.js')
+          OCCTModuleFactory = module.default || module
         } catch (e) {
           console.error('Failed to load OCCT module in worker:', e)
           throw new Error('Failed to load OCCT WASM module in worker context')
@@ -82,8 +83,9 @@ export async function initializeOCCTModule(): Promise<OCCTModuleType> {
             OCCTModuleFactory = (window as any).OCCTModule
           } else {
             // Dynamically load the script
-            OCCTModuleFactory = await import(/* webpackIgnore: true */ '/occt/occt.js')
-            OCCTModuleFactory = OCCTModuleFactory.default || OCCTModuleFactory
+            // @ts-ignore - Dynamic import of WASM glue code
+            const module = await import('/occt/occt.js')
+            OCCTModuleFactory = module.default || module
           }
         } else {
           throw new Error('Cannot load OCCT module: not in browser or worker context')
