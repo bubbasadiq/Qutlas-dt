@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Sparkles, Send, Loader2, ArrowRight, Paperclip, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { useAuth } from "@/lib/auth-context"
 
 interface AttachedFile {
   file: File
@@ -30,8 +31,10 @@ export function IntentChat({
   initialIntent,
 }: IntentChatProps) {
   const router = useRouter()
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [input, setInput] = useState(initialIntent || "")
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
+  const [showAuthModal, setShowAuthModal] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -105,8 +108,22 @@ export function IntentChat({
     if (!userInput && attachedFiles.length === 0) return
     if (isLoading) return
 
-    // If on landing page (hero variant), redirect to workspace with the intent
+    // If on landing page (hero variant), check authentication first
     if (variant === "hero") {
+      if (!user) {
+        // Store the intent and files in sessionStorage for after authentication
+        const encodedIntent = encodeURIComponent(userInput)
+        if (attachedFiles.length > 0) {
+          sessionStorage.setItem("qutlas_attachments", JSON.stringify(attachedFiles.map((f) => f.preview)))
+        }
+        sessionStorage.setItem("qutlas_pending_intent", encodedIntent)
+        
+        // Redirect to login page
+        router.push("/auth/login")
+        return
+      }
+      
+      // User is authenticated, proceed to workspace
       const encodedIntent = encodeURIComponent(userInput)
       // Store attached files in sessionStorage for workspace to pick up
       if (attachedFiles.length > 0) {
@@ -227,6 +244,15 @@ export function IntentChat({
             </Button>
           </div>
         </div>
+
+        {/* Auth required message for unauthenticated users */}
+        {!user && !isAuthLoading && (
+         <div className="mt-3 text-center">
+           <p className="text-sm text-white/70">
+             <span className="text-white font-medium">Sign in</span> to create your design
+           </p>
+         </div>
+        )}
 
         {/* Suggestions */}
         <div className="mt-4 flex flex-wrap gap-2 justify-center">

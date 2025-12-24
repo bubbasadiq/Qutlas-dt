@@ -8,27 +8,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Icon } from "@/components/ui/icon"
 import { useAuth } from "@/lib/auth-context"
 import { Logo } from "@/components/logo"
+import { AuthGuard } from "@/components/auth-guard"
 
-export default function DashboardPage() {
-  const { user, isLoading, logout } = useAuth()
-  const router = useRouter()
+function DashboardContent() {
+  const { user, logout } = useAuth()
   const [projects] = useState<any[]>([])
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/auth/login")
-    }
-  }, [user, isLoading, router])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-50)] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (!user) return null
 
   return (
     <div className="min-h-screen bg-[var(--bg-50)]">
@@ -140,5 +124,13 @@ export default function DashboardPage() {
         </Card>
       </main>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
   )
 }

@@ -25,6 +25,28 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
+      
+      // Check if there's a pending intent or redirect path
+      if (typeof window !== "undefined") {
+        const pendingIntent = sessionStorage.getItem("qutlas_pending_intent")
+        const redirectPath = sessionStorage.getItem("redirectAfterAuth")
+        
+        if (pendingIntent) {
+          // Redirect to studio with the pending intent
+          sessionStorage.removeItem("qutlas_pending_intent")
+          router.push(`/studio?intent=${pendingIntent}`)
+          return
+        }
+        
+        if (redirectPath) {
+          // Redirect to the originally requested page
+          sessionStorage.removeItem("redirectAfterAuth")
+          router.push(redirectPath)
+          return
+        }
+      }
+      
+      // Default redirect to dashboard
       router.push("/dashboard")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")

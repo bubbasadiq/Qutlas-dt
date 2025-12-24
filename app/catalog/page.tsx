@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/components/ui/icon"
 import { Logo } from "@/components/logo"
+import { AuthGuard } from "@/components/auth-guard"
+import { useAuth } from "@/lib/auth-context"
 
 const categories = [
   { id: "all", label: "All Parts" },
@@ -88,7 +90,8 @@ const sampleParts = [
   },
 ]
 
-export default function CatalogPage() {
+function CatalogContent() {
+  const { user, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -125,17 +128,14 @@ export default function CatalogPage() {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
-            <Link href="/auth/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="sm" className="bg-[var(--primary-700)] text-white">
-                Get Started
-              </Button>
-            </Link>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-[var(--neutral-900)]">{user?.name}</p>
+              <p className="text-xs text-[var(--neutral-500)]">{user?.company}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => logout()}>
+              Sign Out
+            </Button>
           </div>
         </div>
       </header>
@@ -323,5 +323,13 @@ export default function CatalogPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CatalogPage() {
+  return (
+    <AuthGuard>
+      <CatalogContent />
+    </AuthGuard>
   )
 }
