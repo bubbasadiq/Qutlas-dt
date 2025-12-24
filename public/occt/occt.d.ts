@@ -37,7 +37,7 @@ export interface Vector3 {
   z: number
 }
 
-export class Geometry {
+export interface Geometry {
   isNull(): boolean
 }
 

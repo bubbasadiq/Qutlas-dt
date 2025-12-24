@@ -5,46 +5,53 @@ set -e
 echo "🔨 Building OCCT WASM - Advanced Build Script"
 echo ""
 
-# Check if we're in a production environment with proper OCCT WASM setup
-echo "🔍 Checking for production OCCT WASM environment..."
-
 # Check for Emscripten
-if ! command -v emcc &> /dev/null; then
-  echo "❌ Emscripten not found. Installing..."
-  sudo apt update && sudo apt install -y emscripten
+HAS_EMCC=false
+if command -v emcc &> /dev/null; then
+  echo "✅ Emscripten found"
+  HAS_EMCC=true
+else
+  echo "⚠️  Emscripten not found"
 fi
 
 # Check for OCCT development libraries
-if [ ! -d "/usr/include/opencascade" ]; then
-  echo "❌ OCCT development headers not found. Installing..."
-  sudo apt install -y libocct-foundation-dev libocct-modeling-data-dev libocct-modeling-algorithms-dev libocct-data-exchange-dev
+HAS_OCCT=false
+if [ -d "/usr/include/opencascade" ]; then
+  echo "✅ OCCT development headers found"
+  HAS_OCCT=true
+else
+  echo "⚠️  OCCT development headers not found"
 fi
 
-echo "✅ Prerequisites check complete"
+# Check for pre-built OCCT WASM libraries
+HAS_PREBUILT=false
+if [ -f "/usr/lib/wasm32-emscripten/libTKernel.a" ]; then
+  echo "✅ Pre-built OCCT WASM libraries found"
+  HAS_PREBUILT=true
+else
+  echo "⚠️  Pre-built OCCT WASM libraries not found"
+fi
+
 echo ""
 
-# Check if we have pre-built OCCT WASM libraries
-if [ -f "/usr/lib/wasm32-emscripten/libTKernel.a" ]; then
-  echo "✅ Found pre-built OCCT WASM libraries"
+# Determine build mode
+if [ "$HAS_EMCC" = true ] && [ "$HAS_OCCT" = true ] && [ "$HAS_PREBUILT" = true ]; then
+  echo "🏗️  Building with production OCCT WASM libraries..."
   USE_PREBUILT=true
 else
-  echo "⚠️  No pre-built OCCT WASM libraries found"
+  echo "🛠️  Running in development mode with mock OCCT module"
   echo ""
-  echo "📋 For production OCCT WASM build, you need to:"
+  echo "📋 For full OCCT WASM build, you need to:"
   echo "   1. Download OCCT source code (version 7.6+)"
   echo "   2. Build OCCT with Emscripten toolchain"
   echo "   3. Install WASM libraries to /usr/lib/wasm32-emscripten/"
   echo ""
-  echo "🔧 This is a complex process that requires:"
-  echo "   - OCCT source code (1GB+)"
-  echo "   - Several hours of build time"
-  echo "   - Significant disk space (10GB+)"
-  echo ""
-  echo "💡 For development, we'll use the mock OCCT module"
-  echo "   For production, use: npm run build:occt:full"
+  echo "💡 For production, use: npm run build:occt:full"
   echo ""
   USE_PREBUILT=false
 fi
+
+echo ""
 
 # Create build directory
 mkdir -p build
@@ -505,6 +512,76 @@ if (typeof window !== 'undefined') {
 export default OCCTModule;
 EOF
 
+  # Create TypeScript definitions for the mock module
+  cat > occt.d.ts << 'TSEOF'
+export interface MeshData {
+  vertices: number[]
+  indices: number[]
+  colors?: number[]
+  normals?: number[]
+}
+
+export interface BoundingBox {
+  x: number
+  y: number
+  z: number
+  width: number
+  height: number
+  depth: number
+}
+
+export interface DFMScore {
+  machiningScore: number
+  moldingScore: number
+  printingScore: number
+}
+
+export interface DFMWarning {
+  type: string
+  severity: 'error' | 'warning' | 'info'
+  message: string
+}
+
+export interface DFMReport {
+  warnings: DFMWarning[]
+  scores: DFMScore
+}
+
+export interface Vector3 {
+  x: number
+  y: number
+  z: number
+}
+
+export interface Geometry {
+  isNull(): boolean
+}
+
+interface OCCTModule {
+  createBox(width: number, height: number, depth: number): Geometry
+  createCylinder(radius: number, height: number): Geometry
+  createSphere(radius: number): Geometry
+  createCone(radius: number, height: number): Geometry
+  createTorus(majorRadius: number, minorRadius: number): Geometry
+  unionShapes(shape1: Geometry, shape2: Geometry): Geometry
+  cutShapes(shape1: Geometry, shape2: Geometry): Geometry
+  intersectShapes(shape1: Geometry, shape2: Geometry): Geometry
+  addHole(geometry: Geometry, position: Vector3, diameter: number, depth: number): Geometry
+  addFillet(geometry: Geometry, edgeIndex: number, radius: number): Geometry
+  addChamfer(geometry: Geometry, edgeIndex: number, distance: number): Geometry
+  extrude(profile: Geometry, distance: number): Geometry
+  revolve(profile: Geometry, axis: Vector3, angle: number): Geometry
+  getMeshData(geometry: Geometry): MeshData
+  getBoundingBox(geometry: Geometry): BoundingBox
+  analyzeManufacturability(geometry: Geometry): DFMReport
+  exportToSTEP(geometry: Geometry, filename: string): boolean
+  exportToIGES(geometry: Geometry, filename: string): boolean
+  exportToSTL(geometry: Geometry, filename: string): boolean
+}
+
+export default function OCCTModule(): Promise<OCCTModule>
+TSEOF
+
   # Create a minimal WASM file for compatibility
   echo "// Mock WASM for development" > occt.wasm
   
@@ -526,7 +603,7 @@ echo "📦 Copying files to public/occt/..."
 mkdir -p ../../public/occt
 cp occt.js ../../public/occt/
 cp occt.wasm ../../public/occt/
-cp ../build/occt.d.ts ../../public/occt/
+cp occt.d.ts ../../public/occt/
 echo "✅ Files copied to public/occt/"
 
 echo ""
