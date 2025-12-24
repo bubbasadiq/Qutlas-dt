@@ -9,9 +9,9 @@ export async function POST(req: Request) {
     }
     
     // In a production implementation, this would:
-    // 1. Initialize OCCT on the server side or use a worker
+    // 1. Use Cadmium-Core WASM on the server side or in a worker
     // 2. Reconstruct geometry from object definitions
-    // 3. Export to the requested format using OCCT bindings
+    // 3. Export to the requested format using Cadmium export functions
     
     // For now, we generate a valid STEP file structure
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0]
