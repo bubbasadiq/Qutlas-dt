@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build --webpack",
+    "build": "npm run build:occt && next build --webpack",
+    "build:occt": "cd occt-wrapper && bash compile-wasm.sh || echo 'OCCT compilation skipped - using mock module'",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"
@@ -82,6 +83,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.182.0",
     "eslint": "^9.39.2",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",

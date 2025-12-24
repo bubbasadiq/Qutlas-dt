@@ -79,33 +79,15 @@ export class OCCTClient {
     if (this.isInitialized) return
     
     try {
-      // Load the WASM module
-      const wasmPath = '/occt.wasm'
-      const jsPath = '/occt.js'
-      
-      // Load the JavaScript wrapper
-      const script = document.createElement('script')
-      script.src = jsPath
-      script.async = true
-      
-      await new Promise<void>((resolve, reject) => {
-        script.onload = () => resolve()
-        script.onerror = (e) => reject(new Error(`Failed to load OCCT script: ${e}`))
-        document.head.appendChild(script)
-      })
-      
-      if (!window.OCCTModule) {
-        throw new Error('OCCTModule not found after loading script')
-      }
-      
-      // Initialize the WASM module
-      this.wasmModule = await window.OCCTModule()
+      // Use the unified loader
+      const { initializeOCCTModule } = await import('./occt-loader')
+      this.wasmModule = await initializeOCCTModule()
       this.isInitialized = true
       
       console.log('✅ OCCT WASM module initialized successfully')
     } catch (error) {
       console.error('❌ Failed to initialize OCCT WASM:', error)
-      throw error
+      throw new OCCTInitializationError(`Failed to initialize OCCT: ${error}`)
     }
   }
   

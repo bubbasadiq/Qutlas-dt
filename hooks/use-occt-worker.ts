@@ -13,6 +13,7 @@ export interface UseOCCTWorkerReturn {
   addChamfer: (geometry: any, edgeIndex: number, distance: number) => Promise<any>
   getMesh: (geometry: any) => Promise<{vertices: number[], indices: number[], normals?: number[]}>
   exportSTEP: (geometry: any, filename: string) => Promise<boolean>
+  loadFile: (file: File) => Promise<string>
   isReady: boolean
 }
 
@@ -28,7 +29,7 @@ export function useOCCTWorker(): UseOCCTWorkerReturn {
     // Initialize worker
     if (!workerRef.current) {
       workerRef.current = new Worker(
-        new URL('../lib/occt-worker.ts', import.meta.url),
+        new URL('../occt-wrapper/src/occt-worker.ts', import.meta.url),
         { type: 'module' }
       )
       
@@ -63,7 +64,7 @@ export function useOCCTWorker(): UseOCCTWorkerReturn {
     }
   }, [])
   
-  const runOperation = useCallback((operation: string, payload: any): Promise<any> => {
+  const runOperation = useCallback((operation: string, payload: any, timeout = 30000): Promise<any> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current) {
         reject(new Error('Worker not initialized'))
@@ -71,7 +72,15 @@ export function useOCCTWorker(): UseOCCTWorkerReturn {
       }
       
       const id = Math.random().toString(36)
+      
+      // Set timeout for operation
+      const timeoutId = setTimeout(() => {
+        callbacksRef.current.delete(id)
+        reject(new Error(`Operation ${operation} timed out after ${timeout}ms`))
+      }, timeout)
+      
       callbacksRef.current.set(id, (error: string | null, result: any) => {
+        clearTimeout(timeoutId)
         if (error) {
           reject(new Error(error))
         } else {
@@ -132,6 +141,15 @@ export function useOCCTWorker(): UseOCCTWorkerReturn {
     exportSTEP: useCallback((geo: any, filename: string) => 
       runOperation('EXPORT_STEP', { geometry: geo, filename }),
       [runOperation]
-    )
+    ),
+    loadFile: useCallback(async (file: File) => {
+      const arrayBuffer = await file.arrayBuffer()
+      const data = new Uint8Array(arrayBuffer)
+      const result = await runOperation('LOAD_FILE', { 
+        filename: file.name, 
+        data: Array.from(data) 
+      })
+      return result.geometryId
+    }, [runOperation])
   }
 }

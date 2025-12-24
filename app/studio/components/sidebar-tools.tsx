@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
-import { useOcctWorker } from "@/hooks/use-occt-worker"
+import { useOCCTWorker } from "@/hooks/use-occt-worker"
 import { toast } from "sonner"
 
 interface Tool {
@@ -33,7 +33,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const [isUploadHover, setIsUploadHover] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
-  const { loadFile } = useOcctWorker()
+  const { loadFile } = useOCCTWorker()
   
   const activeTool = externalActiveTool || contextActiveTool
 
