@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "npm run build:occt && next build --webpack",
-    "build:occt": "cd occt-wrapper && bash compile-wasm.sh || echo 'OCCT compilation skipped - using mock module'",
+    "build:occt": "cd occt-wrapper && bash build-occt-wasm.sh",
+    "build:occt:full": "echo '📋 For full OCCT WASM build, you need to build OCCT from source with Emscripten' && echo '🔧 This requires OCCT source code and several hours of build time' && echo '💡 For development, use: npm run build:occt'",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start"

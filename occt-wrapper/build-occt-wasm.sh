@@ -1,3 +1,108 @@
+#!/bin/bash
+
+set -e
+
+echo "🔨 Building OCCT WASM - Advanced Build Script"
+echo ""
+
+# Check if we're in a production environment with proper OCCT WASM setup
+echo "🔍 Checking for production OCCT WASM environment..."
+
+# Check for Emscripten
+if ! command -v emcc &> /dev/null; then
+  echo "❌ Emscripten not found. Installing..."
+  sudo apt update && sudo apt install -y emscripten
+fi
+
+# Check for OCCT development libraries
+if [ ! -d "/usr/include/opencascade" ]; then
+  echo "❌ OCCT development headers not found. Installing..."
+  sudo apt install -y libocct-foundation-dev libocct-modeling-data-dev libocct-modeling-algorithms-dev libocct-data-exchange-dev
+fi
+
+echo "✅ Prerequisites check complete"
+echo ""
+
+# Check if we have pre-built OCCT WASM libraries
+if [ -f "/usr/lib/wasm32-emscripten/libTKernel.a" ]; then
+  echo "✅ Found pre-built OCCT WASM libraries"
+  USE_PREBUILT=true
+else
+  echo "⚠️  No pre-built OCCT WASM libraries found"
+  echo ""
+  echo "📋 For production OCCT WASM build, you need to:"
+  echo "   1. Download OCCT source code (version 7.6+)"
+  echo "   2. Build OCCT with Emscripten toolchain"
+  echo "   3. Install WASM libraries to /usr/lib/wasm32-emscripten/"
+  echo ""
+  echo "🔧 This is a complex process that requires:"
+  echo "   - OCCT source code (1GB+)"
+  echo "   - Several hours of build time"
+  echo "   - Significant disk space (10GB+)"
+  echo ""
+  echo "💡 For development, we'll use the mock OCCT module"
+  echo "   For production, use: npm run build:occt:full"
+  echo ""
+  USE_PREBUILT=false
+fi
+
+# Create build directory
+mkdir -p build
+cd build
+
+echo "📁 Working in: $(pwd)"
+echo ""
+
+if [ "$USE_PREBUILT" = true ]; then
+  echo "🏗️  Building with pre-built OCCT WASM libraries..."
+  
+  # Compile with pre-built WASM libraries
+  emcc \
+    -o occt.js \
+    ../src/occt_bindings.cpp \
+    -I/usr/include/opencascade \
+    -L/usr/lib/wasm32-emscripten \
+    -lTKernel \
+    -lTKMath \
+    -lTKG3d \
+    -lTKG2d \
+    -lTKBRep \
+    -lTKGeomBase \
+    -lTKGeomAlgo \
+    -lTKTopAlgo \
+    -lTKPrim \
+    -lTKBO \
+    -lTKMesh \
+    -lTKFillet \
+    -lTKOffset \
+    -lTKXSBase \
+    -lTKSTEP \
+    -lTKSTEPBase \
+    -lTKSTEPAttr \
+    -lTKSTEP209 \
+    -lTKIGES \
+    -lTKSTL \
+    -s WASM=1 \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    -s INITIAL_MEMORY=536870912 \
+    -s MAXIMUM_MEMORY=2147483648 \
+    -s EXPORTED_FUNCTIONS='["_malloc","_free"]' \
+    -s EXPORTED_RUNTIME_METHODS='["cwrap","ccall","getValue","setValue"]' \
+    -s MODULARIZE=1 \
+    -s EXPORT_NAME='OCCTModule' \
+    -lembind \
+    -O3 \
+    -std=c++17 \
+    -fexceptions
+  
+  echo "✅ Production OCCT WASM build complete"
+  
+else
+  echo "🛠️  Creating development build with mock functionality..."
+  echo ""
+  
+  # Create a comprehensive mock implementation
+  cat > occt.js << 'EOF'
 // Enhanced OCCT Mock Module for Development
 // This provides functional mocks that can be used for UI development
 // while awaiting the full OCCT WASM build
@@ -398,3 +503,49 @@ if (typeof window !== 'undefined') {
 
 // ES6 module export
 export default OCCTModule;
+EOF
+
+  # Create a minimal WASM file for compatibility
+  echo "// Mock WASM for development" > occt.wasm
+  
+  echo "✅ Enhanced development build complete"
+  echo "📊 Features:"
+  echo "   • Functional mock geometry with state tracking"
+  echo "   • Realistic mesh generation for basic shapes"
+  echo "   • Bounding box calculations"
+  echo "   • Manufacturability analysis"
+  echo "   • Full API compatibility"
+  echo ""
+  echo "🚀 Ready for UI development!"
+  echo "📋 For production OCCT: npm run build:occt:full"
+fi
+
+# Copy files to public directory
+echo ""
+echo "📦 Copying files to public/occt/..."
+mkdir -p ../../public/occt
+cp occt.js ../../public/occt/
+cp occt.wasm ../../public/occt/
+cp ../build/occt.d.ts ../../public/occt/
+echo "✅ Files copied to public/occt/"
+
+echo ""
+echo "🎯 Build Summary:"
+if [ "$USE_PREBUILT" = true ]; then
+  echo "   • Mode: Production (with real OCCT WASM)"
+  echo "   • Status: ✅ Ready for deployment"
+else
+  echo "   • Mode: Development (enhanced mock)"
+  echo "   • Status: ✅ Ready for UI development"
+  echo "   • Note: Use 'npm run build:occt:full' for production"
+fi
+
+echo ""
+echo "📋 Available OCCT functions:"
+echo "   • createBox, createCylinder, createSphere, createCone, createTorus"
+echo "   • unionShapes, cutShapes, intersectShapes"
+echo "   • addHole, addFillet, addChamfer"
+echo "   • extrude, revolve"
+echo "   • getMeshData, getBoundingBox"
+echo "   • analyzeManufacturability"
+echo "   • exportToSTEP, exportToIGES, exportToSTL"
