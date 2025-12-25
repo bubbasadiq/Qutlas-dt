@@ -510,7 +510,9 @@ export default function PartDetailPage() {
                           <p className="text-sm text-[var(--neutral-500)]">{hub.hubLocation}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-[var(--primary-700)]">${hub.priceEstimate.toFixed(2)}</p>
+                          <p className="font-bold text-[var(--primary-700)]">
+                            <PriceDisplay amount={hub.priceEstimate} variant="compact" />
+                          </p>
                           <p className="text-sm text-[var(--neutral-500)]">{hub.leadTimeDays} days</p>
                         </div>
                       </div>
@@ -604,6 +606,7 @@ function PaymentModalWrapper({
   onClose: () => void
 }) {
   const [isClient, setIsClient] = useState(false)
+  const { currency } = useCurrency()
 
   useEffect(() => {
     setIsClient(true)

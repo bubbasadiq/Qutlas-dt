@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
+import { mapErrorMessage } from "@/lib/error-utils"
 
 interface User {
   id: string
@@ -51,20 +52,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setIsLoading(false)
     if (error) {
-      // Provide more user-friendly error messages
-      let errorMessage = error.message
-      if (error.message.includes('invalid login credentials')) {
-        errorMessage = 'Invalid email or password. Please try again.'
-      } else if (error.message.includes('network')) {
-        errorMessage = 'Network error. Please check your connection and try again.'
-      } else if (error.message.includes('email not confirmed')) {
-        errorMessage = 'Please verify your email address before signing in.'
-      }
-      throw new Error(errorMessage)
+      throw new Error(mapErrorMessage(error))
     }
   }
 
-const signup = async (email: string, password: string, name: string, company: string) => {
+  const signup = async (email: string, password: string, name: string, company: string) => {
   setIsLoading(true)
 
   const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
@@ -73,7 +65,7 @@ const signup = async (email: string, password: string, name: string, company: st
     email,
     password,
     options: {
-      emailRedirectTo: `${redirectUrl}/auth/verify-email`,
+      emailRedirectTo: `${redirectUrl}/auth/verify-email?onboarding=true`,
       data: {
         name,
         company
@@ -83,22 +75,11 @@ const signup = async (email: string, password: string, name: string, company: st
 
   setIsLoading(false)
   if (error) {
-    // Provide more user-friendly error messages
-    let errorMessage = error.message
-    if (error.message.includes('already registered')) {
-      errorMessage = 'Email already exists. Did you forget to verify it?'
-    } else if (error.message.includes('network')) {
-      errorMessage = 'Network error. Please check your connection and try again.'
-    } else if (error.message.includes('invalid email')) {
-      errorMessage = 'Please enter a valid email address.'
-    } else if (error.message.includes('weak password')) {
-      errorMessage = 'Password is too weak. Please use at least 8 characters.'
-    }
-    throw new Error(errorMessage)
+    throw new Error(mapErrorMessage(error))
   }
-  
+
   return data
-}
+  }
 
 
   const logout = async () => {

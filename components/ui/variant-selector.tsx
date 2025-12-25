@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "./card"
 import { Input } from "./input"
+import { useCurrency } from "@/hooks/use-currency"
 
 export interface Variant {
   variant_id: string
@@ -21,6 +22,7 @@ export interface VariantSelectorProps {
 }
 
 export const VariantSelector: React.FC<VariantSelectorProps> = ({ itemId, variants, onChange }) => {
+  const { currency, formatPrice } = useCurrency()
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(variants[0] || null)
   const [params, setParams] = useState<Record<string, number>>(selectedVariant?.parameters || {})
 
@@ -69,7 +71,7 @@ export const VariantSelector: React.FC<VariantSelectorProps> = ({ itemId, varian
               </div>
               <div>
                 <p className="text-xs text-[var(--neutral-500)] uppercase tracking-wide">Price</p>
-                <p className="font-semibold text-[var(--primary-700)]">${selectedVariant.price_base}</p>
+                <p className="font-semibold text-[var(--primary-700)]">{formatPrice(selectedVariant.price_base)}</p>
               </div>
               <div>
                 <p className="text-xs text-[var(--neutral-500)] uppercase tracking-wide">Lead Time</p>

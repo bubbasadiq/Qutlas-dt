@@ -4,6 +4,7 @@ import React from "react"
 import { Card } from "./card"
 import { Button } from "./button"
 import { Icon } from "./icon"
+import { useCurrency } from "@/hooks/use-currency"
 
 export interface HubSummary {
   hub_id: string
@@ -29,6 +30,7 @@ export interface HubListProps {
 }
 
 export const HubList: React.FC<HubListProps> = ({ itemId, hubs, onRouteJob }) => {
+  const { formatPrice } = useCurrency()
   const [loading, setLoading] = React.useState<string | null>(null)
 
   const handleRoute = async (hubId: string) => {
@@ -68,7 +70,7 @@ export const HubList: React.FC<HubListProps> = ({ itemId, hubs, onRouteJob }) =>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-semibold text-[var(--primary-700)]">${hub.estimated_price}</p>
+              <p className="text-lg font-semibold text-[var(--primary-700)]">{formatPrice(hub.estimated_price)}</p>
               <p className="text-xs text-[var(--neutral-500)]">{hub.estimated_delivery_days} days</p>
             </div>
           </div>

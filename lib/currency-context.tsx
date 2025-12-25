@@ -22,11 +22,11 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export const CurrencyProvider = ({ children }: { children: React.ReactNode }) => {
   const [currency, setCurrencyState] = useState<CurrencyInfo>({
-    code: "USD",
-    symbol: "$",
-    name: "US Dollar"
+    code: "NGN",
+    symbol: "₦",
+    name: "Nigerian Naira"
   })
-  const [exchangeRate, setExchangeRate] = useState(1)
+  const [exchangeRate, setExchangeRate] = useState(1200)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadExchangeRates = useCallback(async () => {
@@ -80,13 +80,13 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
       
     } catch (error) {
       console.error("Failed to detect currency:", error)
-      // Fallback to USD
+      // Fallback to NGN
       setCurrencyState({
-        code: "USD",
-        symbol: "$",
-        name: "US Dollar"
+        code: "NGN",
+        symbol: "₦",
+        name: "Nigerian Naira"
       })
-      setExchangeRate(1)
+      setExchangeRate(1200)
     } finally {
       setIsLoading(false)
     }

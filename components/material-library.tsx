@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCurrency } from "@/hooks/use-currency"
 
 export interface Material {
   id: string
@@ -187,6 +188,7 @@ interface MaterialLibraryProps {
 }
 
 export function MaterialLibrary({ isOpen, onClose, onSelect, currentMaterial }: MaterialLibraryProps) {
+  const { formatPrice } = useCurrency()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -278,7 +280,7 @@ export function MaterialLibrary({ isOpen, onClose, onSelect, currentMaterial }: 
                       )}
                       {material.cost && (
                         <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">
-                          ${material.cost}/kg
+                          {formatPrice(material.cost)}/kg
                         </span>
                       )}
                     </div>
