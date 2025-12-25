@@ -1,12 +1,17 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
+import { useCurrency } from "@/hooks/use-currency"
+import { PriceDisplay } from "@/components/price-display"
+import { CurrencySelector } from "@/components/currency-selector"
 
 const plans = [
   {
     name: "Starter",
     description: "For individuals and small teams getting started",
-    price: "Free",
+    price: 0,
     period: "",
     features: [
       "5 projects per month",
@@ -21,7 +26,7 @@ const plans = [
   {
     name: "Pro",
     description: "For growing teams with production needs",
-    price: "$49",
+    price: 49,
     period: "/month",
     features: [
       "Unlimited projects",
@@ -38,7 +43,7 @@ const plans = [
   {
     name: "Enterprise",
     description: "For organizations with custom requirements",
-    price: "Custom",
+    price: 0,
     period: "",
     features: [
       "Everything in Pro",
@@ -55,6 +60,8 @@ const plans = [
 ]
 
 export default function PricingPage() {
+  const { currency, formatPrice } = useCurrency()
+  
   return (
     <div className="min-h-screen bg-[var(--bg-50)]">
       {/* Navigation */}
@@ -78,16 +85,19 @@ export default function PricingPage() {
 
       {/* Header */}
       <section className="py-20 px-6 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-sm font-semibold text-[var(--accent-600)] uppercase tracking-wider mb-4">Pricing</p>
-          <h1 className="text-5xl font-serif text-[var(--neutral-900)] mb-6 text-balance">
-            Simple, transparent pricing
-          </h1>
-          <p className="text-xl text-[var(--neutral-600)] max-w-2xl mx-auto">
-            Choose the plan that fits your needs. All plans include access to our global hub network and instant
-            manufacturability feedback.
-          </p>
-        </div>
+       <div className="max-w-4xl mx-auto text-center">
+         <p className="text-sm font-semibold text-[var(--accent-600)] uppercase tracking-wider mb-4">Pricing</p>
+         <h1 className="text-5xl font-serif text-[var(--neutral-900)] mb-6 text-balance">
+           Simple, transparent pricing
+         </h1>
+         <p className="text-xl text-[var(--neutral-600)] max-w-2xl mx-auto">
+           Choose the plan that fits your needs. All plans include access to our global hub network and instant
+           manufacturability feedback.
+         </p>
+         <div className="mt-6 flex justify-center">
+           <CurrencySelector />
+         </div>
+       </div>
       </section>
 
       {/* Pricing Cards */}
@@ -113,13 +123,17 @@ export default function PricingPage() {
                 </p>
 
                 <div className="mb-8">
-                  <span className={`text-4xl font-bold ${plan.highlight ? "text-white" : "text-[var(--neutral-900)]"}`}>
-                    {plan.price}
-                  </span>
-                  {plan.period && (
-                    <span className={plan.highlight ? "text-white/70" : "text-[var(--neutral-500)]"}>
-                      {plan.period}
+                  {plan.price === 0 ? (
+                    <span className={`text-4xl font-bold ${plan.highlight ? "text-white" : "text-[var(--neutral-900)]"}`}>
+                      Free
                     </span>
+                  ) : (
+                    <PriceDisplay
+                      amount={plan.price}
+                      period={plan.period}
+                      variant="large"
+                      className={plan.highlight ? "text-white" : "text-[var(--neutral-900)]"}
+                    />
                   )}
                 </div>
 

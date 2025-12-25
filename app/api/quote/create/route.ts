@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient"
 
 export async function POST(req: Request) {
   try {
-    const { partId, quantity, material, parameters, userId } = await req.json()
+    const { partId, quantity, material, parameters, userId, currency } = await req.json()
 
     if (!partId || !quantity) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -72,6 +72,7 @@ export async function POST(req: Request) {
       totalPrice: Math.round(totalPrice * 100) / 100,
       leadTimeDays: calculatedLeadTime,
       manufacturability: part.manufacturability || 95,
+      currency: currency || "USD",
       validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     }
 
