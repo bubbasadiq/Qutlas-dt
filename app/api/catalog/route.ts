@@ -140,6 +140,27 @@ export async function GET(request: Request) {
         query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
       }
 
+      // Handle material filtering
+      const materialsParam = searchParams.get("materials")
+      if (materialsParam) {
+        const materials = materialsParam.split(",")
+        query = query.in("material", materials)
+      }
+
+      // Handle process filtering
+      const processesParam = searchParams.get("processes")
+      if (processesParam) {
+        const processes = processesParam.split(",")
+        query = query.in("process", processes)
+      }
+
+      // Handle price range filtering
+      const minPrice = parseFloat(searchParams.get("minPrice") || "0")
+      const maxPrice = parseFloat(searchParams.get("maxPrice") || "1000")
+      if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+        query = query.gte("basePrice", minPrice).lte("basePrice", maxPrice)
+      }
+
       const { data, error, count } = await query.range(offset, offset + limit - 1).order("created_at", {
         ascending: false,
       })
@@ -167,6 +188,32 @@ export async function GET(request: Request) {
         (item) =>
           item.name.toLowerCase().includes(searchLower) ||
           item.description.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Handle material filtering for sample data
+    const materialsParam = searchParams.get("materials")
+    if (materialsParam) {
+      const materials = materialsParam.split(",")
+      filtered = filtered.filter((item) => 
+        materials.includes(item.material) || 
+        (item.materials && item.materials.some(m => materials.includes(m.name)))
+      )
+    }
+
+    // Handle process filtering for sample data
+    const processesParam = searchParams.get("processes")
+    if (processesParam) {
+      const processes = processesParam.split(",")
+      filtered = filtered.filter((item) => processes.includes(item.process))
+    }
+
+    // Handle price range filtering for sample data
+    const minPrice = parseFloat(searchParams.get("minPrice") || "0")
+    const maxPrice = parseFloat(searchParams.get("maxPrice") || "1000")
+    if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+      filtered = filtered.filter((item) => 
+        item.basePrice >= minPrice && item.basePrice <= maxPrice
       )
     }
 
