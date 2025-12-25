@@ -34,7 +34,7 @@ export function CurrencySelector({ className = "" }: CurrencySelectorProps) {
         className="flex items-center gap-1 h-8 px-2"
         onClick={() => handleCurrencyChange(currency.code === "USD" ? "NGN" : "USD")}
       >
-        <span className="text-sm font-medium">{currency.symbol}</span>
+        <span className="text-sm font-medium">{currency.code}</span>
         <Icon name="chevron-down" size={14} className="text-[var(--neutral-400)]" />
       </Button>
     </div>

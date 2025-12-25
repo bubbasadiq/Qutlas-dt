@@ -3,6 +3,8 @@
 
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
+import { assessManufacturability } from "@/lib/manufacturability/assess"
+import { selectToolpath } from "@/lib/toolpath/select-toolpath"
 
 export async function POST(req: Request) {
   try {
@@ -57,6 +59,20 @@ export async function POST(req: Request) {
     const calculatedLeadTime =
       quantity > 50 ? leadTimeDays + 3 : quantity > 10 ? leadTimeDays + 1 : leadTimeDays
 
+    const process = part.process || "CNC Milling"
+    const toolpath = selectToolpath({
+      process,
+      material: material || part.material,
+      objectType: part.category,
+      geometryParams: parameters || {},
+      featureCount: Array.isArray((parameters as any)?.features) ? (parameters as any).features.length : 0,
+    })
+
+    const manufacturabilityResult = assessManufacturability({
+      parameters: parameters || {},
+      process,
+    })
+
     const quote = {
       partId,
       partName: part.name,
@@ -71,7 +87,10 @@ export async function POST(req: Request) {
       platformFee: Math.round(platformFee * 100) / 100,
       totalPrice: Math.round(totalPrice * 100) / 100,
       leadTimeDays: calculatedLeadTime,
-      manufacturability: part.manufacturability || 95,
+      process,
+      toolpath,
+      manufacturability: manufacturabilityResult.score,
+      manufacturabilityIssues: manufacturabilityResult.issues,
       currency: currency || "USD",
       validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     }
@@ -86,7 +105,7 @@ export async function POST(req: Request) {
             user_id: userId,
             quantity,
             material: quote.material,
-            parameters,
+            parameters: { ...(parameters || {}), _toolpath: toolpath, _manufacturability: manufacturabilityResult },
             base_price: quote.basePrice,
             material_multiplier: quote.materialMultiplier,
             volume_discount: quote.volumeDiscount,

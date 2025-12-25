@@ -41,19 +41,10 @@ interface QuoteData {
   totalPrice: number
   leadTimeDays: number
   manufacturability: number
+  manufacturabilityIssues?: Array<{ id: string; severity: string; message: string; fix: string }>
+  process?: string
+  toolpath?: { id: string; name: string; strategy: string; notes?: string }
   currency?: string
-}
-
-interface HubMatch {
-  hubId: string
-  hubName: string
-  hubLocation: string
-  rating: number
-  completedJobs: number
-  priceEstimate: number
-  leadTimeDays: number
-  fitsLeadTime: boolean
-  score: number
 }
 
 export default function PartDetailPage() {
@@ -71,8 +62,7 @@ export default function PartDetailPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [quote, setQuote] = useState<QuoteData | null>(null)
-  const [hubMatches, setHubMatches] = useState<HubMatch[]>([])
-  const [selectedHub, setSelectedHub] = useState<HubMatch | null>(null)
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null)
   const [isCreatingQuote, setIsCreatingQuote] = useState(false)
   const [isCreatingJob, setIsCreatingJob] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -173,7 +163,6 @@ export default function PartDetailPage() {
         const quoteData = await response.json()
         setQuote(quoteData)
         setShowQuoteModal(true)
-        await findHubs(quoteData)
       } else {
         const error = await response.json()
         toast.error(error.error || "Failed to create quote")
@@ -185,34 +174,11 @@ export default function PartDetailPage() {
     }
   }
 
-  const findHubs = async (quoteData: QuoteData) => {
-    try {
-      const response = await fetch("/api/hubs/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          partId: part?.id,
-          material: selectedMaterial?.name,
-          process: part?.process,
-          quantity,
-          leadTimeRequirement: quoteData.leadTimeDays + 2,
-        }),
-      })
 
-      if (response.ok) {
-        const data = await response.json()
-        setHubMatches(data.matches || [])
-        if (data.matches?.[0]) {
-          setSelectedHub(data.matches[0])
-        }
-      }
-    } catch (error) {
-      console.error("Failed to find hubs:", error)
-    }
-  }
 
   const handleCreateJob = async () => {
-    if (!selectedHub || !quote) return
+    if (!quote) return
+
     setIsCreatingJob(true)
     try {
       const jobResponse = await fetch("/api/jobs", {
@@ -221,20 +187,27 @@ export default function PartDetailPage() {
         body: JSON.stringify({
           partId: part?.id,
           quoteId: quote.quoteId,
-          hubId: selectedHub.hubId,
           quantity,
           material: selectedMaterial?.name,
           parameters,
           totalPrice: quote.totalPrice,
+          toolpath: quote.toolpath,
+          process: quote.process,
         }),
       })
 
       if (jobResponse.ok) {
         const job = await jobResponse.json()
+        setCreatedJobId(job.id)
         setShowPaymentModal(true)
       } else {
-        const error = await jobResponse.json()
-        toast.error(error.error || "Failed to create job")
+        const error = await jobResponse.json().catch(() => ({}))
+        if (jobResponse.status === 401) {
+          toast.error("Please sign in to submit a job")
+          router.push("/auth/login")
+        } else {
+          toast.error(error.error || "Failed to create job")
+        }
       }
     } catch (error) {
       toast.error("Failed to create job")
@@ -491,39 +464,31 @@ export default function PartDetailPage() {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--neutral-700)] mb-3">Recommended Manufacturing Hubs</h3>
-                <div className="space-y-3">
-                  {hubMatches.map((hub) => (
-                    <div
-                      key={hub.hubId}
-                      className={`border rounded-xl p-4 cursor-pointer transition-colors ${
-                        selectedHub?.hubId === hub.hubId
-                          ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
-                          : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
-                      }`}
-                      onClick={() => setSelectedHub(hub)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-[var(--neutral-900)]">{hub.hubName}</p>
-                          <p className="text-sm text-[var(--neutral-500)]">{hub.hubLocation}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-[var(--primary-700)]">
-                            <PriceDisplay amount={hub.priceEstimate} variant="compact" />
-                          </p>
-                          <p className="text-sm text-[var(--neutral-500)]">{hub.leadTimeDays} days</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className="text-xs text-[var(--neutral-500)]">★ {hub.rating}</span>
-                        <span className="text-xs text-[var(--neutral-500)]">{hub.completedJobs} jobs</span>
-                      </div>
-                    </div>
-                  ))}
+              {quote.toolpath && (
+                <div className="bg-[var(--bg-50)] rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-[var(--neutral-700)] mb-2">Toolpath</h3>
+                  <p className="font-medium text-[var(--neutral-900)]">{quote.toolpath.name}</p>
+                  <p className="text-sm text-[var(--neutral-500)] mt-1">{quote.toolpath.strategy}</p>
+                  {quote.toolpath.notes && <p className="text-xs text-[var(--neutral-500)] mt-2">{quote.toolpath.notes}</p>}
                 </div>
-              </div>
+              )}
+
+              {quote.manufacturabilityIssues && quote.manufacturabilityIssues.length > 0 && (
+                <div className="bg-[var(--bg-50)] rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-[var(--neutral-700)] mb-2">Manufacturability</h3>
+                  <p className="text-sm text-[var(--neutral-500)] mb-3">Score: {quote.manufacturability}%</p>
+                  <div className="space-y-2">
+                    {quote.manufacturabilityIssues.slice(0, 5).map((issue) => (
+                      <div key={issue.id} className="text-sm">
+                        <p className="text-[var(--neutral-900)]">
+                          <span className="font-medium">{issue.severity.toUpperCase()}:</span> {issue.message}
+                        </p>
+                        <p className="text-[var(--neutral-500)] text-xs mt-0.5">Fix: {issue.fix}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-[var(--neutral-200)] pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
@@ -553,7 +518,7 @@ export default function PartDetailPage() {
                 <Button
                   className="flex-1 bg-[var(--accent-500)] hover:bg-[var(--accent-600)] text-[var(--neutral-900)]"
                   onClick={handleCreateJob}
-                  disabled={!selectedHub || isCreatingJob}
+                  disabled={isCreatingJob}
                 >
                   {isCreatingJob ? "Creating Job..." : "Proceed to Payment"}
                 </Button>
@@ -563,7 +528,7 @@ export default function PartDetailPage() {
         </div>
       )}
 
-      {showPaymentModal && selectedHub && quote && (
+      {showPaymentModal && quote && createdJobId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full">
             <div className="p-6 border-b border-[var(--neutral-200)]">

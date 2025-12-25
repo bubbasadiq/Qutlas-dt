@@ -39,11 +39,13 @@ export async function POST(req: Request) {
     // Default to NGN for Flutterwave, but allow USD for international
     const paymentCurrency = currency === "USD" ? "USD" : "NGN"
 
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || ""
+
     const payload = {
       tx_ref,
       amount: Math.round(amount * 100) / 100,
       currency: paymentCurrency,
-      redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify`,
+      redirect_url: `${origin}/payment/verify`,
       meta: {
         jobId,
       },
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
       customizations: {
         title: "Qutlas - Manufacturing Quote",
         description: description || "Manufacturing service payment",
-        logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
+        logo: `${origin}/logo.png`,
       },
     }
 

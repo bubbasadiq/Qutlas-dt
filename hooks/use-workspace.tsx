@@ -28,6 +28,23 @@ export interface WorkspaceObject {
   color?: string;
   params?: Record<string, any>;
   description?: string;
+  process?: string;
+  toolpath?: {
+    id: string;
+    name: string;
+    strategy: string;
+    notes?: string;
+  };
+  manufacturability?: {
+    score: number;
+    issues: Array<{ id: string; severity: string; message: string; fix: string }>;
+  };
+  sourceFile?: {
+    bucket: string;
+    key: string;
+    filename: string;
+    contentType?: string;
+  };
 }
 
 interface WorkspaceState {

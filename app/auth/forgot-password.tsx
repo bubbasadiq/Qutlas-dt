@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { supabase } from "@/lib/supabaseClient"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,6 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { supabase } = useAuth() // optional: if you want to use context, or import supabase directly
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,8 +20,10 @@ export default function ForgotPasswordPage() {
     setMessage("")
 
     try {
+      const redirectUrl = typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`
+        redirectTo: `${redirectUrl}/auth/reset-password`,
       })
       if (error) throw error
       setMessage("Check your inbox for the password reset link.")

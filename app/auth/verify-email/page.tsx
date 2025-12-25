@@ -130,7 +130,7 @@ function VerifyEmailContent() {
     setError("")
 
     try {
-      const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+      const redirectUrl = (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || '')
       
       const { error } = await supabase.auth.resend({
         type: "signup",

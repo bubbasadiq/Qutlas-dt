@@ -25,7 +25,7 @@ const pricingConfig: PricingConfig = {
   basePrices: {
     // Subscription plans
     starter: 0,       // Free plan
-    pro: 49,          // $49/month
+    pro: 49,          // 49 / month (base currency)
     enterprise: 0,   // Custom pricing
     
     // Catalog part base prices (these would be overridden by actual part data)
@@ -94,29 +94,16 @@ export function getBasePrice(itemName: string): number {
  * @returns Formatted price string
  */
 export function formatPrice(amount: number, currencyCode: string, options: { showCode?: boolean } = {}): string {
-  const { showCode = false } = options
-  
-  if (currencyCode === "NGN") {
-    // Nigerian Naira formatting
-    const formatted = new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-    
-    return showCode ? `${formatted} ${currencyCode}` : formatted
-  } else {
-    // Default USD formatting
-    const formatted = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-    
-    return showCode ? `${formatted} ${currencyCode}` : formatted
-  }
+  const { showCode = true } = options
+
+  const locale = currencyCode === "NGN" ? "en-NG" : "en-US"
+  const formattedNumber = new Intl.NumberFormat(locale, {
+    style: "decimal",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+
+  return showCode ? `${formattedNumber} ${currencyCode}` : formattedNumber
 }
 
 /**
