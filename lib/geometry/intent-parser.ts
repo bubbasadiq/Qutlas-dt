@@ -32,13 +32,9 @@ export async function parseIntent(userIntent: string): Promise<ParseIntentResult
           content: `Parse this CAD intent into structured JSON:\n\n${userIntent}`,
         },
       ],
-      maxTokens: 2000,
     })
 
-    let fullText = ''
-    for await (const chunk of result.textStream) {
-      fullText += chunk
-    }
+    const fullText = await result.text
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
@@ -99,10 +95,7 @@ Output the UPDATED geometry JSON with the requested modifications.
       maxTokens: 2000,
     })
 
-    let fullText = ''
-    for await (const chunk of result.textStream) {
-      fullText += chunk
-    }
+    const fullText = await result.text
 
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
     

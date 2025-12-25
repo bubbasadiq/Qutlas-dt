@@ -277,7 +277,6 @@ If you see an image, describe what you see and how you'll interpret it for CAD c
     system: systemPrompt,
     messages,
     tools,
-    maxTokens: 2000,
   })
 
   return result.toDataStreamResponse()
