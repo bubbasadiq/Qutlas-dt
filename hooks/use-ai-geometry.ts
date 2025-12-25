@@ -27,7 +27,13 @@ export function useAIGeometry() {
   // Initialize execution engine
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      engineRef.current = new ExecutionEngine()
+      const engine = new ExecutionEngine()
+      engineRef.current = engine
+
+      // Kick off worker initialization (don’t block render)
+      engine.ensureReady().catch((err) => {
+        console.error('Failed to initialize execution engine:', err)
+      })
     }
 
     return () => {
@@ -43,11 +49,18 @@ export function useAIGeometry() {
     setState({
       isGenerating: true,
       progress: 0,
-      status: 'Parsing your request...',
+      status: 'Initializing geometry engine...',
       error: null,
     })
 
     try {
+      // Wait for worker to be ready
+      await engineRef.current.ensureReady()
+
+      setState((prev) => ({
+        ...prev,
+        status: 'Parsing your request...',
+      }))
       // Step 1: Parse intent via API
       const parseResponse = await fetch('/api/ai/generate', {
         method: 'POST',

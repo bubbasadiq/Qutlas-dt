@@ -25,11 +25,39 @@ export class ExecutionEngine {
   private pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>()
   private isReady = false
   private geometryCache = new Map<string, any>()
+  private initPromise: Promise<void> | null = null
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.initWorker()
     }
+  }
+
+  /**
+   * Waits for the worker to be ready before executing operations
+   */
+  async ensureReady(): Promise<void> {
+    if (this.isReady) return
+
+    if (!this.initPromise) {
+      this.initPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Worker initialization timed out after 10 seconds'))
+        }, 10000)
+
+        const checkReady = () => {
+          if (this.isReady) {
+            clearTimeout(timeout)
+            resolve()
+          } else {
+            setTimeout(checkReady, 100)
+          }
+        }
+        checkReady()
+      })
+    }
+
+    return this.initPromise
   }
 
   private initWorker() {

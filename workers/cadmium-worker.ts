@@ -419,7 +419,7 @@ function evictLRUIfNeeded() {
     }
     
     if (oldestId) {
-      const entry = getFromCache(oldestId);
+      const entry = geometryCache.get(oldestId);
       if (entry) {
         totalCacheSize -= entry.size;
         geometryCache.delete(oldestId);
@@ -438,15 +438,20 @@ function addToCache(id: string, mesh: any) {
     lastAccessed: Date.now(),
     size,
   };
-  
-  addToCache(id, entry);
+
+  const existing = geometryCache.get(id);
+  if (existing) {
+    totalCacheSize -= existing.size;
+  }
+
+  geometryCache.set(id, entry);
   totalCacheSize += size;
-  
+
   evictLRUIfNeeded();
 }
 
 function getFromCache(id: string): any | null {
-  const entry = getFromCache(id);
+  const entry = geometryCache.get(id);
   if (entry) {
     entry.lastAccessed = Date.now();
     return entry.mesh;
