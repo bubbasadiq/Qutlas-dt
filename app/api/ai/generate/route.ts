@@ -19,16 +19,16 @@ export async function POST(req: Request) {
     }
 
     // Parse natural language intent into structured geometry
-    const { intent: geometryIntent, processingTime } = await parseIntent(intent)
+    const parseResult = await parseIntent(intent)
 
     // Build operation sequence from parsed intent
-    const operations = buildOperationSequence(geometryIntent)
+    const operations = buildOperationSequence(parseResult.intent)
 
     return NextResponse.json({
       success: true,
-      intent: geometryIntent,
+      intent: parseResult.intent,
       operations,
-      processingTime,
+      processingTime: parseResult.processingTime,
     })
   } catch (error) {
     console.error('AI generation error:', error)
