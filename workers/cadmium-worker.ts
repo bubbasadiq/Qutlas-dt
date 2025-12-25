@@ -460,4 +460,5 @@ function getFromCache(id: string): any | null {
 }
 
 // Start initialization
-initialize();
+// Use setTimeout to give parent time to set up onmessage handler
+setTimeout(initialize, 100);
