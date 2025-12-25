@@ -12,6 +12,8 @@ import { useProjects } from "@/hooks/use-projects"
 import { useUserStats } from "@/hooks/use-stats"
 import { toast } from "sonner"
 
+export const dynamic = "force-dynamic"
+
 function DashboardContent() {
   const { user, logout } = useAuth()
   const router = useRouter()

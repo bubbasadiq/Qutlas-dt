@@ -13,7 +13,7 @@ import { MobileMenu } from "../../studio/components/mobile-menu"
 import { BottomSheet } from "@/components/ui/sheet"
 import { SaveWorkspaceDialog } from "../../studio/components/save-workspace-dialog"
 import { LoadWorkspaceDialog } from "../../studio/components/load-workspace-dialog"
-import { IntentChat } from "@/components/intent-chat"
+import { IntentChatWorkspace } from "@/components/intent-chat-workspace"
 import { AIGeometryPanel } from "@/components/ai-geometry-panel"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
@@ -22,6 +22,8 @@ import { toast } from "sonner"
 import { mapErrorMessage } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import * as Icons from "lucide-react"
+
+export const dynamic = "force-dynamic"
 
 function StudioContent() {
   const searchParams = useSearchParams()
@@ -368,10 +370,8 @@ function StudioContent() {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <IntentChat
-                  variant="workspace"
+                <IntentChatWorkspace
                   placeholder="Describe what to create or modify..."
-                  onGeometryGenerated={handleGeometryGenerated}
                   initialIntent={initialIntent}
                 />
               </div>

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatPriceNGN } from "@/lib/quote/estimate"
 
+export const dynamic = "force-dynamic"
+
 type Job = {
   id: string
   status: string
