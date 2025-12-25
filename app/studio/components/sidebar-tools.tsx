@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
+import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
 
 interface Tool {
@@ -30,6 +31,7 @@ interface SidebarToolsProps {
 }
 
 export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: externalActiveTool, onToolSelect }) => {
+  const isMobile = useIsMobile()
   const [isUploadHover, setIsUploadHover] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
@@ -69,10 +71,17 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     }
   }
 
+  // Mobile optimized styles with larger touch targets
+  const mobileButtonClass = isMobile
+    ? "w-full flex items-center justify-between px-4 py-3.5 rounded-lg text-sm transition-colors min-h-[48px] touch-manipulation"
+    : "w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs transition-colors"
+
+  const iconSize = isMobile ? 20 : 16
+
   return (
-    <div className="w-full bg-white flex flex-col">
-      {/* Upload Area */}
-      <div className="p-3">
+    <div className={`w-full bg-white ${isMobile ? '' : 'flex flex-col'}`}>
+      {/* Upload Area - Simplified for mobile */}
+      <div className={`${isMobile ? 'p-3' : 'p-3'}`}>
         <input
           type="file"
           accept=".stp,.step,.iges,.stl"
@@ -82,9 +91,11 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
         />
         <label
           htmlFor="cad-upload"
-          onMouseEnter={() => setIsUploadHover(true)}
-          onMouseLeave={() => setIsUploadHover(false)}
-          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors block ${
+          onMouseEnter={() => !isMobile && setIsUploadHover(true)}
+          onMouseLeave={() => !isMobile && setIsUploadHover(false)}
+          className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors block touch-manipulation ${
+            isMobile ? 'py-4' : ''
+          } ${
             isUploading 
               ? "border-[var(--neutral-200)] bg-[var(--bg-100)] cursor-wait"
               : isUploadHover
@@ -93,45 +104,45 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
           }`}
         >
           {isUploading ? (
-            <>
-              <div className="w-6 h-6 mx-auto mb-1 border-2 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-medium text-[var(--neutral-700)]">Uploading...</p>
-            </>
+            <div className="flex flex-col items-center py-2">
+              <div className={`${isMobile ? 'w-8 h-8' : 'w-6 h-6'} mx-auto mb-2 border-2 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin`} />
+              <p className="text-sm font-medium text-[var(--neutral-700)]">Uploading...</p>
+            </div>
           ) : (
-            <>
+            <div className="flex flex-col items-center py-2">
               <Icon
                 name="upload"
-                size={24}
-                className={`mx-auto mb-1 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
+                size={isMobile ? 28 : 24}
+                className={`mb-2 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
               />
-              <p className="text-xs font-medium text-[var(--neutral-700)]">Upload CAD</p>
+              <p className="text-sm font-medium text-[var(--neutral-700)]">Upload CAD</p>
               <p className="text-xs text-[var(--neutral-400)] mt-0.5">STEP, IGES, STL</p>
-            </>
+            </div>
           )}
         </label>
       </div>
 
       {/* Tools */}
-      <div className="flex-1 px-3 pb-3 overflow-y-auto">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2">Tools</h3>
-        <div className="space-y-1">
+      <div className={`${isMobile ? 'px-3 pb-3' : 'flex-1 px-3 pb-3 overflow-y-auto'}`}>
+        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2'}`}>Tools</h3>
+        <div className="space-y-1.5">
           {tools.map((tool) => (
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id)}
-              className={`w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs transition-colors ${
+              className={`${mobileButtonClass} ${
                 activeTool === tool.id
                   ? "bg-[var(--primary-700)] text-white"
                   : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Icon name={tool.icon} size={16} className={activeTool === tool.id ? "text-white" : ""} />
+              <div className="flex items-center gap-3">
+                <Icon name={tool.icon} size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
                 <span className="font-medium">{tool.label}</span>
               </div>
               {tool.shortcut && (
                 <span
-                  className={`text-xs px-1.5 py-0.5 rounded ${
+                  className={`text-xs px-2 py-0.5 rounded ${
                     activeTool === tool.id
                       ? "bg-white/20 text-white"
                       : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"

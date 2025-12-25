@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Hexagon, Settings, Keyboard, Info } from "lucide-react"
+import { Hexagon, Settings, Keyboard, Info, Menu, Save, Undo, Redo } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
 import { SaveWorkspaceDialog } from "./save-workspace-dialog"
 import { LoadWorkspaceDialog } from "./load-workspace-dialog"
@@ -15,8 +16,13 @@ import { MenuButton, MenuItem } from "@/components/toolbar-menu"
 import { shortcutsRegistry, Keys } from "@/lib/shortcuts-registry"
 import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 
-export function Toolbar() {
+interface ToolbarProps {
+  onMobileMenuOpen?: () => void
+}
+
+export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   const { objects, clearWorkspace, addObject, undo, redo, canUndo, canRedo, selectedObjectId, deleteObject, selectObject } = useWorkspace()
+  const isMobile = useIsMobile()
   const router = useRouter()
   const cadmium = useCadmiumWorker()
   const [saved, setSaved] = useState(true)
@@ -281,6 +287,88 @@ export function Toolbar() {
     { id: 'about', label: 'About', icon: 'info', onClick: () => toast.info('Qutlas Studio v1.0.0') },
   ]
 
+  // Mobile toolbar - simplified
+  if (isMobile) {
+    return (
+      <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 shadow-sm safe-area-inset-top">
+        {/* Left: Logo + Menu button */}
+        <div className="flex items-center gap-3">
+          <Hexagon className="w-6 h-6 text-[var(--primary-700)]" />
+          <span className="font-semibold text-[var(--primary-700)] hidden sm:inline">Qutlas</span>
+        </div>
+
+        {/* Center: Quick actions */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { if (canUndo) undo() }}
+            disabled={!canUndo}
+            className="p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-30"
+            title="Undo"
+          >
+            <Undo className="w-5 h-5 text-gray-700" />
+          </button>
+          <button
+            onClick={() => { if (canRedo) redo() }}
+            disabled={!canRedo}
+            className="p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-30"
+            title="Redo"
+          >
+            <Redo className="w-5 h-5 text-gray-700" />
+          </button>
+          {!saved && (
+            <button
+              onClick={() => setShowSaveDialog(true)}
+              className="p-2.5 rounded-lg bg-[var(--primary-700)] text-white transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              title="Save"
+            >
+              <Save className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Right: Menu button */}
+        <button
+          onClick={onMobileMenuOpen}
+          className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+          title="Menu"
+        >
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+
+        {/* Dialogs */}
+        <SaveWorkspaceDialog
+          isOpen={showSaveDialog}
+          onClose={() => setShowSaveDialog(false)}
+          onSave={handleSaveWorkspace}
+        />
+        <LoadWorkspaceDialog
+          isOpen={showLoadDialog}
+          onClose={() => setShowLoadDialog(false)}
+          onLoad={handleLoadWorkspace}
+        />
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          onExport={handleExport}
+        />
+        <ImportDialog
+          isOpen={showImportDialog}
+          onClose={() => setShowImportDialog(false)}
+          onImport={handleImport}
+        />
+        <SettingsDialog
+          isOpen={showSettingsDialog}
+          onClose={() => setShowSettingsDialog(false)}
+        />
+        <HelpDialog
+          isOpen={showHelpDialog}
+          onClose={() => setShowHelpDialog(false)}
+        />
+      </div>
+    )
+  }
+
+  // Desktop toolbar - full version
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-4 shadow-sm">
       {/* Logo */}
