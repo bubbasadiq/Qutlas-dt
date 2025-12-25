@@ -9,7 +9,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "^1.0.0",
     "@ai-sdk/react": "^3.0.3",
     "@edge-runtime/vm": "^4.0.4",
     "@hookform/resolvers": "^3.10.0",
