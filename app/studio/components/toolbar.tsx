@@ -258,7 +258,7 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   const manufactureMenuItems: MenuItem[] = [
     { id: 'analyze-dfm', label: 'Analyze DFM', icon: 'zap', onClick: () => router.push('/catalog/quote') },
     { id: 'generate-job', label: 'Generate Job', icon: 'hammer', onClick: () => toast.info('Generate Job - Coming soon') },
-    { id: 'get-quote', label: 'Get Quote', icon: 'dollar-sign', onClick: () => router.push('/catalog/quote') },
+    { id: 'get-quote', label: 'Get Quote', icon: 'banknote', onClick: () => router.push('/catalog/quote') },
   ]
 
   const helpMenuItems: MenuItem[] = [

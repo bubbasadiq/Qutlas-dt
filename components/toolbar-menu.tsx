@@ -30,7 +30,7 @@ const iconMap: Record<string, any> = {
   'intersect': Icons.Scissors,
   'zap': Icons.Zap,
   'hammer': Icons.Hammer,
-  'dollar-sign': Icons.DollarSign,
+  'banknote': Icons.Banknote,
   'book': Icons.Book,
   'keyboard': Icons.Keyboard,
   'settings': Icons.Settings,
