@@ -54,6 +54,26 @@ function StudioContent() {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const ctrlKey = isMac ? e.metaKey : e.ctrlKey
 
+      // Don't process shortcuts in text inputs
+      const activeElement = document.activeElement
+      if (activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement ||
+          activeElement?.getAttribute('contenteditable') === 'true') {
+        // Allow some shortcuts even in inputs (Ctrl+S to save)
+        if (ctrlKey && e.key === 's') {
+          e.preventDefault()
+          setShowSaveDialog(true)
+        }
+        return
+      }
+
+      // ? - Show help dialog
+      if (e.key === '?' || e.key === '/') {
+        e.preventDefault()
+        document.querySelector('[title="Keyboard Shortcuts"]')?.dispatchEvent(new MouseEvent('click'))
+        return
+      }
+
       // Ctrl+S / Cmd+S - Save
       if (ctrlKey && e.key === 's') {
         e.preventDefault()
@@ -114,11 +134,12 @@ function StudioContent() {
 
       // Delete key to delete selected object
       if (e.key === 'Delete' && selectedObjectId) {
+        e.preventDefault()
         deleteObject(selectedObjectId)
         toast.success('Object deleted')
         return
       }
-      
+
       // Escape to deselect or close context menu
       if (e.key === 'Escape') {
         if (contextMenu) {
