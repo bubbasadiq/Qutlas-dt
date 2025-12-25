@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.1",
+    "@ai-sdk/deepseek": "^2.0.1",
     "@ai-sdk/react": "^3.0.3",
     "@edge-runtime/vm": "^4.0.4",
     "@hookform/resolvers": "^3.10.0",

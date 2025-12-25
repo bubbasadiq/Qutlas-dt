@@ -1,13 +1,9 @@
 // AI Geometry Intent Parser - Converts natural language to structured geometry specs
 
 import { streamText } from 'ai'
-import { createAnthropic } from '@ai-sdk/anthropic'
+import { deepseek } from '@ai-sdk/deepseek'
 import { GEOMETRY_INTENT_SYSTEM_PROMPT } from '@/lib/prompts/geometry-intent-parser'
 import type { GeometryIntent } from './operation-sequencer'
-
-const anthropic = createAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
 
 export interface ParseIntentResult {
   intent: GeometryIntent
@@ -17,14 +13,14 @@ export interface ParseIntentResult {
 
 /**
  * Parses natural language CAD intent into structured geometry specification
- * Uses Claude Sonnet to understand user intent and extract parameters
+ * Uses DeepSeek to understand user intent and extract parameters
  */
 export async function parseIntent(userIntent: string): Promise<ParseIntentResult> {
   const startTime = Date.now()
 
   try {
     const result = await streamText({
-      model: anthropic('claude-sonnet-4-20250514'),
+      model: deepseek('deepseek-chat'),
       system: GEOMETRY_INTENT_SYSTEM_PROMPT,
       messages: [
         {
@@ -84,7 +80,7 @@ Output the UPDATED geometry JSON with the requested modifications.
 
   try {
     const result = await streamText({
-      model: anthropic('claude-sonnet-4-20250514'),
+      model: deepseek('deepseek-chat'),
       system: GEOMETRY_INTENT_SYSTEM_PROMPT,
       messages: [
         {
@@ -92,7 +88,7 @@ Output the UPDATED geometry JSON with the requested modifications.
           content: refinementPrompt,
         },
       ],
-      maxTokens: 2000,
+      maxOutputTokens: 2000,
     })
 
     const fullText = await result.text
