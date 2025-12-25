@@ -255,7 +255,7 @@ function StudioContent() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">AI Assistant</p>
-                <p className="text-xs text-white/70">Powered by Claude</p>
+                <p className="text-xs text-white/70">Powered by DeepSeek</p>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4">

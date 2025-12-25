@@ -54,7 +54,7 @@ This document describes the migration from OCCT (OpenCASCADE) to Cadmium-Core, a
 ```
 User Input (Natural Language)
          ↓
-AI Intent Parser (Claude)
+AI Intent Parser (DeepSeek)
          ↓
 Operation Sequencer
          ↓

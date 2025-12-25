@@ -28,6 +28,7 @@ export async function parseIntent(userIntent: string): Promise<ParseIntentResult
           content: `Parse this CAD intent into structured JSON:\n\n${userIntent}`,
         },
       ],
+      maxOutputTokens: 2000,
     })
 
     const fullText = await result.text

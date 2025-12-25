@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@ai-sdk/anthropic':
-        specifier: ^3.0.1
-        version: 3.0.1(zod@3.25.76)
+      '@ai-sdk/deepseek':
+        specifier: ^2.0.1
+        version: 2.0.1(zod@3.25.76)
       '@ai-sdk/react':
         specifier: ^3.0.3
         version: 3.0.3(react@19.2.0)(zod@3.25.76)
@@ -243,8 +243,8 @@ importers:
 
 packages:
 
-  '@ai-sdk/anthropic@3.0.1':
-    resolution: {integrity: sha512-MOiwKs76ilEmau/WRMnGWlheTUoB+cbvXCse+SAtpW5ATLreInsuYlspLABn12Dxu3w1Xzke1dT+tmEnxhy9SA==}
+  '@ai-sdk/deepseek@2.0.1':
+    resolution: {integrity: sha512-CFEP9QjOUwLvK9zCuXS/LUWoLZouAVgJ0+ITscyIS2KtmJYlUPGmpleCthyrl1CqpPEEQiMcF3DKKVootrdveQ==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3538,7 +3538,7 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/anthropic@3.0.1(zod@3.25.76)':
+  '@ai-sdk/deepseek@2.0.1(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 3.0.0
       '@ai-sdk/provider-utils': 4.0.1(zod@3.25.76)

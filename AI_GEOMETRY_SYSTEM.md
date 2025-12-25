@@ -2,14 +2,14 @@
 
 ## Overview
 
-Complete AI-powered CAD geometry generation system using Cadmium-Core WASM engine and Claude AI for natural language intent parsing.
+Complete AI-powered CAD geometry generation system using Cadmium-Core WASM engine and DeepSeek AI for natural language intent parsing.
 
 ## Architecture
 
 ```
 User Input (Natural Language)
     ↓
-AI Intent Parser (Claude Sonnet)
+AI Intent Parser (DeepSeek Chat)
     ↓
 Operation Sequencer
     ↓
@@ -26,7 +26,7 @@ Workspace Integration
 
 ### 1. AI Intent Parser (`/lib/geometry/intent-parser.ts`)
 - Converts natural language to structured geometry specifications
-- Uses Claude Sonnet 4 for understanding user intent
+- Uses DeepSeek Chat for understanding user intent
 - Validates and structures parameters
 
 ### 2. Operation Sequencer (`/lib/geometry/operation-sequencer.ts`)
@@ -164,7 +164,7 @@ Parses natural language intent and returns structured operations.
 
 ## Performance
 
-- **Intent Parsing**: ~1-2 seconds (Claude API)
+- **Intent Parsing**: ~1-2 seconds (DeepSeek API)
 - **Operation Planning**: <100ms
 - **Shape Creation**: <50ms per shape
 - **Feature Operations**: <100ms per feature
@@ -199,9 +199,9 @@ Note: The system includes a JavaScript mock that works without Rust compilation.
 Wait for worker ready event (usually <200ms on startup)
 
 ### "Failed to parse intent"
-- Check ANTHROPIC_API_KEY in `.env`
+- Check DEEPSEEK_API_KEY in `.env`
 - Verify intent is descriptive enough
-- Check Claude API rate limits
+- Check DeepSeek API rate limits
 
 ### "Mesh not appearing"
 - Verify canvas scene is set: `setCanvasScene(scene)`
