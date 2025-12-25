@@ -21,13 +21,10 @@ export function PriceDisplay({
   showCode = false,
   className = ""
 }: PriceDisplayProps) {
-  const { currency, formatPrice } = useCurrency()
+  const { formatPrice } = useCurrency()
   
-  // Use provided currency or fall back to context currency
-  const targetCurrency = propCurrency || currency.code
-  
-  // Format the price
-  const formattedPrice = formatPrice(amount, { showCode })
+  // Format the price without currency symbols - just plain numbers
+  const formattedPrice = formatPrice(amount, { showCode: false })
   
   // Apply variant styles
   const getVariantStyles = () => {

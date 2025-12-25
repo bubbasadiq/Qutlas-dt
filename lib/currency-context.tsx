@@ -104,17 +104,16 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
   }, [])
 
   const formatPrice = useCallback((amount: number, options: { showCode?: boolean } = {}) => {
-    const { showCode = true } = options
+    const { showCode = false } = options
 
-    // IMPORTANT: Do not render the USD symbol anywhere in the UI.
-    // We format as a plain number and append the currency code.
-    const locale = currency.code === "NGN" ? "en-NG" : "en-US"
-    const formattedNumber = new Intl.NumberFormat(locale, {
+    // Format as plain number without any currency symbols
+    const formattedNumber = new Intl.NumberFormat("en-US", {
       style: "decimal",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
 
+    // Only show currency code if explicitly requested, never show symbols
     return showCode ? `${formattedNumber} ${currency.code}` : formattedNumber
   }, [currency])
 

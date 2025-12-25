@@ -10,6 +10,9 @@ import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
 import { MaterialLibrary, MATERIALS, type Material } from "@/components/material-library"
+import { selectToolpath } from "@/lib/toolpath/select-toolpath"
+import { assessManufacturability } from "@/lib/manufacturability/assess"
+import { estimateQuote } from "@/lib/quote/estimate"
 
 export interface PropertiesPanelProps {
   selectedObject?: string
@@ -22,6 +25,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
   const [params, setParams] = useState<Record<string, number>>({})
   const [applying, setApplying] = useState(false)
   const [showMaterialLibrary, setShowMaterialLibrary] = useState(false)
+  const [selectedProcess, setSelectedProcess] = useState("CNC Milling")
+  const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
     if (selectedObject) {
@@ -92,7 +97,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
   const tabs = [
     { id: "properties", label: "Properties" },
     { id: "toolpath", label: "Toolpath" },
-    { id: "hubs", label: "Hubs" },
   ]
 
   // Mobile optimized styles
@@ -206,9 +210,190 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
           </div>
         )}
 
-        {/* Toolpath and Hubs tabs can remain static or be wired to backend */}
-        {activeTab === "toolpath" && <div className="text-base text-[var(--neutral-500)]">Toolpath UI placeholder</div>}
-        {activeTab === "hubs" && <div className="text-base text-[var(--neutral-500)]">Hubs UI placeholder</div>}
+        {/* Toolpath Tab */}
+        {activeTab === "toolpath" && (
+          <div className="space-y-6">
+            {selectedObject ? (
+              <>
+                {/* Process Selection */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                    Manufacturing Process
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["CNC Milling", "CNC Turning", "Laser Cutting", "3D Printing", "Sheet Metal"].map((process) => (
+                      <button
+                        key={process}
+                        onClick={() => setSelectedProcess(process)}
+                        className={`${isMobile ? 'p-3' : 'p-2'} rounded-lg border transition-colors text-left ${
+                          selectedProcess === process
+                            ? "border-[var(--primary-700)] bg-[var(--primary-50)] text-[var(--primary-900)]"
+                            : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
+                        }`}
+                      >
+                        <div className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>{process}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toolpath Strategy */}
+                {(() => {
+                  const obj = getObjectGeometry(selectedObject)
+                  const material = MATERIALS.find(m => m.id === (obj?.material || 'aluminum-6061'))
+                  const toolpath = selectToolpath({
+                    process: selectedProcess,
+                    material: material?.name,
+                    objectType: obj?.type,
+                    geometryParams: params,
+                    featureCount: 0
+                  })
+                  
+                  return (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                        Toolpath Strategy
+                      </h4>
+                      <div className={`rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] ${isMobile ? 'p-4' : 'p-3'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`${isMobile ? 'mt-1' : 'mt-0.5'}`}>
+                            <Icon name="settings" className="w-5 h-5 text-[var(--primary-700)]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-semibold text-[var(--neutral-900)] mb-1">{toolpath.name}</h5>
+                            <p className={`text-[var(--neutral-600)] ${isMobile ? 'text-sm' : 'text-xs'} mb-2`}>
+                              {toolpath.strategy}
+                            </p>
+                            {toolpath.notes && (
+                              <p className={`text-[var(--neutral-500)] italic ${isMobile ? 'text-xs' : 'text-[11px]'}`}>
+                                {toolpath.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Manufacturability Assessment */}
+                {(() => {
+                  const obj = getObjectGeometry(selectedObject)
+                  const assessment = assessManufacturability({
+                    parameters: params,
+                    process: selectedProcess
+                  })
+                  
+                  const getScoreColor = (score: number) => {
+                    if (score >= 80) return "text-green-600"
+                    if (score >= 60) return "text-yellow-600"
+                    return "text-red-600"
+                  }
+                  
+                  return (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                        Manufacturability
+                      </h4>
+                      <div className={`rounded-lg border border-[var(--neutral-200)] ${isMobile ? 'p-4' : 'p-3'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-[var(--neutral-600)]">Score</span>
+                          <span className={`text-2xl font-bold ${getScoreColor(assessment.score)}`}>
+                            {assessment.score}%
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-xs text-[var(--neutral-500)]">
+                            {assessment.passedChecks} of {assessment.totalChecks} checks passed
+                          </div>
+                          {assessment.issues.length > 0 && (
+                            <div className="space-y-2 mt-3 pt-3 border-t border-[var(--neutral-200)]">
+                              {assessment.issues.slice(0, 3).map((issue, idx) => (
+                                <div key={idx} className="text-xs">
+                                  <div className="flex items-start gap-2">
+                                    <Icon 
+                                      name={issue.severity === "error" ? "alert-circle" : "alert-triangle"} 
+                                      className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
+                                        issue.severity === "error" ? "text-red-500" : 
+                                        issue.severity === "warning" ? "text-yellow-500" : "text-blue-500"
+                                      }`}
+                                    />
+                                    <div>
+                                      <p className="text-[var(--neutral-700)] font-medium">{issue.message}</p>
+                                      <p className="text-[var(--neutral-500)] mt-0.5">{issue.fix}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Quote Estimation */}
+                {(() => {
+                  const obj = getObjectGeometry(selectedObject)
+                  const material = MATERIALS.find(m => m.id === (obj?.material || 'aluminum-6061'))
+                  const quote = estimateQuote({
+                    quantity,
+                    material: material?.name,
+                    process: selectedProcess,
+                    geometryParams: params,
+                    featureCount: 0
+                  })
+                  
+                  return (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                        Quote Estimate
+                      </h4>
+                      <div className="space-y-2">
+                        <div>
+                          <Label className={`text-[var(--neutral-500)] ${isMobile ? 'text-sm mb-2 block' : 'text-xs'}`}>
+                            Quantity
+                          </Label>
+                          <Input
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className={mobileInputClass}
+                            min={1}
+                          />
+                        </div>
+                        <div className={`rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] ${isMobile ? 'p-4' : 'p-3'} space-y-2`}>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[var(--neutral-600)]">Unit Price:</span>
+                            <span className="font-medium">{quote.unitPrice.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[var(--neutral-600)]">Subtotal:</span>
+                            <span className="font-medium">{quote.subtotal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[var(--neutral-600)]">Platform Fee:</span>
+                            <span className="font-medium">{quote.platformFee.toFixed(2)}</span>
+                          </div>
+                          <div className="pt-2 border-t border-[var(--neutral-200)] flex justify-between">
+                            <span className="font-semibold text-[var(--neutral-900)]">Total:</span>
+                            <span className="font-bold text-lg text-[var(--primary-700)]">{quote.totalPrice.toFixed(2)}</span>
+                          </div>
+                          <div className="text-xs text-[var(--neutral-500)] pt-2">
+                            Lead time: {quote.leadTimeDays} days
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </>
+            ) : (
+              <p className="text-base text-[var(--neutral-500)]">Select an object to configure toolpath and get a quote</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Material Library Modal */}
