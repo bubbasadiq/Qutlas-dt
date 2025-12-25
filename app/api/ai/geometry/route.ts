@@ -1,11 +1,7 @@
-import { streamText, tool } from "ai"
-import { createDeepseek } from "@ai-sdk/deepseek"
+import { tool } from "ai"
 import { z } from "zod"
 import { GEOMETRY_INTENT_SYSTEM_PROMPT } from "@/lib/prompts/geometry-intent-parser"
-
-const deepseek = createDeepseek({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
+import { callDeepseek } from "@/lib/geometry/deepseek-provider"
 
 export const maxDuration = 30
 
@@ -270,15 +266,39 @@ When modifying geometry:
 3. Confirm the changes made
 
 Always be helpful, precise with dimensions (default to mm), and consider manufacturability.
-If you see an image, describe what you see and how you'll interpret it for CAD creation.`
+If you see an image, describe what you see and how you'll interpret it for CAD creation.
 
-  const result = streamText({
-    model: deepseek("deepseek-chat"),
-    system: systemPrompt,
-    messages,
-    tools,
-    maxTokens: 2000,
-  })
+Respond in plain text. Tool usage has been disabled in this configuration.`
 
-  return result.toDataStreamResponse()
+  try {
+    // Format messages for Deepseek API
+    const formattedMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.map((msg: { role: string; content: string }) => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content,
+      })),
+    ]
+
+    const response = await callDeepseek(formattedMessages)
+
+    // Return as plain JSON response
+    return new Response(JSON.stringify({ message: response }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Failed to process request',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+  }
 }

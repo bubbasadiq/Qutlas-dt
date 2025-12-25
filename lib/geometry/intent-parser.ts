@@ -1,13 +1,8 @@
 // AI Geometry Intent Parser - Converts natural language to structured geometry specs
 
-import { streamText } from 'ai'
-import { createDeepseek } from '@ai-sdk/deepseek'
 import { GEOMETRY_INTENT_SYSTEM_PROMPT } from '@/lib/prompts/geometry-intent-parser'
 import type { GeometryIntent } from './operation-sequencer'
-
-const deepseek = createDeepseek({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
+import { parseIntentWithDeepseek, refineIntentWithDeepseek } from './deepseek-provider'
 
 export interface ParseIntentResult {
   intent: GeometryIntent
@@ -17,28 +12,13 @@ export interface ParseIntentResult {
 
 /**
  * Parses natural language CAD intent into structured geometry specification
- * Uses Claude Sonnet to understand user intent and extract parameters
+ * Uses Deepseek to understand user intent and extract parameters
  */
 export async function parseIntent(userIntent: string): Promise<ParseIntentResult> {
   const startTime = Date.now()
 
   try {
-    const result = await streamText({
-      model: deepseek("deepseek-chat"),
-      system: GEOMETRY_INTENT_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Parse this CAD intent into structured JSON:\n\n${userIntent}`,
-        },
-      ],
-      maxTokens: 2000,
-    })
-
-    let fullText = ''
-    for await (const chunk of result.textStream) {
-      fullText += chunk
-    }
+    const fullText = await parseIntentWithDeepseek(userIntent, GEOMETRY_INTENT_SYSTEM_PROMPT)
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
@@ -87,22 +67,7 @@ Output the UPDATED geometry JSON with the requested modifications.
 `
 
   try {
-    const result = await streamText({
-      model: deepseek("deepseek-chat"),
-      system: GEOMETRY_INTENT_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: refinementPrompt,
-        },
-      ],
-      maxTokens: 2000,
-    })
-
-    let fullText = ''
-    for await (const chunk of result.textStream) {
-      fullText += chunk
-    }
+    const fullText = await refineIntentWithDeepseek(refinementPrompt, GEOMETRY_INTENT_SYSTEM_PROMPT)
 
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
     
