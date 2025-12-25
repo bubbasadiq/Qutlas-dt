@@ -35,14 +35,17 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div 
+      className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 md:p-6" 
+      onClick={onClose}
+    >
       <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[var(--z-modal)] w-full"
+        className="w-full relative z-[var(--z-modal)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div
           className={cn(
-            "mx-auto bg-[var(--bg-surface)] rounded-[var(--radius-lg)] shadow-[var(--shadow-3)] animate-in fade-in zoom-in-95 duration-200",
+            "mx-auto bg-white dark:bg-[var(--bg-surface)] rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden",
             sizeMap[size],
           )}
         >

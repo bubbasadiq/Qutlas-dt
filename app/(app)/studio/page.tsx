@@ -356,11 +356,6 @@ function StudioContent() {
               <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
             </div>
             
-            {/* AI Geometry Generator */}
-            <div className="border-b border-[var(--neutral-200)] p-3">
-              <AIGeometryPanel />
-            </div>
-            
             {/* AI Assistant - Takes remaining space */}
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
@@ -413,7 +408,10 @@ function StudioContent() {
             
             {/* Properties panel - bottom half */}
             <div className="flex-1 overflow-y-auto">
-              <PropertiesPanel selectedObject={selectedObjectId || undefined} />
+              <PropertiesPanel 
+                selectedObject={selectedObjectId || undefined} 
+                selectedObjects={selectedObjectIds}
+              />
             </div>
           </div>
         </div>
@@ -526,7 +524,10 @@ function StudioContent() {
         title="Properties"
       >
         <div className="pb-4">
-          <PropertiesPanel selectedObject={selectedObjectId || undefined} />
+          <PropertiesPanel 
+            selectedObject={selectedObjectId || undefined} 
+            selectedObjects={selectedObjectIds}
+          />
         </div>
       </BottomSheet>
 
@@ -536,19 +537,16 @@ function StudioContent() {
         onClose={() => setShowAISheet(false)}
         title="AI Assistant"
       >
-        <div className="pb-4 space-y-4">
-          <AIGeometryPanel />
-          <div className="border-t border-gray-100 pt-4">
-            <IntentChat
-              variant="workspace"
-              placeholder="Describe what to create or modify..."
-              onGeometryGenerated={(geo) => {
-                handleGeometryGenerated(geo)
-                setShowAISheet(false)
-              }}
-              initialIntent={initialIntent}
-            />
-          </div>
+        <div className="pb-4">
+          <IntentChat
+            variant="workspace"
+            placeholder="Describe what to create or modify..."
+            onGeometryGenerated={(geo) => {
+              handleGeometryGenerated(geo)
+              setShowAISheet(false)
+            }}
+            initialIntent={initialIntent}
+          />
         </div>
       </BottomSheet>
 

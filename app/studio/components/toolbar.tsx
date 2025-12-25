@@ -20,7 +20,20 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
-  const { objects, clearWorkspace, addObject, undo, redo, canUndo, canRedo, selectedObjectId, deleteObject, selectObject } = useWorkspace()
+  const { 
+    objects, 
+    clearWorkspace, 
+    addObject, 
+    undo, 
+    redo, 
+    canUndo, 
+    canRedo, 
+    selectedObjectId, 
+    selectedObjectIds,
+    deleteObject, 
+    selectObject,
+    performBoolean
+  } = useWorkspace()
   const isMobile = useIsMobile()
   const router = useRouter()
   const [saved, setSaved] = useState(true)
@@ -243,9 +256,57 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   ]
 
   const modifyMenuItems: MenuItem[] = [
-    { id: 'union', label: 'Boolean Union', icon: 'layers', shortcut: ['u'], onClick: () => toast.info('Boolean Union - Coming soon') },
-    { id: 'subtract', label: 'Boolean Subtract', icon: 'minus', shortcut: ['l'], onClick: () => toast.info('Boolean Subtract - Coming soon') },
-    { id: 'intersect', label: 'Boolean Intersect', icon: 'intersect', shortcut: ['i'], onClick: () => toast.info('Boolean Intersect - Coming soon') },
+    { 
+      id: 'union', 
+      label: 'Boolean Union', 
+      icon: 'layers', 
+      shortcut: ['u'], 
+      onClick: () => {
+        if (selectedObjectIds.length > 1) {
+          toast.promise(performBoolean('union', selectedObjectIds[0], selectedObjectIds[1]), {
+            loading: 'Performing union...',
+            success: 'Objects combined',
+            error: 'Union failed'
+          });
+        } else {
+          toast.info('Select at least 2 objects to union');
+        }
+      }
+    },
+    { 
+      id: 'subtract', 
+      label: 'Boolean Subtract', 
+      icon: 'minus', 
+      shortcut: ['l'], 
+      onClick: () => {
+        if (selectedObjectIds.length > 1) {
+          toast.promise(performBoolean('subtract', selectedObjectIds[0], selectedObjectIds[1]), {
+            loading: 'Performing subtraction...',
+            success: 'Object subtracted',
+            error: 'Subtraction failed'
+          });
+        } else {
+          toast.info('Select base and tool objects to subtract');
+        }
+      }
+    },
+    { 
+      id: 'intersect', 
+      label: 'Boolean Intersect', 
+      icon: 'intersect', 
+      shortcut: ['i'], 
+      onClick: () => {
+        if (selectedObjectIds.length > 1) {
+          toast.promise(performBoolean('intersect', selectedObjectIds[0], selectedObjectIds[1]), {
+            loading: 'Performing intersection...',
+            success: 'Intersection complete',
+            error: 'Intersection failed'
+          });
+        } else {
+          toast.info('Select at least 2 objects to intersect');
+        }
+      }
+    },
   ]
 
   const featuresMenuItems: MenuItem[] = [

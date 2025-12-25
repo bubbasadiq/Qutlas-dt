@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { useAIGeometry } from "@/hooks/use-ai-geometry"
 import { toast } from "sonner"
 
 interface AttachedFile {
@@ -63,6 +64,14 @@ export function IntentChat({
   } catch (error) {
     console.warn("Workspace context not available in IntentChat")
   }
+
+  const { 
+    isGenerating, 
+    progress, 
+    status: aiStatus, 
+    error: aiError, 
+    generateGeometry 
+  } = useAIGeometry()
 
   const { append, status, isLoading } = useChat({
     api: "/api/ai/generate",
@@ -218,7 +227,18 @@ export function IntentChat({
     setInput("")
     setAttachedFiles([])
 
-    // Send to AI
+    // If in workspace, use the specialized geometry generation engine
+    if (variant === "workspace") {
+      try {
+        await generateGeometry(userInput)
+      } catch (err) {
+        // Error is handled by the hook and displayed in UI
+        console.error("AI Generation error:", err)
+      }
+      return
+    }
+
+    // Otherwise use standard chat (for hero/minimal)
     await append({
       role: "user",
       content: content.length === 1 ? userInput : content,
@@ -233,9 +253,9 @@ export function IntentChat({
   }
 
   const suggestions = [
-    "Create a bracket with mounting holes",
-    "Make a gear with 24 teeth",
-    "Design a cylindrical shaft",
+    "Create a 100mm bracket with holes",
+    "Design a gear with 20 teeth",
+    "Make an aluminum cylinder",
   ]
 
   // Hero variant - Landing page
@@ -374,10 +394,20 @@ export function IntentChat({
         )}
 
         {/* Loading indicator */}
-        {isLoading && (
-          <div className="mb-3 flex items-center gap-2 text-sm text-[var(--neutral-500)]">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>AI is analyzing your request...</span>
+        {(isLoading || isGenerating) && (
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-[var(--neutral-600)]">
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--primary-600)]" />
+              <span>{isGenerating ? aiStatus : "AI is analyzing your request..."}</span>
+            </div>
+            {isGenerating && (
+              <div className="w-full bg-[var(--neutral-100)] rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="bg-[var(--primary-600)] h-full transition-all duration-300" 
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -163,6 +163,23 @@ async function handleOperation(operation: string, payload: any): Promise<any> {
         mesh: convertMeshToTransferable(mesh)
       };
     }
+
+    case 'LOAD_MESH': {
+      const { mesh: meshData } = payload;
+      const mesh = new CadmiumCore.Mesh(
+        meshData.vertices,
+        meshData.indices,
+        meshData.normals || []
+      );
+      const geometryId = generateGeometryId();
+      
+      addToCache(geometryId, mesh);
+      
+      return {
+        geometryId,
+        mesh: convertMeshToTransferable(mesh)
+      };
+    }
     
     // ===== BOOLEAN OPERATIONS =====
     case 'BOOLEAN_UNION': {

@@ -12,61 +12,91 @@ export interface MeshGeneratorInput {
   selected?: boolean;
   visible?: boolean;
   color?: string;
+  meshData?: {
+    vertices: number[] | Float32Array;
+    indices: number[] | Uint32Array;
+    normals?: number[] | Float32Array;
+  };
 }
 
 /**
- * Generates a THREE.js mesh from geometry metadata using pure THREE.js primitives
- * @param input Geometry metadata including type, dimensions, and features
+ * Generates a THREE.js mesh from geometry metadata
+ * @param input Geometry metadata including type, dimensions, and optional meshData
  * @returns THREE.Mesh ready to be added to the scene
  */
 export function generateMesh(input: MeshGeneratorInput): THREE.Mesh {
-  const { type, dimensions, selected, color } = input;
+  const { type, dimensions, selected, color, meshData } = input;
 
   let geometry: THREE.BufferGeometry;
 
-  // Generate geometry using THREE.js primitives directly
-  switch (type) {
-    case 'box': {
-      const width = dimensions.width || dimensions.length || 100;
-      const height = dimensions.height || 100;
-      const depth = dimensions.depth || dimensions.width || 100;
-      geometry = new THREE.BoxGeometry(width, height, depth);
-      break;
+  // If pre-generated mesh data is provided (e.g. from Cadmium), use it
+  if (meshData && meshData.vertices && meshData.indices) {
+    geometry = new THREE.BufferGeometry();
+    
+    const vertices = meshData.vertices instanceof Float32Array 
+      ? meshData.vertices 
+      : new Float32Array(meshData.vertices);
+      
+    const indices = meshData.indices instanceof Uint32Array 
+      ? meshData.indices 
+      : new Uint32Array(meshData.indices);
+      
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    
+    if (meshData.normals) {
+      const normals = meshData.normals instanceof Float32Array 
+        ? meshData.normals 
+        : new Float32Array(meshData.normals);
+      geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    } else {
+      geometry.computeVertexNormals();
     }
+  } else {
+    // Generate geometry using THREE.js primitives as fallback
+    switch (type) {
+      case 'box': {
+        const width = dimensions.width || dimensions.length || 100;
+        const height = dimensions.height || 100;
+        const depth = dimensions.depth || dimensions.width || 100;
+        geometry = new THREE.BoxGeometry(width, height, depth);
+        break;
+      }
 
-    case 'cylinder': {
-      const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
-      const height = dimensions.height || 100;
-      geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-      break;
-    }
+      case 'cylinder': {
+        const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
+        const height = dimensions.height || 100;
+        geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+        break;
+      }
 
-    case 'sphere': {
-      const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
-      geometry = new THREE.SphereGeometry(radius, 32, 32);
-      break;
-    }
+      case 'sphere': {
+        const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
+        geometry = new THREE.SphereGeometry(radius, 32, 32);
+        break;
+      }
 
-    case 'cone': {
-      const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
-      const height = dimensions.height || 100;
-      geometry = new THREE.ConeGeometry(radius, height, 32);
-      break;
-    }
+      case 'cone': {
+        const radius = dimensions.radius || (dimensions.diameter ? dimensions.diameter / 2 : 50);
+        const height = dimensions.height || 100;
+        geometry = new THREE.ConeGeometry(radius, height, 32);
+        break;
+      }
 
-    case 'torus': {
-      const majorRadius = dimensions.majorRadius || dimensions.radius || 100;
-      const minorRadius = dimensions.minorRadius || dimensions.tube || 30;
-      geometry = new THREE.TorusGeometry(majorRadius, minorRadius, 16, 48);
-      break;
-    }
+      case 'torus': {
+        const majorRadius = dimensions.majorRadius || dimensions.radius || 100;
+        const minorRadius = dimensions.minorRadius || dimensions.tube || 30;
+        geometry = new THREE.TorusGeometry(majorRadius, minorRadius, 16, 48);
+        break;
+      }
 
-    default: {
-      const width = dimensions.width || dimensions.length || 100;
-      const height = dimensions.height || 100;
-      const depth = dimensions.depth || dimensions.width || 100;
-      geometry = new THREE.BoxGeometry(width, height, depth);
-      break;
+      default: {
+        const width = dimensions.width || dimensions.length || 100;
+        const height = dimensions.height || 100;
+        const depth = dimensions.depth || dimensions.width || 100;
+        geometry = new THREE.BoxGeometry(width, height, depth);
+        break;
+      }
     }
   }
 
@@ -117,5 +147,6 @@ export function workspaceObjectToMeshInput(obj: WorkspaceObject): MeshGeneratorI
     selected: obj.selected,
     visible: obj.visible,
     color: obj.color,
+    meshData: obj.meshData,
   };
 }
