@@ -104,30 +104,18 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
   }, [])
 
   const formatPrice = useCallback((amount: number, options: { showCode?: boolean } = {}) => {
-    const { showCode = false } = options
-    
-    // Format based on currency
-    if (currency.code === "NGN") {
-      // Nigerian Naira formatting
-      const formatted = new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)
-      
-      return showCode ? `${formatted} ${currency.code}` : formatted
-    } else {
-      // Default USD formatting
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)
-      
-      return showCode ? `${formatted} ${currency.code}` : formatted
-    }
+    const { showCode = true } = options
+
+    // IMPORTANT: Do not render the USD symbol anywhere in the UI.
+    // We format as a plain number and append the currency code.
+    const locale = currency.code === "NGN" ? "en-NG" : "en-US"
+    const formattedNumber = new Intl.NumberFormat(locale, {
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+
+    return showCode ? `${formattedNumber} ${currency.code}` : formattedNumber
   }, [currency])
 
   const convertPrice = useCallback((amount: number, fromCurrency: string, toCurrency: string) => {

@@ -5,7 +5,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import { useWorkspace } from "@/hooks/use-workspace"
-import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
 
@@ -35,7 +34,6 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const [isUploadHover, setIsUploadHover] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
-  const cadmium = useCadmiumWorker()
   
   const activeTool = externalActiveTool || contextActiveTool
 
@@ -45,20 +43,59 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     const uploadToast = toast.loading(`Uploading ${file.name}...`)
     
     try {
-      // For MVP: Create a default box when file is uploaded
-      // Full CAD file parsing will be implemented later
-      const result = await cadmium.createBox(100, 50, 25)
-      addObject(result.geometryId, { 
-        type: 'box',
+      // Upload the raw CAD file to Supabase Storage via the S3-compatible endpoint.
+      const objectKey = `uploads/${Date.now()}-${file.name}`
+      const presignRes = await fetch("/api/storage/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bucket: "cad-files",
+          key: objectKey,
+          method: "PUT",
+          expiresInSeconds: 60 * 10,
+        }),
+      })
+
+      if (!presignRes.ok) {
+        const err = await presignRes.json().catch(() => ({}))
+        throw new Error(err.error || "Failed to prepare upload")
+      }
+
+      const { url } = await presignRes.json()
+
+      const uploadRes = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      })
+
+      if (!uploadRes.ok) {
+        const text = await uploadRes.text().catch(() => "")
+        throw new Error(`Upload failed (${uploadRes.status}): ${text}`)
+      }
+
+      // Add a usable placeholder object in the scene.
+      const id = `geo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+      addObject(id, {
+        type: "box",
         dimensions: { width: 100, height: 50, depth: 25 },
         params: { length: 100, width: 50, height: 25 },
         description: file.name,
+        sourceFile: {
+          bucket: "cad-files",
+          key: objectKey,
+          filename: file.name,
+          contentType: file.type || "application/octet-stream",
+        },
       })
-      selectObject(result.geometryId)
-      toast.success('File uploaded successfully', { id: uploadToast })
+
+      selectObject(id)
+      toast.success("File uploaded successfully", { id: uploadToast })
     } catch (error) {
-      toast.error('Failed to upload file', { id: uploadToast })
-      console.error('Upload error:', error)
+      toast.error(error instanceof Error ? error.message : "Failed to upload file", { id: uploadToast })
+      console.error("Upload error:", error)
     } finally {
       setIsUploading(false)
     }

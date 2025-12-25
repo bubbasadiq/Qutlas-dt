@@ -14,7 +14,6 @@ import { SettingsDialog } from "./settings-dialog"
 import { HelpDialog } from "./help-dialog"
 import { MenuButton, MenuItem } from "@/components/toolbar-menu"
 import { shortcutsRegistry, Keys } from "@/lib/shortcuts-registry"
-import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 
 interface ToolbarProps {
   onMobileMenuOpen?: () => void
@@ -24,7 +23,6 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   const { objects, clearWorkspace, addObject, undo, redo, canUndo, canRedo, selectedObjectId, deleteObject, selectObject } = useWorkspace()
   const isMobile = useIsMobile()
   const router = useRouter()
-  const cadmium = useCadmiumWorker()
   const [saved, setSaved] = useState(true)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
@@ -140,71 +138,55 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
 
     try {
       for (const file of files) {
-        // For MVP, create a default box for each file
-        const result = await cadmium.createBox(100, 50, 25)
-        addObject(result.geometryId, {
-          type: 'box',
+        // Upload/parsing is handled elsewhere; for now we add a usable placeholder shape
+        const id = `geo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+        addObject(id, {
+          type: "box",
           dimensions: { width: 100, height: 50, depth: 25 },
           params: { length: 100, width: 50, height: 25 },
           description: file.name,
         })
-        selectObject(result.geometryId)
+        selectObject(id)
       }
 
-      toast.success(`Imported ${files.length} file${files.length > 1 ? 's' : ''} successfully`, { id: importToast })
+      toast.success(`Imported ${files.length} file${files.length > 1 ? "s" : ""} successfully`, { id: importToast })
     } catch (error) {
-      toast.error('Failed to import files', { id: importToast })
+      toast.error("Failed to import files", { id: importToast })
     }
   }
 
   const createGeometry = useCallback(async (type: string) => {
     const toastId = toast.loading(`Creating ${type}...`)
-    try {
-      let result
-      switch (type) {
-        case 'box':
-          result = await cadmium.createBox(100, 100, 100)
-          break
-        case 'cylinder':
-          result = await cadmium.createCylinder(50, 100)
-          break
-        case 'sphere':
-          result = await cadmium.createSphere(50)
-          break
-        case 'cone':
-          result = await cadmium.createCone(50, 100)
-          break
-        case 'torus':
-          result = await cadmium.createTorus(50, 15)
-          break
-        default:
-          throw new Error(`Unknown geometry type: ${type}`)
-      }
 
-      const id = result.geometryId || `geo_${Date.now()}`
+    try {
+      // Geometry preview in the studio is generated client-side (THREE/Cadmium fallback).
+      // We create the object immediately so users can always build shapes.
+      const id = `geo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
       const dimensions: Record<string, number> = {}
 
       switch (type) {
-        case 'box':
+        case "box":
           dimensions.width = 100
           dimensions.height = 100
           dimensions.depth = 100
           break
-        case 'cylinder':
+        case "cylinder":
           dimensions.radius = 50
           dimensions.height = 100
           break
-        case 'sphere':
+        case "sphere":
           dimensions.radius = 50
           break
-        case 'cone':
+        case "cone":
           dimensions.radius = 50
           dimensions.height = 100
           break
-        case 'torus':
+        case "torus":
           dimensions.majorRadius = 50
           dimensions.minorRadius = 15
           break
+        default:
+          throw new Error(`Unknown geometry type: ${type}`)
       }
 
       addObject(id, {
@@ -214,11 +196,12 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
         description: `${type.charAt(0).toUpperCase() + type.slice(1)} ${id.slice(-4)}`,
       })
       selectObject(id)
+
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} created`, { id: toastId })
     } catch (error) {
       toast.error(`Failed to create ${type}`, { id: toastId })
     }
-  }, [cadmium, addObject, selectObject])
+  }, [addObject, selectObject])
   
   // Define menu items
   const fileMenuItems: MenuItem[] = [

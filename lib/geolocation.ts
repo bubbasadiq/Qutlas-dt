@@ -86,22 +86,22 @@ export function getCurrencyByCountry(countryCode: string): CurrencyInfo {
     NGA: { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
     
     // United States and territories
-    US: { code: "USD", symbol: "$", name: "US Dollar" },
-    USA: { code: "USD", symbol: "$", name: "US Dollar" },
-    
+    US: { code: "USD", symbol: "USD", name: "US Dollar" },
+    USA: { code: "USD", symbol: "USD", name: "US Dollar" },
+
     // Other countries default to USD
     // Add more country mappings as needed
-    GB: { code: "USD", symbol: "$", name: "US Dollar" },
-    CA: { code: "USD", symbol: "$", name: "US Dollar" },
-    AU: { code: "USD", symbol: "$", name: "US Dollar" },
-    DE: { code: "USD", symbol: "$", name: "US Dollar" },
-    FR: { code: "USD", symbol: "$", name: "US Dollar" },
-    JP: { code: "USD", symbol: "$", name: "US Dollar" },
-    IN: { code: "USD", symbol: "$", name: "US Dollar" },
-    BR: { code: "USD", symbol: "$", name: "US Dollar" },
-    ZA: { code: "USD", symbol: "$", name: "US Dollar" },
-    KE: { code: "USD", symbol: "$", name: "US Dollar" },
-    GH: { code: "USD", symbol: "$", name: "US Dollar" },
+    GB: { code: "USD", symbol: "USD", name: "US Dollar" },
+    CA: { code: "USD", symbol: "USD", name: "US Dollar" },
+    AU: { code: "USD", symbol: "USD", name: "US Dollar" },
+    DE: { code: "USD", symbol: "USD", name: "US Dollar" },
+    FR: { code: "USD", symbol: "USD", name: "US Dollar" },
+    JP: { code: "USD", symbol: "USD", name: "US Dollar" },
+    IN: { code: "USD", symbol: "USD", name: "US Dollar" },
+    BR: { code: "USD", symbol: "USD", name: "US Dollar" },
+    ZA: { code: "USD", symbol: "USD", name: "US Dollar" },
+    KE: { code: "USD", symbol: "USD", name: "US Dollar" },
+    GH: { code: "USD", symbol: "USD", name: "US Dollar" },
   }
   
   // Return the currency info for the country, default to USD if not found

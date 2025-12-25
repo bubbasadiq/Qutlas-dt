@@ -17,7 +17,6 @@ import { IntentChat } from "@/components/intent-chat"
 import { AIGeometryPanel } from "@/components/ai-geometry-panel"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
-import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { toast } from "sonner"
 import { mapErrorMessage } from "@/lib/error-utils"
@@ -27,7 +26,6 @@ import * as Icons from "lucide-react"
 function StudioContent() {
   const searchParams = useSearchParams()
   const isMobile = useIsMobile()
-  const cadmium = useCadmiumWorker()
   const [activeTool, setActiveTool] = useState<string>("select")
   const [viewType, setViewType] = useState("iso")
   const [initialIntent, setInitialIntent] = useState<string | undefined>(undefined)
