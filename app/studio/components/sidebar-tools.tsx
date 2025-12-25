@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Intersection, Disc } from "lucide-react"
+import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Crosshair, Disc } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -27,7 +27,7 @@ const tools: Tool[] = [
 const booleanTools: Tool[] = [
   { id: "union", label: "Union", icon: Plus, shortcut: "U" },
   { id: "subtract", label: "Subtract", icon: Minus, shortcut: "D" },
-  { id: "intersect", label: "Intersect", icon: Intersection, shortcut: "I" },
+  { id: "intersect", label: "Intersect", icon: Crosshair, shortcut: "I" },
   { id: "hole", label: "Hole", icon: Disc, shortcut: "H" },
 ]
 
