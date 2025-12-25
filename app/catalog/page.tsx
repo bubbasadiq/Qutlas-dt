@@ -22,8 +22,20 @@ const categories = [
   { id: "gears", label: "Gears" },
 ]
 
-const materials = ["Aluminum", "Steel", "Brass", "ABS", "Nylon"]
-const processes = ["CNC Milling", "Laser Cutting", "3D Printing", "Sheet Metal"]
+const materials = [
+  { name: "Aluminum", checked: false },
+  { name: "Steel", checked: false },
+  { name: "Brass", checked: false },
+  { name: "ABS", checked: false },
+  { name: "Nylon", checked: false }
+]
+
+const processes = [
+  { name: "CNC Milling", checked: false },
+  { name: "Laser Cutting", checked: false },
+  { name: "3D Printing", checked: false },
+  { name: "Sheet Metal", checked: false }
+]
 
 interface CatalogPart {
   id: string
@@ -51,6 +63,9 @@ function CatalogContent() {
   const [parts, setParts] = useState<CatalogPart[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
+  const [selectedProcesses, setSelectedProcesses] = useState<string[]>([])
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000])
 
   const fetchParts = useCallback(async () => {
     setIsLoading(true)
@@ -62,6 +77,14 @@ function CatalogContent() {
       if (searchQuery) {
         params.set("search", searchQuery)
       }
+      if (selectedMaterials.length > 0) {
+        params.set("materials", selectedMaterials.join(","))
+      }
+      if (selectedProcesses.length > 0) {
+        params.set("processes", selectedProcesses.join(","))
+      }
+      params.set("minPrice", priceRange[0].toString())
+      params.set("maxPrice", priceRange[1].toString())
 
       const response = await fetch(`/api/catalog?${params.toString()}`)
       if (response.ok) {
@@ -74,7 +97,7 @@ function CatalogContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [activeCategory, searchQuery])
+  }, [activeCategory, searchQuery, selectedMaterials, selectedProcesses, priceRange])
 
   useEffect(() => {
     fetchParts()
@@ -177,17 +200,27 @@ function CatalogContent() {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">
-                Materials
-              </h3>
-              <div className="space-y-2">
-                {materials.map((mat) => (
-                  <label key={mat} className="flex items-center gap-2 text-sm text-[var(--neutral-700)] cursor-pointer">
-                    <input type="checkbox" className="rounded border-[var(--neutral-300)]" />
-                    {mat}
-                  </label>
-                ))}
-              </div>
+             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">
+               Materials
+             </h3>
+             <div className="space-y-2">
+               {materials.map((mat) => (
+                 <label key={mat.name} className="flex items-center gap-2 text-sm text-[var(--neutral-700)] cursor-pointer">
+                   <input
+                     type="checkbox"
+                     checked={selectedMaterials.includes(mat.name)}
+                     onChange={() => {
+                       const newMaterials = selectedMaterials.includes(mat.name)
+                         ? selectedMaterials.filter(m => m !== mat.name)
+                         : [...selectedMaterials, mat.name]
+                       setSelectedMaterials(newMaterials)
+                     }}
+                     className="rounded border-[var(--neutral-300)]"
+                   />
+                   {mat.name}
+                 </label>
+               ))}
+             </div>
             </div>
 
             <div className="mb-6">
@@ -195,13 +228,57 @@ function CatalogContent() {
               <div className="space-y-2">
                 {processes.map((proc) => (
                   <label
-                    key={proc}
+                    key={proc.name}
                     className="flex items-center gap-2 text-sm text-[var(--neutral-700)] cursor-pointer"
                   >
-                    <input type="checkbox" className="rounded border-[var(--neutral-300)]" />
-                    {proc}
+                    <input 
+                      type="checkbox"
+                      checked={selectedProcesses.includes(proc.name)}
+                      onChange={() => {
+                        const newProcesses = selectedProcesses.includes(proc.name)
+                          ? selectedProcesses.filter(p => p !== proc.name)
+                          : [...selectedProcesses, proc.name]
+                        setSelectedProcesses(newProcesses)
+                      }}
+                      className="rounded border-[var(--neutral-300)]"
+                    />
+                    {proc.name}
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">Price Range</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--neutral-600)]">${priceRange[0]}</span>
+                  <div className="flex-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      value={priceRange[0]}
+                      onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--neutral-600)]">${priceRange[1]}</span>
+                  <div className="flex-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      value={priceRange[1]}
+                      onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

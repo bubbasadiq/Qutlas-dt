@@ -53,6 +53,23 @@ export const jobsApi = {
   list: (token: string) => fetchApi("/jobs", { token }),
 }
 
+// Statistics endpoints
+export const statsApi = {
+  getPlatformStats: () => fetchApi("/stats/platform"),
+  getUserStats: (token: string) => fetchApi("/stats/user", { token }),
+  getRecentProjects: (token: string) => fetchApi("/stats/recent-projects", { token }),
+  getFeaturedProjects: () => fetchApi("/stats/featured-projects"),
+  getTestimonials: () => fetchApi("/stats/testimonials"),
+}
+
+// Projects endpoints
+export const projectsApi = {
+  list: (token: string) => fetchApi("/projects", { token }),
+  create: (data: any, token: string) => fetchApi("/projects", { method: "POST", body: JSON.stringify(data), token }),
+  getById: (id: string, token: string) => fetchApi(`/projects/${id}`, { token }),
+  update: (id: string, token: string, data: any) => fetchApi(`/projects/${id}`, { method: "PUT", body: JSON.stringify(data), token }),
+}
+
 // Upload endpoints
 export const uploadApi = {
   asset: (file: File, token: string) => {
