@@ -1,10 +1,24 @@
-export type ManufacturabilitySeverity = "error" | "warning" | "info"
+// lib/manufacturability/assess.ts
+// Complete manufacturability assessment engine
+
+import { 
+  ALL_CONSTRAINT_CHECKS, 
+  type ConstraintCheck, 
+  type ConstraintParams,
+  type ConstraintViolation,
+  type Severity 
+} from './constraints'
+
+export { type ConstraintViolation, type Severity }
 
 export interface ManufacturabilityIssue {
   id: string
-  severity: ManufacturabilitySeverity
+  severity: Severity
+  category: string
   message: string
   fix: string
+  currentValue?: number
+  recommendedValue?: number
 }
 
 export interface ManufacturabilityResult {
@@ -12,104 +26,236 @@ export interface ManufacturabilityResult {
   issues: ManufacturabilityIssue[]
   passedChecks: number
   totalChecks: number
+  confidence: number
+  estimatedCost: number
+  warnings: string[]
+  compatible: boolean
 }
 
-function normalize(s: string | undefined) {
-  return (s || "").trim().toLowerCase()
+export interface ManufacturabilityAssessmentInput {
+  dimensions: Record<string, number>
+  features: Array<{ type: string; parameters: Record<string, any> }>
+  material: string
+  process: string
+  quantity?: number
 }
 
-export function assessManufacturability(params: {
-  parameters: Record<string, any>
-  process?: string
-}): ManufacturabilityResult {
-  const process = normalize(params.process)
-  const isCnc = process.includes("cnc") || process.includes("milling") || process.includes("machin")
-  const isPrinting = process.includes("print") || process.includes("additive")
+// Severity weights for score calculation
+const SEVERITY_WEIGHTS: Record<Severity, number> = {
+  critical: 20,
+  error: 15,
+  warning: 8,
+  info: 2,
+}
 
-  const rules: Array<{
-    id: string
-    severity: ManufacturabilitySeverity
-    check: (p: Record<string, any>) => boolean
-    message: string
-    fix: string
-  }> = []
+// Calculate manufacturability score from violations
+function calculateScore(violations: ManufacturabilityIssue[]): number {
+  if (violations.length === 0) return 100
+  
+  const totalDeduction = violations.reduce((sum, v) => {
+    return sum + SEVERITY_WEIGHTS[v.severity]
+  }, 0)
+  
+  return Math.max(0, 100 - totalDeduction)
+}
 
-  // Process-specific baseline constraints
-  if (isPrinting) {
-    rules.push({
-      id: "min_wall_thickness",
-      severity: "error",
-      check: (p) => (p.wallThickness ?? p.wall_thickness ?? 0) >= 0.8,
-      message: "Wall thickness must be at least 0.8mm for most additive processes",
-      fix: "Increase wall thickness to 0.8mm or greater",
-    })
-  } else if (isCnc) {
-    rules.push({
-      id: "min_wall_thickness",
-      severity: "error",
-      check: (p) => (p.wallThickness ?? p.wall_thickness ?? 0) >= 2,
-      message: "Wall thickness must be at least 2mm for CNC milling",
-      fix: "Increase wall thickness to 2mm or greater",
-    })
-  }
+// Check if the design is manufacturable
+function isManufacturable(violations: ManufacturabilityIssue[]): boolean {
+  // Critical or error violations make it not manufacturable
+  const criticalOrErrors = violations.filter(v => 
+    v.severity === 'critical' || v.severity === 'error'
+  )
+  return criticalOrErrors.length === 0
+}
 
-  rules.push({
-    id: "min_hole_diameter",
-    severity: "warning",
-    check: (p) => !p.holeDiameter || p.holeDiameter >= 3,
-    message: "Hole diameter should be at least 3mm for standard tooling",
-    fix: "Increase hole diameter or specify specialty tooling",
-  })
-
-  rules.push({
-    id: "aspect_ratio",
-    severity: "info",
-    check: (p) => {
-      const length = p.length ?? p.width ?? p.x
-      const width = p.width ?? p.depth ?? p.y
-      const height = p.height ?? p.depth ?? p.z
-      if (!length || !width || !height) return true
-      const maxDim = Math.max(length, width, height)
-      const minDim = Math.min(length, width, height)
-      return maxDim / minDim <= 10
-    },
-    message: "High aspect ratio may cause vibration or warping during manufacturing",
-    fix: "Consider adding fixtures/supports or reducing aspect ratio",
-  })
-
-  rules.push({
-    id: "hole_to_edge",
-    severity: "warning",
-    check: (p) => {
-      if (!p.holeDiameter || !p.width) return true
-      return p.width / 2 > p.holeDiameter * 1.5
-    },
-    message: "Holes should be at least 1.5x diameter from the edge",
-    fix: "Move holes further from edges or reduce hole diameter",
-  })
-
-  let passedChecks = 0
-  const issues: ManufacturabilityIssue[] = []
-
-  for (const rule of rules) {
-    const passed = rule.check(params.parameters)
-    if (passed) passedChecks++
-    else {
-      issues.push({
-        id: rule.id,
-        severity: rule.severity,
-        message: rule.message,
-        fix: rule.fix,
-      })
+// Estimate additional cost due to manufacturability issues
+function estimateCostImpact(
+  violations: ManufacturabilityIssue[],
+  baseCost: number
+): number {
+  let impactMultiplier = 1.0
+  
+  for (const v of violations) {
+    switch (v.severity) {
+      case 'critical':
+        impactMultiplier *= 1.5 // May require special handling
+        break
+      case 'error':
+        impactMultiplier *= 1.25 // May require rework
+        break
+      case 'warning':
+        impactMultiplier *= 1.1 // May need extra care
+        break
+      case 'info':
+        impactMultiplier *= 1.02 // Minor consideration
+        break
     }
   }
+  
+  return baseCost * impactMultiplier
+}
 
-  const score = rules.length === 0 ? 100 : Math.round((passedChecks / rules.length) * 100)
-
+export function assessManufacturability(
+  input: ManufacturabilityAssessmentInput
+): ManufacturabilityResult {
+  const { dimensions, features, material, process, quantity = 1 } = input
+  
+  const params: ConstraintParams = {
+    dimensions,
+    features,
+    material,
+    process,
+  }
+  
+  const violations: ManufacturabilityIssue[] = []
+  let passedChecks = 0
+  let totalChecks = ALL_CONSTRAINT_CHECKS.length
+  
+  // Run all constraint checks
+  for (const check of ALL_CONSTRAINT_CHECKS) {
+    try {
+      const result = check.check(params)
+      totalChecks++
+      
+      if (result.passed) {
+        passedChecks++
+      } else if (result.violation) {
+        violations.push(result.violation)
+      }
+    } catch (error) {
+      // Skip check if it fails
+      console.warn(`Manufacturability check ${check.id} failed:`, error)
+    }
+  }
+  
+  // Sort violations by severity
+  const severityOrder: Record<Severity, number> = {
+    critical: 0,
+    error: 1,
+    warning: 2,
+    info: 3,
+  }
+  violations.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
+  
+  // Calculate score
+  const score = calculateScore(violations)
+  
+  // Check if manufacturable
+  const compatible = isManufacturable(violations)
+  
+  // Estimate cost impact (base on quantity)
+  const baseCost = quantity * 1000
+  const estimatedCost = estimateCostImpact(violations, baseCost)
+  
+  // Calculate confidence (based on how many checks passed)
+  const confidence = passedChecks / totalChecks
+  
+  // Extract warnings
+  const warnings = violations
+    .filter(v => v.severity === 'warning' || v.severity === 'info')
+    .map(v => v.message)
+  
   return {
     score,
-    issues,
+    issues: violations,
     passedChecks,
-    totalChecks: rules.length,
+    totalChecks,
+    confidence,
+    estimatedCost,
+    warnings,
+    compatible,
+  }
+}
+
+// Create a simplified result for UI display
+export interface SimplifiedManufacturabilityResult {
+  score: number
+  rating: 'excellent' | 'good' | 'fair' | 'poor' | 'critical'
+  issues: {
+    errors: ManufacturabilityIssue[]
+    warnings: ManufacturabilityIssue[]
+    info: ManufacturabilityIssue[]
+  }
+  manufacturability: string
+}
+
+export function simplifyResult(result: ManufacturabilityResult): SimplifiedManufacturabilityResult {
+  const rating: SimplifiedManufacturabilityResult['rating'] = 
+    result.score >= 90 ? 'excellent' :
+    result.score >= 75 ? 'good' :
+    result.score >= 60 ? 'fair' :
+    result.score >= 40 ? 'poor' : 'critical'
+  
+  const manufacturability = result.compatible
+    ? result.score >= 75 ? 'This design is manufacturable with standard processes'
+      : result.score >= 60 ? 'This design is manufacturable with minor adjustments'
+      : 'This design requires significant changes for manufacturing'
+    : 'This design cannot be manufactured with current settings'
+  
+  return {
+    score: result.score,
+    rating,
+    issues: {
+      errors: result.issues.filter(v => v.severity === 'critical' || v.severity === 'error'),
+      warnings: result.issues.filter(v => v.severity === 'warning'),
+      info: result.issues.filter(v => v.severity === 'info'),
+    },
+    manufacturability,
+  }
+}
+
+// Get color class for score display
+export function getScoreColorClass(score: number): string {
+  if (score >= 80) return 'text-green-600'
+  if (score >= 60) return 'text-yellow-600'
+  if (score >= 40) return 'text-orange-600'
+  return 'text-red-600'
+}
+
+// Get background color class for score display
+export function getScoreBgColorClass(score: number): string {
+  if (score >= 80) return 'bg-green-100'
+  if (score >= 60) return 'bg-yellow-100'
+  if (score >= 40) return 'bg-orange-100'
+  return 'bg-red-100'
+}
+
+// Get icon name for severity
+export function getSeverityIcon(severity: Severity): string {
+  switch (severity) {
+    case 'critical':
+      return 'alert-octagon'
+    case 'error':
+      return 'alert-circle'
+    case 'warning':
+      return 'alert-triangle'
+    case 'info':
+      return 'info'
+    default:
+      return 'info'
+  }
+}
+
+// Export helper for formatting
+export function formatScoreDisplay(score: number): string {
+  return `${score}/100`
+}
+
+// Validate that all required parameters are present
+export function validateAssessmentInput(
+  input: Partial<ManufacturabilityAssessmentInput>
+): { valid: boolean; missing: string[] } {
+  const required: (keyof ManufacturabilityAssessmentInput)[] = [
+    'dimensions',
+    'features',
+    'material',
+    'process',
+  ]
+  
+  const missing = required.filter(field => !input[field])
+  
+  return {
+    valid: missing.length === 0,
+    missing,
   }
 }

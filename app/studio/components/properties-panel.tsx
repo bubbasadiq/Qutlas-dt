@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,9 +10,10 @@ import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
 import { MaterialLibrary, MATERIALS, type Material } from "@/components/material-library"
-import { selectToolpath } from "@/lib/toolpath/select-toolpath"
+import { selectToolpath, getAllProcesses, getStrategiesForProcess } from "@/lib/toolpath/select-toolpath"
 import { assessManufacturability } from "@/lib/manufacturability/assess"
-import { estimateQuote } from "@/lib/quote/estimate"
+import { generateQuote, formatPriceNGN } from "@/lib/quote/estimate"
+import { cn } from "@/lib/utils"
 
 export interface PropertiesPanelProps {
   selectedObject?: string
@@ -25,7 +26,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
   const [params, setParams] = useState<Record<string, number>>({})
   const [applying, setApplying] = useState(false)
   const [showMaterialLibrary, setShowMaterialLibrary] = useState(false)
-  const [selectedProcess, setSelectedProcess] = useState("CNC Milling")
+  const [selectedProcess, setSelectedProcess] = useState("cnc-milling")
   const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
@@ -46,8 +47,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
     
     setApplying(true)
     try {
-      // Update the object parameters in workspace context
-      // This will trigger a re-render in canvas-viewer which will rebuild the mesh
       updateObjectParameters(selectedObject, params)
       toast.success('Parameters updated')
     } catch (error) {
@@ -84,30 +83,43 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
           { key: 'radius', label: 'Radius', unit: 'mm' },
           { key: 'diameter', label: 'Diameter', unit: 'mm' },
         ]
+      case 'torus':
+        return [
+          { key: 'majorRadius', label: 'Major Radius', unit: 'mm' },
+          { key: 'minorRadius', label: 'Minor Radius', unit: 'mm' },
+        ]
+      case 'cone':
+        return [
+          { key: 'radius', label: 'Base Radius', unit: 'mm' },
+          { key: 'height', label: 'Height', unit: 'mm' },
+        ]
       case 'box':
       default:
         return [
-          { key: 'length', label: 'Length', unit: 'mm' },
           { key: 'width', label: 'Width', unit: 'mm' },
           { key: 'height', label: 'Height', unit: 'mm' },
+          { key: 'depth', label: 'Depth', unit: 'mm' },
         ]
     }
   }
 
+  // Tabs configuration
   const tabs = [
-    { id: "properties", label: "Properties" },
-    { id: "toolpath", label: "Toolpath" },
+    { id: "properties", label: "Properties", icon: "settings" },
+    { id: "toolpath", label: "Toolpath", icon: "settings" },
+    { id: "manufacturability", label: "Analysis", icon: "bar-chart" },
+    { id: "quote", label: "Quote", icon: "shopping-cart" },
   ]
 
   // Mobile optimized styles
   const mobileTabClass = isMobile
-    ? "flex-1 px-4 py-3 text-sm font-medium rounded-md transition-colors min-h-[44px]"
+    ? "flex-1 px-2 py-3 text-xs font-medium rounded-md transition-colors min-h-[44px]"
     : "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
 
   const mobileInputClass = isMobile ? "h-12 text-base" : "h-8 text-sm"
 
   return (
-    <div className={`bg-white ${isMobile ? '' : 'border-l border-[var(--neutral-200)] flex flex-col'}`}>
+    <div className={`bg-white flex flex-col ${isMobile ? '' : 'border-l border-[var(--neutral-200)]'}`}>
       {/* Tabs */}
       <div className={`${isMobile ? 'p-2' : 'border-b border-[var(--neutral-200)] p-2'}`}>
         <div className={`flex gap-1 ${isMobile ? 'bg-gray-100 p-1 rounded-xl' : 'bg-[var(--neutral-100)] rounded-lg p-1'}`}>
@@ -115,13 +127,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`${mobileTabClass} ${
+              className={`${mobileTabClass} flex items-center justify-center gap-1 ${
                 activeTab === tab.id 
                   ? "bg-white text-[var(--neutral-900)] shadow-sm" 
                   : "text-[var(--neutral-500)]"
               }`}
             >
-              {tab.label}
+              <Icon name={tab.icon} className="w-3 h-3" />
+              <span className={isMobile ? 'hidden' : ''}>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -129,6 +142,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
 
       {/* Content */}
       <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-4' : 'p-4'}`}>
+        {/* Properties Tab */}
         {activeTab === "properties" && (
           <div className="space-y-6">
             {/* Object Info */}
@@ -221,17 +235,17 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
                     Manufacturing Process
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {["CNC Milling", "CNC Turning", "Laser Cutting", "3D Printing", "Sheet Metal"].map((process) => (
+                    {getAllProcesses().map((process) => (
                       <button
-                        key={process}
-                        onClick={() => setSelectedProcess(process)}
+                        key={process.id}
+                        onClick={() => setSelectedProcess(process.id)}
                         className={`${isMobile ? 'p-3' : 'p-2'} rounded-lg border transition-colors text-left ${
-                          selectedProcess === process
+                          selectedProcess === process.id
                             ? "border-[var(--primary-700)] bg-[var(--primary-50)] text-[var(--primary-900)]"
                             : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
                         }`}
                       >
-                        <div className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>{process}</div>
+                        <div className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>{process.name}</div>
                       </button>
                     ))}
                   </div>
@@ -264,124 +278,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
                             <p className={`text-[var(--neutral-600)] ${isMobile ? 'text-sm' : 'text-xs'} mb-2`}>
                               {toolpath.strategy}
                             </p>
+                            <p className={`text-[var(--neutral-600)] ${isMobile ? 'text-sm' : 'text-xs'} mb-2`}>
+                              {toolpath.description}
+                            </p>
                             {toolpath.notes && (
                               <p className={`text-[var(--neutral-500)] italic ${isMobile ? 'text-xs' : 'text-[11px]'}`}>
                                 {toolpath.notes}
                               </p>
                             )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Manufacturability Assessment */}
-                {(() => {
-                  const obj = getObjectGeometry(selectedObject)
-                  const assessment = assessManufacturability({
-                    parameters: params,
-                    process: selectedProcess
-                  })
-                  
-                  const getScoreColor = (score: number) => {
-                    if (score >= 80) return "text-green-600"
-                    if (score >= 60) return "text-yellow-600"
-                    return "text-red-600"
-                  }
-                  
-                  return (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
-                        Manufacturability
-                      </h4>
-                      <div className={`rounded-lg border border-[var(--neutral-200)] ${isMobile ? 'p-4' : 'p-3'}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm text-[var(--neutral-600)]">Score</span>
-                          <span className={`text-2xl font-bold ${getScoreColor(assessment.score)}`}>
-                            {assessment.score}%
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-xs text-[var(--neutral-500)]">
-                            {assessment.passedChecks} of {assessment.totalChecks} checks passed
-                          </div>
-                          {assessment.issues.length > 0 && (
-                            <div className="space-y-2 mt-3 pt-3 border-t border-[var(--neutral-200)]">
-                              {assessment.issues.slice(0, 3).map((issue, idx) => (
-                                <div key={idx} className="text-xs">
-                                  <div className="flex items-start gap-2">
-                                    <Icon 
-                                      name={issue.severity === "error" ? "alert-circle" : "alert-triangle"} 
-                                      className={`w-3 h-3 mt-0.5 flex-shrink-0 ${
-                                        issue.severity === "error" ? "text-red-500" : 
-                                        issue.severity === "warning" ? "text-yellow-500" : "text-blue-500"
-                                      }`}
-                                    />
-                                    <div>
-                                      <p className="text-[var(--neutral-700)] font-medium">{issue.message}</p>
-                                      <p className="text-[var(--neutral-500)] mt-0.5">{issue.fix}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="mt-2 pt-2 border-t border-[var(--neutral-200)]">
+                              <div className="flex justify-between text-xs text-[var(--neutral-500)]">
+                                <span>Machine: {toolpath.machine}</span>
+                                <span>~{toolpath.estimatedTime} min</span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Quote Estimation */}
-                {(() => {
-                  const obj = getObjectGeometry(selectedObject)
-                  const material = MATERIALS.find(m => m.id === (obj?.material || 'aluminum-6061'))
-                  const quote = estimateQuote({
-                    quantity,
-                    material: material?.name,
-                    process: selectedProcess,
-                    geometryParams: params,
-                    featureCount: 0
-                  })
-                  
-                  return (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
-                        Quote Estimate
-                      </h4>
-                      <div className="space-y-2">
-                        <div>
-                          <Label className={`text-[var(--neutral-500)] ${isMobile ? 'text-sm mb-2 block' : 'text-xs'}`}>
-                            Quantity
-                          </Label>
-                          <Input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className={mobileInputClass}
-                            min={1}
-                          />
-                        </div>
-                        <div className={`rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] ${isMobile ? 'p-4' : 'p-3'} space-y-2`}>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-[var(--neutral-600)]">Unit Price:</span>
-                            <span className="font-medium">{quote.unitPrice.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-[var(--neutral-600)]">Subtotal:</span>
-                            <span className="font-medium">{quote.subtotal.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-[var(--neutral-600)]">Platform Fee:</span>
-                            <span className="font-medium">{quote.platformFee.toFixed(2)}</span>
-                          </div>
-                          <div className="pt-2 border-t border-[var(--neutral-200)] flex justify-between">
-                            <span className="font-semibold text-[var(--neutral-900)]">Total:</span>
-                            <span className="font-bold text-lg text-[var(--primary-700)]">{quote.totalPrice.toFixed(2)}</span>
-                          </div>
-                          <div className="text-xs text-[var(--neutral-500)] pt-2">
-                            Lead time: {quote.leadTimeDays} days
                           </div>
                         </div>
                       </div>
@@ -390,7 +300,41 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
                 })()}
               </>
             ) : (
-              <p className="text-base text-[var(--neutral-500)]">Select an object to configure toolpath and get a quote</p>
+              <p className="text-base text-[var(--neutral-500)]">Select an object to configure toolpath</p>
+            )}
+          </div>
+        )}
+
+        {/* Manufacturability Tab */}
+        {activeTab === "manufacturability" && (
+          <div className="space-y-4">
+            {selectedObject ? (
+              <ManufacturabilityContent 
+                selectedObject={selectedObject}
+                params={params}
+                isMobile={isMobile}
+              />
+            ) : (
+              <p className="text-base text-[var(--neutral-500)]">Select an object to analyze manufacturability</p>
+            )}
+          </div>
+        )}
+
+        {/* Quote Tab */}
+        {activeTab === "quote" && (
+          <div className="space-y-4">
+            {selectedObject ? (
+              <QuoteContent 
+                selectedObject={selectedObject}
+                params={params}
+                selectedProcess={selectedProcess}
+                setSelectedProcess={setSelectedProcess}
+                quantity={quantity}
+                setQuantity={setQuantity}
+                isMobile={isMobile}
+              />
+            ) : (
+              <p className="text-base text-[var(--neutral-500)]">Select an object to get a quote</p>
             )}
           </div>
         )}
@@ -404,5 +348,203 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
         currentMaterial={selectedObject ? getObjectGeometry(selectedObject)?.material : undefined}
       />
     </div>
+  )
+}
+
+// Manufacturability content component
+function ManufacturabilityContent({ 
+  selectedObject, 
+  params, 
+  isMobile 
+}: { 
+  selectedObject: string
+  params: Record<string, number>
+  isMobile: boolean
+}) {
+  const { getObjectGeometry } = useWorkspace()
+  
+  const obj = getObjectGeometry(selectedObject)
+  const analysis = useMemo(() => {
+    if (!obj) return null
+    return assessManufacturability({
+      dimensions: params,
+      features: obj.features || [],
+      material: obj.material || 'aluminum-6061',
+      process: 'cnc-milling',
+    })
+  }, [obj, params])
+
+  if (!analysis) return null
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600"
+    if (score >= 60) return "text-yellow-600"
+    if (score >= 40) return "text-orange-600"
+    return "text-red-600"
+  }
+
+  const getScoreBg = (score: number) => {
+    if (score >= 80) return "bg-green-100"
+    if (score >= 60) return "bg-yellow-100"
+    if (score >= 40) return "bg-orange-100"
+    return "bg-red-100"
+  }
+
+  return (
+    <>
+      {/* Score */}
+      <div className={`rounded-lg border ${getScoreBg(analysis.score)} p-4`}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Manufacturability Score</span>
+          <span className={`text-3xl font-bold ${getScoreColor(analysis.score)}`}>
+            {analysis.score}
+          </span>
+        </div>
+        <div className="w-full bg-white/50 rounded-full h-2">
+          <div 
+            className={`h-2 rounded-full ${analysis.score >= 80 ? 'bg-green-500' : analysis.score >= 60 ? 'bg-yellow-500' : analysis.score >= 40 ? 'bg-orange-500' : 'bg-red-500'}`}
+            style={{ width: `${analysis.score}%` }}
+          />
+        </div>
+        <p className="text-xs mt-2 text-[var(--neutral-600)]">
+          {analysis.compatible 
+            ? 'Design is compatible with selected process'
+            : 'Design has manufacturability issues'}
+        </p>
+      </div>
+
+      {/* Summary */}
+      <div className="text-sm text-[var(--neutral-600)]">
+        {analysis.passedChecks} of {analysis.totalChecks} checks passed
+      </div>
+
+      {/* Issues */}
+      {analysis.issues.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-[var(--neutral-700)]">Issues</h4>
+          {analysis.issues.slice(0, 3).map((issue, idx) => (
+            <div key={idx} className={`text-xs p-2 rounded ${
+              issue.severity === 'error' || issue.severity === 'critical' 
+                ? 'bg-red-50 text-red-700' 
+                : issue.severity === 'warning'
+                ? 'bg-yellow-50 text-yellow-700'
+                : 'bg-blue-50 text-blue-700'
+            }`}>
+              <div className="font-medium">{issue.message}</div>
+              <div className="mt-1 opacity-80">{issue.fix}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+// Quote content component
+function QuoteContent({ 
+  selectedObject, 
+  params, 
+  selectedProcess, 
+  setSelectedProcess,
+  quantity,
+  setQuantity,
+  isMobile 
+}: { 
+  selectedObject: string
+  params: Record<string, number>
+  selectedProcess: string
+  setSelectedProcess: (p: string) => void
+  quantity: number
+  setQuantity: (q: number) => void
+  isMobile: boolean
+}) {
+  const { getObjectGeometry } = useWorkspace()
+  
+  const obj = getObjectGeometry(selectedObject)
+  const quote = useMemo(() => {
+    if (!obj) return null
+    return generateQuote({
+      geometryParams: params,
+      objectType: obj.type,
+      material: obj.material || 'aluminum-6061',
+      process: selectedProcess,
+      quantity,
+      features: obj.features || [],
+    })
+  }, [obj, params, selectedProcess, quantity])
+
+  if (!quote) return null
+
+  const breakdown = quote.breakdown
+
+  return (
+    <>
+      {/* Process Selection */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-[var(--neutral-600)]">Process</Label>
+        <select
+          value={selectedProcess}
+          onChange={(e) => setSelectedProcess(e.target.value)}
+          className="w-full px-3 py-2 border border-[var(--neutral-200)] rounded-lg text-sm"
+        >
+          <option value="cnc-milling">CNC Milling</option>
+          <option value="cnc-turning">CNC Turning</option>
+          <option value="laser-cutting">Laser Cutting</option>
+          <option value="3d-printing">3D Printing</option>
+          <option value="sheet-metal">Sheet Metal</option>
+        </select>
+      </div>
+
+      {/* Quantity */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-[var(--neutral-600)]">Quantity</Label>
+        <Input
+          type="number"
+          value={quantity}
+          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+          min={1}
+          className={isMobile ? "h-10" : "h-8"}
+        />
+      </div>
+
+      {/* Price */}
+      <div className="rounded-lg bg-gradient-to-br from-[var(--primary-50)] to-[var(--accent-50)] p-4 text-center">
+        <p className="text-sm text-[var(--neutral-600)]">Estimated Total</p>
+        <p className="text-2xl font-bold text-[var(--primary-700)]">
+          {formatPriceNGN(breakdown.totalPrice)}
+        </p>
+        <p className="text-xs text-[var(--neutral-500)] mt-1">
+          Unit: {formatPriceNGN(breakdown.unitPrice)} • {breakdown.leadTimeDays} days
+        </p>
+      </div>
+
+      {/* Summary */}
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between">
+          <span className="text-[var(--neutral-600)]">Material</span>
+          <span>{formatPriceNGN(breakdown.materialCost)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--neutral-600)]">Machine Time</span>
+          <span>{formatPriceNGN(breakdown.machineCost)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--neutral-600)]">Tools</span>
+          <span>{formatPriceNGN(breakdown.toolCost)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--neutral-600)]">Labor</span>
+          <span>{formatPriceNGN(breakdown.laborCost)}</span>
+        </div>
+        <div className="pt-2 mt-2 border-t flex justify-between font-medium">
+          <span>Total</span>
+          <span>{formatPriceNGN(breakdown.subtotal)}</span>
+        </div>
+        <div className="flex justify-between text-xs text-[var(--neutral-500)]">
+          <span>Platform Fee (5%)</span>
+          <span>{formatPriceNGN(breakdown.platformFee)}</span>
+        </div>
+      </div>
+    </>
   )
 }
