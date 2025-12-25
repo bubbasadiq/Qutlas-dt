@@ -21,6 +21,7 @@ function VerifyEmailContent() {
     const emailParam = searchParams.get("email")
     const tokenParam = searchParams.get("token")
     const typeParam = searchParams.get("type")
+    const onboardingParam = searchParams.get("onboarding")
 
     if (emailParam) {
       setEmail(emailParam)
@@ -38,18 +39,18 @@ function VerifyEmailContent() {
         sessionStorage.removeItem("redirectAfterAuth_after_verify")
 
         if (pendingIntent) {
-          router.push(`/studio?intent=${pendingIntent}`)
+          router.push(`/studio?intent=${pendingIntent}${onboardingParam === 'true' ? '&onboarding=true' : ''}`)
           return
         }
 
         if (redirectPath) {
-          router.push(redirectPath)
+          router.push(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}onboarding=true`)
           return
         }
       }
 
       // Default redirect to dashboard
-      router.push("/dashboard")
+      router.push(`/dashboard${onboardingParam === 'true' ? '?onboarding=true' : ''}`)
       return
     }
 
@@ -83,18 +84,18 @@ function VerifyEmailContent() {
               sessionStorage.removeItem("redirectAfterAuth_after_verify")
 
               if (pendingIntent) {
-                router.push(`/studio?intent=${pendingIntent}`)
+                router.push(`/studio?intent=${pendingIntent}${onboardingParam === 'true' ? '&onboarding=true' : ''}`)
                 return
               }
 
               if (redirectPath) {
-                router.push(redirectPath)
+                router.push(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}onboarding=true`)
                 return
               }
             }
 
             // Default redirect to dashboard
-            router.push("/dashboard")
+            router.push(`/dashboard${onboardingParam === 'true' ? '?onboarding=true' : ''}`)
           }, 2000)
 
         } catch (err) {

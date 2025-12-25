@@ -306,16 +306,12 @@ export default function SettingsPage() {
                   <h3 className="text-sm font-medium text-[var(--neutral-700)] mb-3">Default Currency</h3>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="currency" value="usd" className="text-[var(--primary-700)]" defaultChecked />
+                      <input type="radio" name="currency" value="ngn" className="text-[var(--primary-700)]" defaultChecked />
+                      <span className="text-sm text-[var(--neutral-600)]">NGN (₦)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="currency" value="usd" className="text-[var(--primary-700)]" />
                       <span className="text-sm text-[var(--neutral-600)]">USD ($)</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="currency" value="eur" className="text-[var(--primary-700)]" />
-                      <span className="text-sm text-[var(--neutral-600)]">EUR (€)</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="currency" value="gbp" className="text-[var(--primary-700)]" />
-                      <span className="text-sm text-[var(--neutral-600)]">GBP (£)</span>
                     </label>
                   </div>
                 </div>

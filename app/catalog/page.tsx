@@ -252,7 +252,7 @@ function CatalogContent() {
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3">Price Range</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--neutral-600)]">${priceRange[0]}</span>
+                  <span className="text-sm text-[var(--neutral-600)]">{currency.symbol}{priceRange[0]}</span>
                   <div className="flex-1">
                     <input
                       type="range"
@@ -266,7 +266,7 @@ function CatalogContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--neutral-600)]">${priceRange[1]}</span>
+                  <span className="text-sm text-[var(--neutral-600)]">{currency.symbol}{priceRange[1]}</span>
                   <div className="flex-1">
                     <input
                       type="range"

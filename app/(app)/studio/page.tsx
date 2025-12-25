@@ -20,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-media-query"
 import { useCadmiumWorker } from "@/hooks/use-cadmium-worker"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { toast } from "sonner"
+import { mapErrorMessage } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import * as Icons from "lucide-react"
 

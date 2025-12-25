@@ -1,3 +1,5 @@
+import { mapErrorMessage } from "./error-utils"
+
 // API client with environment-based URL routing
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1"
 const INTERNAL_API_URL = "http://localhost:3001/internal"
@@ -28,13 +30,13 @@ export async function fetchApi<T = any>(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }))
-      return { error: error.message || "API Error" }
+      return { error: mapErrorMessage(error.message || response.statusText) }
     }
 
     const data = await response.json()
     return { data }
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unknown error" }
+    return { error: mapErrorMessage(error) }
   }
 }
 
