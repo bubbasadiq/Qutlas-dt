@@ -8,8 +8,6 @@ import { Sparkles, Send, Loader2, ArrowRight, Paperclip, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
-import { useWorkspace } from "@/hooks/use-workspace"
-import { useAIGeometry } from "@/hooks/use-ai-geometry"
 import { toast } from "sonner"
 
 interface AttachedFile {
@@ -31,12 +29,23 @@ interface Message {
   }
 }
 
+interface WorkspaceContext {
+  addObject: (id: string, data: any) => void
+  selectObject: (id: string) => void
+  isGenerating: boolean
+  progress: number
+  status: string
+  error: string | null
+  generateGeometry: (intent: string) => Promise<string>
+}
+
 interface IntentChatProps {
   variant?: "hero" | "workspace" | "minimal"
   placeholder?: string
   onGeometryGenerated?: (geometry: any) => void
   className?: string
   initialIntent?: string
+  workspaceContext?: WorkspaceContext
 }
 
 export function IntentChat({
@@ -45,6 +54,7 @@ export function IntentChat({
   onGeometryGenerated,
   className,
   initialIntent,
+  workspaceContext,
 }: IntentChatProps) {
   const router = useRouter()
   const { user, isLoading: isAuthLoading } = useAuth()
@@ -55,23 +65,12 @@ export function IntentChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // Workspace context for workspace variant
-  let workspace: ReturnType<typeof useWorkspace> | null = null
-  try {
-    if (variant === "workspace") {
-      workspace = useWorkspace()
-    }
-  } catch (error) {
-    console.warn("Workspace context not available in IntentChat")
-  }
-
-  const { 
-    isGenerating, 
-    progress, 
-    status: aiStatus, 
-    error: aiError, 
-    generateGeometry 
-  } = useAIGeometry()
+  // Extract workspace context if provided (for workspace variant only)
+  const isGenerating = workspaceContext?.isGenerating || false
+  const progress = workspaceContext?.progress || 0
+  const aiStatus = workspaceContext?.status || ""
+  const aiError = workspaceContext?.error || null
+  const generateGeometry = workspaceContext?.generateGeometry
 
   const { append, status, isLoading } = useChat({
     api: "/api/ai/generate",
@@ -98,30 +97,26 @@ export function IntentChat({
 
         if (result?.geometry) {
           const geoData = result.geometry
-          
-          // Add to workspace if context available
-          if (workspace && result.geometry) {
+
+          if (workspaceContext) {
             const id = geoData.id || `geo_${Date.now()}`
-            
-            workspace.addObject(id, {
-              type: geoData.type || 'box',
+
+            workspaceContext.addObject(id, {
+              type: geoData.type || "box",
               dimensions: geoData.dimensions || {},
               features: geoData.features || [],
-              material: geoData.material || 'aluminum',
+              material: geoData.material || "aluminum",
               description: result.intent?.description || input,
-              color: '#0077ff',
+              color: "#0077ff",
               visible: true,
               selected: false,
             })
-            
-            workspace.selectObject(id)
-            
-            toast.success('Geometry created successfully!')
+
+            workspaceContext.selectObject(id)
+            toast.success("Geometry created successfully!")
           }
-          
-          if (onGeometryGenerated) {
-            onGeometryGenerated(result)
-          }
+
+          onGeometryGenerated?.(result)
         }
       } catch (error) {
         console.error('Failed to parse AI response:', error)
@@ -229,6 +224,11 @@ export function IntentChat({
 
     // If in workspace, use the specialized geometry generation engine
     if (variant === "workspace") {
+      if (!generateGeometry) {
+        toast.error("Workspace context not available")
+        return
+      }
+
       try {
         await generateGeometry(userInput)
       } catch (err) {

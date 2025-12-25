@@ -12,6 +12,8 @@ import { Logo } from "@/components/logo"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
+export const dynamic = "force-dynamic"
+
 export default function SettingsPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
