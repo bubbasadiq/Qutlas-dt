@@ -29,7 +29,8 @@ export class ExecutionEngine {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.initWorker()
+      // Initialize worker synchronously but track readiness asynchronously
+      this.initPromise = this.initWorker()
     }
   }
 
@@ -40,59 +41,75 @@ export class ExecutionEngine {
     if (this.isReady) return
 
     if (!this.initPromise) {
-      this.initPromise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
+      throw new Error('Worker initialization not started. This should not happen.')
+    }
+
+    try {
+      await this.initPromise
+    } catch (error) {
+      console.error('Worker initialization failed:', error)
+      throw error
+    }
+  }
+
+  private async initWorker(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.worker = new Worker(new URL('@/workers/cadmium-worker.ts', import.meta.url), {
+          type: 'module',
+        })
+
+        // Set up message handler first, before worker sends READY
+        this.worker.onmessage = (event) => {
+          const { id, type, result, error } = event.data
+
+          if (type === 'READY') {
+            this.isReady = true
+            console.log('✅ Execution engine worker ready')
+            
+            // Clear initialization timeout
+            const initTimeout = (this as any).initTimeout
+            if (initTimeout) {
+              clearTimeout(initTimeout)
+            }
+            
+            resolve()  // Resolve the initialization promise
+            return
+          }
+
+          const pending = this.pendingRequests.get(id)
+          if (!pending) {
+            console.warn('Received response for unknown request:', id)
+            return
+          }
+
+          this.pendingRequests.delete(id)
+
+          if (type === 'ERROR' || error) {
+            pending.reject(new Error(error || 'Unknown worker error'))
+          } else {
+            pending.resolve(result)
+          }
+        }
+
+        this.worker.onerror = (error) => {
+          console.error('Worker error:', error)
+          reject(error)
+        }
+
+        // Set initialization timeout
+        const initTimeout = setTimeout(() => {
           reject(new Error('Worker initialization timed out after 10 seconds'))
         }, 10000)
 
-        const checkReady = () => {
-          if (this.isReady) {
-            clearTimeout(timeout)
-            resolve()
-          } else {
-            setTimeout(checkReady, 100)
-          }
-        }
-        checkReady()
-      })
-    }
+        // Store timeout so we can clear it when READY is received
+        ;(this as any).initTimeout = initTimeout
 
-    return this.initPromise
-  }
-
-  private initWorker() {
-    try {
-      this.worker = new Worker(new URL('@/workers/cadmium-worker.ts', import.meta.url), {
-        type: 'module',
-      })
-
-      this.worker.onmessage = (event) => {
-        const { id, type, result, error } = event.data
-
-        if (type === 'READY') {
-          this.isReady = true
-          console.log('✅ Execution engine worker ready')
-          return
-        }
-
-        const pending = this.pendingRequests.get(id)
-        if (!pending) return
-
-        this.pendingRequests.delete(id)
-
-        if (type === 'ERROR' || error) {
-          pending.reject(new Error(error || 'Unknown worker error'))
-        } else {
-          pending.resolve(result)
-        }
+      } catch (error) {
+        console.error('Failed to initialize execution engine worker:', error)
+        reject(error)
       }
-
-      this.worker.onerror = (error) => {
-        console.error('Worker error:', error)
-      }
-    } catch (error) {
-      console.error('Failed to initialize execution engine worker:', error)
-    }
+    })
   }
 
   /**

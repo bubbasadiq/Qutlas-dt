@@ -61,7 +61,9 @@ export function useAIGeometry() {
         ...prev,
         status: 'Parsing your request...',
       }))
+      
       // Step 1: Parse intent via API
+      console.log('📡 Calling /api/ai/generate with intent:', intent)
       const parseResponse = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,11 +71,22 @@ export function useAIGeometry() {
       })
 
       if (!parseResponse.ok) {
-        const error = await parseResponse.json()
-        throw new Error(error.error || 'Failed to parse intent')
+        const error = await parseResponse.json().catch(() => ({ error: 'Failed to parse error response' }))
+        throw new Error(error.error || `API error: ${parseResponse.status}`)
       }
 
-      const { intent: geometryIntent, operations } = await parseResponse.json()
+      const responseData = await parseResponse.json()
+      
+      // Validate response structure
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'API returned unsuccessful response')
+      }
+      
+      if (!responseData.intent || !responseData.operations) {
+        throw new Error('Invalid API response: missing intent or operations')
+      }
+      
+      const { intent: geometryIntent, operations } = responseData
 
       setState((prev) => ({
         ...prev,
@@ -98,11 +111,22 @@ export function useAIGeometry() {
           }))
         },
         (geometryId: string, mesh: any) => {
+          // Validate mesh data before using it
+          if (!mesh || !mesh.vertices || !mesh.indices) {
+            console.error('Invalid mesh data received from worker:', { geometryId, mesh })
+            return
+          }
+          
           latestMeshData = mesh
           latestGeometryId = geometryId
           
-          // Update Three.js scene in real-time
-          updateCanvasMesh(geometryId, mesh)
+          try {
+            // Update Three.js scene in real-time
+            updateCanvasMesh(geometryId, mesh)
+          } catch (error) {
+            console.error('Failed to update canvas mesh:', error)
+            // Don't throw here - let the main promise chain handle errors
+          }
         }
       )
 
@@ -110,10 +134,13 @@ export function useAIGeometry() {
       if (latestMeshData && latestGeometryId) {
         const objectId = `geometry_${Date.now()}`
         
+        // Extract dimensions safely
+        const dimensions = geometryIntent.baseGeometry?.parameters || {}
+        
         addObject(objectId, {
-          type: 'compound',
+          type: geometryIntent.baseGeometry?.type || 'box',
           geometryId: latestGeometryId,
-          dimensions: geometryIntent.baseGeometry.parameters,
+          dimensions: dimensions,
           features: geometryIntent.features || [],
           material: geometryIntent.material || 'aluminum',
           description: intent,

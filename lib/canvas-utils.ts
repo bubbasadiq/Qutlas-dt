@@ -36,6 +36,12 @@ export function updateCanvasMesh(id: string, meshData: MeshData, color?: number)
     return
   }
 
+  // Validate mesh data before processing
+  if (!meshData || !meshData.vertices || !meshData.indices) {
+    console.error('Invalid mesh data received:', { id, meshData })
+    return
+  }
+
   // Remove old mesh if it exists
   const oldMesh = meshRegistry.get(id)
   if (oldMesh) {
@@ -46,46 +52,58 @@ export function updateCanvasMesh(id: string, meshData: MeshData, color?: number)
     }
   }
 
-  // Convert to typed arrays if needed
-  const vertices = meshData.vertices instanceof Float32Array 
-    ? meshData.vertices 
-    : new Float32Array(meshData.vertices)
-  
-  const indices = meshData.indices instanceof Uint32Array 
-    ? meshData.indices 
-    : new Uint32Array(meshData.indices)
-  
-  const normals = meshData.normals instanceof Float32Array 
-    ? meshData.normals 
-    : new Float32Array(meshData.normals)
+  try {
+    // Convert to typed arrays if needed
+    const vertices = meshData.vertices instanceof Float32Array 
+      ? meshData.vertices 
+      : new Float32Array(meshData.vertices)
+    
+    const indices = meshData.indices instanceof Uint32Array 
+      ? meshData.indices 
+      : new Uint32Array(meshData.indices)
+    
+    const normals = meshData.normals instanceof Float32Array 
+      ? meshData.normals 
+      : (meshData.normals ? new Float32Array(meshData.normals) : undefined)
 
-  // Create BufferGeometry
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
-  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1))
-  geometry.computeBoundingSphere()
+    // Create BufferGeometry
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    
+    if (normals) {
+      geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
+    } else {
+      // Compute normals if not provided
+      geometry.computeVertexNormals()
+    }
+    
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1))
+    geometry.computeBoundingSphere()
 
-  // Create material
-  const material = new THREE.MeshPhongMaterial({
-    color: color || 0x0077ff,
-    specular: 0x222222,
-    shininess: 150,
-    flatShading: false,
-    side: THREE.DoubleSide,
-  })
+    // Create material
+    const material = new THREE.MeshPhongMaterial({
+      color: color || 0x0077ff,
+      specular: 0x222222,
+      shininess: 150,
+      flatShading: false,
+      side: THREE.DoubleSide,
+    })
 
-  // Create mesh
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  mesh.name = id
+    // Create mesh
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    mesh.name = id
 
-  // Add to scene and registry
-  sceneRef.add(mesh)
-  meshRegistry.set(id, mesh)
+    // Add to scene and registry
+    sceneRef.add(mesh)
+    meshRegistry.set(id, mesh)
 
-  console.log(`✓ Updated mesh ${id}: ${vertices.length / 3} vertices, ${indices.length / 3} triangles`)
+    console.log(`✓ Updated mesh ${id}: ${vertices.length / 3} vertices, ${indices.length / 3} triangles`)
+  } catch (error) {
+    console.error(`Failed to create mesh ${id}:`, error)
+    throw new Error(`Mesh creation failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 /**

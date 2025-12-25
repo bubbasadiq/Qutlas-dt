@@ -13,16 +13,25 @@ export async function POST(req: Request) {
 
     if (!intent || typeof intent !== 'string') {
       return NextResponse.json(
-        { error: 'Intent is required and must be a string' },
+        { 
+          success: false,
+          error: 'Intent is required and must be a string' 
+        },
         { status: 400 }
       )
     }
 
+    console.log('🤖 AI Generate API: Received intent:', intent)
+
     // Parse natural language intent into structured geometry
     const parseResult = await parseIntent(intent)
+    
+    console.log('🤖 AI Generate API: Parsed intent successfully')
 
     // Build operation sequence from parsed intent
     const operations = buildOperationSequence(parseResult.intent)
+    
+    console.log('🤖 AI Generate API: Built operation sequence:', operations.length, 'operations')
 
     return NextResponse.json({
       success: true,
@@ -35,6 +44,7 @@ export async function POST(req: Request) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: error instanceof Error ? error.message : 'Failed to generate geometry',
         details: error instanceof Error ? error.stack : undefined,
       },
