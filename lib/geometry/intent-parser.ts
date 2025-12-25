@@ -2,7 +2,7 @@
 
 import { GEOMETRY_INTENT_SYSTEM_PROMPT } from '@/lib/prompts/geometry-intent-parser'
 import type { GeometryIntent } from './operation-sequencer'
-import { parseIntentWithDeepseek, refineIntentWithDeepseek } from './deepseek-provider'
+import { parseIntentWithDeepseek } from './deepseek-provider'
 
 export interface ParseIntentResult {
   intent: GeometryIntent
@@ -18,7 +18,10 @@ export async function parseIntent(userIntent: string): Promise<ParseIntentResult
   const startTime = Date.now()
 
   try {
-    const fullText = await parseIntentWithDeepseek(userIntent, GEOMETRY_INTENT_SYSTEM_PROMPT)
+    const fullText = await parseIntentWithDeepseek(
+      userIntent,
+      GEOMETRY_INTENT_SYSTEM_PROMPT
+    )
 
     // Extract JSON from response (might be wrapped in markdown code blocks)
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
@@ -67,7 +70,10 @@ Output the UPDATED geometry JSON with the requested modifications.
 `
 
   try {
-    const fullText = await refineIntentWithDeepseek(refinementPrompt, GEOMETRY_INTENT_SYSTEM_PROMPT)
+    const fullText = await parseIntentWithDeepseek(
+      refinementPrompt,
+      GEOMETRY_INTENT_SYSTEM_PROMPT
+    )
 
     const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/) || fullText.match(/\{[\s\S]*\}/)
     

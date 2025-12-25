@@ -238,9 +238,12 @@ const tools = {
 }
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  try {
+    const { messages } = await req.json()
 
-  const systemPrompt = `You are Qutlas AI, an expert CAD/CAM assistant that helps users create and modify 3D geometry for manufacturing.
+    console.log('📨 Received chat request with', messages?.length, 'messages')
+
+    const systemPrompt = `You are Qutlas AI, an expert CAD/CAM assistant that helps users create and modify 3D geometry for manufacturing.
 
 Your capabilities:
 1. Generate 3D geometry from natural language descriptions
@@ -249,55 +252,41 @@ Your capabilities:
 4. Analyze designs for manufacturability (DFM)
 5. Suggest materials and manufacturing processes
 
-When a user attaches a sketch or image:
-1. Carefully analyze the image to understand the intended shape
-2. Use the analyzeSketch tool to document what you see
-3. Then use generateGeometry to create the corresponding 3D model
-4. Explain your interpretation and ask for confirmation if uncertain
+Always be helpful, precise with dimensions (default to mm), and consider manufacturability.`
 
-When a user describes a part they want to create:
-1. Understand their intent and requirements
-2. Use the generateGeometry tool with appropriate parameters
-3. Explain what you created and any design decisions
+    const formattedMessages = messages.map((msg: any) => ({
+      role: msg.role || 'user',
+      content: msg.content,
+    }))
 
-When modifying geometry:
-1. Clarify the operation if needed
-2. Use the modifyGeometry tool with precise parameters
-3. Confirm the changes made
-
-Always be helpful, precise with dimensions (default to mm), and consider manufacturability.
-If you see an image, describe what you see and how you'll interpret it for CAD creation.
-
-Respond in plain text. Tool usage has been disabled in this configuration.`
-
-  try {
-    // Format messages for Deepseek API
-    const formattedMessages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...messages.map((msg: { role: string; content: string }) => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-      })),
-    ]
-
+    console.log('🔄 Calling Deepseek API...')
     const response = await callDeepseek(formattedMessages)
 
-    // Return as plain JSON response
-    return new Response(JSON.stringify({ message: response }), {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-  } catch (error) {
+    console.log('✅ Deepseek response received')
+
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Failed to process request',
+        success: true,
+        content: response,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
+    )
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('❌ API error:', errorMessage)
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: errorMessage,
       }),
       {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       }
     )
   }
