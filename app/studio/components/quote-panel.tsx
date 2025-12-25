@@ -5,16 +5,17 @@
 
 import type React from "react"
 import { useMemo, useState } from "react"
-import { generateQuote, formatPriceNGN, getPriceSummary, type QuoteBreakdown } from "@/lib/quote/estimate"
+import { useRouter } from "next/navigation"
+import { generateQuote, formatPriceNGN, type DetailedQuoteResult } from "@/lib/quote/estimate"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
-import { MATERIALS } from "@/components/material-library"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { CheckoutModal } from "./checkout-modal"
 
 const PROCESSES = [
   { id: 'cnc-milling', name: 'CNC Milling', icon: 'settings' },
@@ -26,13 +27,15 @@ const PROCESSES = [
 
 export function QuotePanel() {
   const isMobile = useIsMobile()
-  const { getObjectGeometry, selectedObjectId } = useWorkspace()
-  
+  const router = useRouter()
+  const { getObjectGeometry, selectedObjectId, objects, activeTool } = useWorkspace()
+
   const [quantity, setQuantity] = useState(1)
   const [selectedProcess, setSelectedProcess] = useState('cnc-milling')
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
 
-  const quote = useMemo(() => {
+  const quote = useMemo<DetailedQuoteResult | null>(() => {
     if (!selectedObjectId) return null
     
     const obj = getObjectGeometry(selectedObjectId)
@@ -49,6 +52,22 @@ export function QuotePanel() {
   }, [selectedObjectId, getObjectGeometry, quantity, selectedProcess])
 
   const breakdown = quote?.breakdown
+
+  const submitDisabledReason =
+    quote && quote.manufacturability.score <= 50
+      ? "Manufacturability score must be above 50"
+      : !breakdown || breakdown.totalPrice <= 0
+        ? "Quote not ready"
+        : null
+
+  const workspaceData = useMemo(
+    () => ({
+      objects,
+      selectedObjectId,
+      activeTool,
+    }),
+    [objects, selectedObjectId, activeTool]
+  )
 
   if (!selectedObjectId) {
     return (
@@ -199,19 +218,18 @@ export function QuotePanel() {
           Copy Quote
         </Button>
         <Button
-          onClick={() => {
-            toast.success('Quote submitted for processing')
-          }}
+          onClick={() => setShowCheckout(true)}
           size={isMobile ? "default" : "sm"}
           className="w-full"
-          disabled={!quote.manufacturability.compatible}
+          disabled={!!submitDisabledReason}
+          title={submitDisabledReason || undefined}
         >
           <Icon name="send" className="w-4 h-4 mr-2" />
-          Submit Quote
+          Submit for Manufacturing
         </Button>
-        {!quote.manufacturability.compatible && (
-          <p className="text-xs text-red-600 text-center">
-            Design has manufacturability issues. Please resolve before submitting.
+        {submitDisabledReason && (
+          <p className="text-xs text-[var(--neutral-500)] text-center">
+            {submitDisabledReason}
           </p>
         )}
       </div>
@@ -230,6 +248,17 @@ export function QuotePanel() {
           </ul>
         </div>
       )}
+
+      <CheckoutModal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        quote={quote}
+        workspaceData={workspaceData}
+        onCompleted={(id) => {
+          setShowCheckout(false)
+          router.push(`/jobs/${id}`)
+        }}
+      />
     </div>
   )
 }

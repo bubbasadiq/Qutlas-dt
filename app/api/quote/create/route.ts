@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       toolpath,
       manufacturability: manufacturabilityResult.score,
       manufacturabilityIssues: manufacturabilityResult.issues,
-      currency: currency || "USD",
+      currency: "NGN",
       validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     }
 

@@ -109,30 +109,31 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const selectTool = (id: string) => setActiveTool(id);
 
   const selectObject = (id: string, multi: boolean = false) => {
-    const newSelectedId = id || null
+    const normalizedId = id?.trim?.() ? id : ""
 
-    if (multi) {
-      // Multi-select with Ctrl/Cmd
-      setSelectedObjectIds((prev) => {
-        if (prev.includes(id)) {
-          return prev.filter(objId => objId !== id);
-        } else {
-          return [...prev, id];
-        }
-      });
-    } else {
-      // Single select
-      setSelectedObjectIds([id]);
-      setSelectedObjectId(newSelectedId);
-    }
+    setSelectedObjectIds((prevSelected) => {
+      let nextSelected: string[]
 
-    setObjects((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((k) => {
-        next[k] = { ...next[k], selected: k === newSelectedId || (multi && selectedObjectIds.includes(k)) };
-      });
-      return next;
-    });
+      if (multi && normalizedId) {
+        nextSelected = prevSelected.includes(normalizedId)
+          ? prevSelected.filter((objId) => objId !== normalizedId)
+          : [...prevSelected, normalizedId]
+      } else {
+        nextSelected = normalizedId ? [normalizedId] : []
+      }
+
+      setSelectedObjectId(nextSelected[0] ?? null)
+
+      setObjects((prevObjects) => {
+        const next = { ...prevObjects }
+        Object.keys(next).forEach((k) => {
+          next[k] = { ...next[k], selected: nextSelected.includes(k) }
+        })
+        return next
+      })
+
+      return nextSelected
+    })
   };
 
   const addObject = (id: string, data: Partial<WorkspaceObject>) => {

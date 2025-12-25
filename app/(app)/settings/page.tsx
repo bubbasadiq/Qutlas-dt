@@ -309,10 +309,6 @@ export default function SettingsPage() {
                       <input type="radio" name="currency" value="ngn" className="text-[var(--primary-700)]" defaultChecked />
                       <span className="text-sm text-[var(--neutral-600)]">NGN (₦)</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="currency" value="usd" className="text-[var(--primary-700)]" />
-                      <span className="text-sm text-[var(--neutral-600)]">USD ($)</span>
-                    </label>
                   </div>
                 </div>
 

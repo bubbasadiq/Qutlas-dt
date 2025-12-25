@@ -389,7 +389,7 @@ function StudioContent() {
               activeTool={activeTool}
               workspaceObjects={objects}
               selectedObjectId={selectedObjectId}
-              onObjectSelect={(id) => id && selectObject(id)}
+              onObjectSelect={(id) => selectObject(id || "")}
               onViewChange={setViewType}
               onContextMenu={(position, actions) => {
                 setContextMenu({ position, actions })
@@ -471,7 +471,7 @@ function StudioContent() {
           activeTool={activeTool}
           workspaceObjects={objects}
           selectedObjectId={selectedObjectId}
-          onObjectSelect={(id) => id && selectObject(id)}
+          onObjectSelect={(id) => selectObject(id || "")}
           onViewChange={setViewType}
           onContextMenu={(position, actions) => {
             setContextMenu({ position, actions })

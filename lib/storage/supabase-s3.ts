@@ -53,7 +53,7 @@ export function getObjectPath(bucket: string, key: string) {
 }
 
 export function presignUrl(params: {
-  method: "GET" | "PUT"
+  method: "GET" | "PUT" | "DELETE"
   bucket: string
   key: string
   expiresInSeconds?: number
@@ -137,6 +137,24 @@ export async function uploadObject(params: {
   if (!res.ok) {
     const text = await res.text().catch(() => "")
     throw new Error(`Failed to upload object to storage (${res.status}): ${text}`)
+  }
+
+  return {
+    bucket: params.bucket,
+    key: params.key,
+  }
+}
+
+export async function deleteObject(params: { bucket: string; key: string }) {
+  const url = presignUrl({ method: "DELETE", bucket: params.bucket, key: params.key, expiresInSeconds: 60 * 10 })
+
+  const res = await fetch(url, {
+    method: "DELETE",
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "")
+    throw new Error(`Failed to delete object from storage (${res.status}): ${text}`)
   }
 
   return {

@@ -108,42 +108,33 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     }
   }
 
-  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return
-    
+  const pickObjectAt = (clientX: number, clientY: number): string | null => {
+    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return null
+
     const rect = rendererRef.current.domElement.getBoundingClientRect()
-    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-    
+    mouse.current.x = ((clientX - rect.left) / rect.width) * 2 - 1
+    mouse.current.y = -((clientY - rect.top) / rect.height) * 2 + 1
+
     raycaster.current.setFromCamera(mouse.current, cameraRef.current)
     const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
-    
-    const pickedObject = intersects.find(i => i.object.userData.id)
-    
-    if (pickedObject && pickedObject.object.userData.id) {
-      onObjectSelect?.(pickedObject.object.userData.id)
-    } else {
-      onObjectSelect?.(null)
-    }
+    const pickedObject = intersects.find((i) => i.object.userData.id)
+
+    return (pickedObject?.object.userData.id as string | undefined) || null
+  }
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const pickedId = pickObjectAt(event.clientX, event.clientY)
+    onObjectSelect?.(pickedId)
   }
 
   const handleCanvasRightClick = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault()
-    
-    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return
-    
-    const rect = rendererRef.current.domElement.getBoundingClientRect()
-    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-    
-    raycaster.current.setFromCamera(mouse.current, cameraRef.current)
-    const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
-    const pickedObject = intersects.find(i => i.object.userData.id)
-    
+
+    const objectId = pickObjectAt(event.clientX, event.clientY)
+
     let actions: any[] = []
-    
-    if (pickedObject && pickedObject.object.userData.id) {
-      const objectId = pickedObject.object.userData.id
+
+    if (objectId) {
       actions = [
         { label: 'Delete', icon: 'trash', objectId },
         { label: 'Duplicate', icon: 'copy', objectId },
@@ -168,8 +159,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   }
 
   // Generate THREE.js mesh from geometry metadata using the utility
-  const createMeshFromGeometry = (objectData: any): THREE.Mesh => {
+  const createMeshFromGeometry = (id: string, objectData: any): THREE.Mesh => {
     const input = workspaceObjectToMeshInput(objectData)
+    input.selected = Boolean(input.selected || id === selectedObjectId)
     const mesh = generateMesh(input)
     return mesh
   }
@@ -269,6 +261,22 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     }
   }, [isMobileView])
 
+  // Attach selection handler directly to the canvas element (desktop reliability)
+  useEffect(() => {
+    const canvas = rendererRef.current?.domElement
+    if (!canvas) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      // Only primary button; right-click is handled separately
+      if (event.button !== 0) return
+      const pickedId = pickObjectAt(event.clientX, event.clientY)
+      onObjectSelect?.(pickedId)
+    }
+
+    canvas.addEventListener("pointerdown", handlePointerDown)
+    return () => canvas.removeEventListener("pointerdown", handlePointerDown)
+  }, [isMobileView, onObjectSelect])
+
   // Update grid visibility
   useEffect(() => {
     if (gridRef.current) {
@@ -323,7 +331,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
         }
         
         // Create new mesh
-        const mesh = createMeshFromGeometry(objectData)
+        const mesh = createMeshFromGeometry(id, objectData)
         mesh.userData.id = id
         mesh.userData.dimensions = objectData.dimensions // Store for comparison
         mesh.visible = objectData.visible !== false
@@ -335,13 +343,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
         
         // Update selection highlight
         const material = existingMesh.material as THREE.MeshStandardMaterial
-        if (objectData.selected || id === selectedObjectId) {
-          material.color.setHex(0xff8800)
-          material.emissive.setHex(0x442200)
-        } else {
-          material.color.setHex(0x0088ff)
-          material.emissive.setHex(0x000000)
-        }
+        const isSelected = objectData.selected || id === selectedObjectId
+        const baseColor = objectData.color ? Number.parseInt(String(objectData.color).replace('#', '0x')) : 0x0077ff
+
+        material.color.setHex(isSelected ? 0xff8800 : baseColor)
+        material.emissive.setHex(isSelected ? 0x442200 : 0x000000)
       }
     })
   }, [workspaceObjects, selectedObjectId])
