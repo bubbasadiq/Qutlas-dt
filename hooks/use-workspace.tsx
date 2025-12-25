@@ -336,6 +336,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         updateObjectParameters,
         updateObjectGeometry,
         getObjectGeometry,
+        performBoolean,
         clearWorkspace,
         undo,
         redo,

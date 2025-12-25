@@ -57,28 +57,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const signup = async (email: string, password: string, name: string, company: string) => {
-  setIsLoading(true)
+    setIsLoading(true)
 
-  const redirectUrl = (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || '')
+    const redirectUrl = (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || '')
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${redirectUrl}/auth/verify-email?onboarding=true`,
-      data: {
-        name,
-        company
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${redirectUrl}/auth/verify-email?onboarding=true`,
+        data: {
+          name,
+          company
+        }
       }
+    })
+
+    setIsLoading(false)
+    if (error) {
+      throw new Error(mapErrorMessage(error))
     }
-  })
 
-  setIsLoading(false)
-  if (error) {
-    throw new Error(mapErrorMessage(error))
-  }
-
-  return data
+    return data
   }
 
 

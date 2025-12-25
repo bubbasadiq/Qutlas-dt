@@ -41,7 +41,7 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
     return showCode ? `${NGN.symbol} ${formattedNumber} ${NGN.code}` : `${NGN.symbol} ${formattedNumber}`
   }, [])
 
-  const convertPrice = useCallback((amount: number) => amount, [])
+  const convertPrice = useCallback((amount: number, _fromCurrency: string, _toCurrency: string) => amount, [])
 
   return (
     <CurrencyContext.Provider
