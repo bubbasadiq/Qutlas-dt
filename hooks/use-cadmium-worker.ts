@@ -35,6 +35,7 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
   const callbacksRef = useRef<Map<string, Function>>(new Map())
   const isReadyRef = useRef(false)
   const [isReady, setIsReady] = useState(false)
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -42,10 +43,20 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
     // Initialize worker
     if (!workerRef.current) {
       try {
+        console.log('🔄 Initializing Cadmium Worker...')
+        
         workerRef.current = new Worker(
           new URL('../workers/cadmium-worker.ts', import.meta.url),
           { type: 'module' }
         )
+        
+        // Set initialization timeout
+        initTimeoutRef.current = setTimeout(() => {
+          if (!isReadyRef.current) {
+            console.error('❌ Cadmium Worker initialization timed out after 10s')
+            setIsReady(false)
+          }
+        }, 10000)
         
         workerRef.current.onmessage = (event: MessageEvent) => {
           const { id, result, error, type } = event.data
@@ -54,11 +65,21 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
             console.log('✅ Cadmium Worker is ready')
             isReadyRef.current = true
             setIsReady(true)
+            
+            if (initTimeoutRef.current) {
+              clearTimeout(initTimeoutRef.current)
+              initTimeoutRef.current = null
+            }
             return
           }
           
           if (type === 'ERROR' && !id) {
             console.error('❌ Cadmium Worker error:', error)
+            
+            if (initTimeoutRef.current) {
+              clearTimeout(initTimeoutRef.current)
+              initTimeoutRef.current = null
+            }
             return
           }
           
@@ -75,13 +96,23 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
         
         workerRef.current.onerror = (error) => {
           console.error('❌ Cadmium Worker error:', error)
+          
+          if (initTimeoutRef.current) {
+            clearTimeout(initTimeoutRef.current)
+            initTimeoutRef.current = null
+          }
         }
       } catch (error) {
         console.error('❌ Failed to create Cadmium Worker:', error)
+        console.error('Detailed error:', error)
       }
     }
     
     return () => {
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current)
+      }
+      
       if (workerRef.current) {
         workerRef.current.terminate()
         workerRef.current = null

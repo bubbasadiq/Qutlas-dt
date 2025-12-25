@@ -39,11 +39,12 @@ const generateGeometryTool = tool({
     material: z.string().optional().describe("Suggested material"),
   }),
   execute: async ({ description, geometryType, dimensions, features, material }) => {
-    // This would connect to the geometry kernel in production
-    // For now, return the structured geometry data
-    return {
-      success: true,
-      geometry: {
+    try {
+      // Note: Worker operations would be executed client-side
+      // This API primarily provides the structured intent for the client
+      // The actual geometry generation happens in the browser via the Cadmium Worker
+      
+      const geometrySpec = {
         id: `geo_${Date.now()}`,
         type: geometryType,
         dimensions,
@@ -51,8 +52,43 @@ const generateGeometryTool = tool({
         material: material || "aluminum",
         description,
         createdAt: new Date().toISOString(),
-      },
-      message: `Created ${geometryType} geometry with the specified parameters.`,
+      };
+      
+      // Validate dimensions based on geometry type
+      if (geometryType === 'box') {
+        if (!dimensions.width || !dimensions.height || !dimensions.depth) {
+          throw new Error('Box requires width, height, and depth');
+        }
+        if (dimensions.width <= 0 || dimensions.height <= 0 || dimensions.depth <= 0) {
+          throw new Error('Box dimensions must be positive');
+        }
+      } else if (geometryType === 'cylinder') {
+        if (!dimensions.radius || !dimensions.height) {
+          throw new Error('Cylinder requires radius and height');
+        }
+        if (dimensions.radius <= 0 || dimensions.height <= 0) {
+          throw new Error('Cylinder dimensions must be positive');
+        }
+      } else if (geometryType === 'sphere') {
+        if (!dimensions.radius) {
+          throw new Error('Sphere requires radius');
+        }
+        if (dimensions.radius <= 0) {
+          throw new Error('Sphere radius must be positive');
+        }
+      }
+      
+      return {
+        success: true,
+        geometry: geometrySpec,
+        message: `Created ${geometryType} specification. Client will generate the 3D mesh using Cadmium Worker.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to create geometry specification',
+      };
     }
   },
 })
@@ -66,12 +102,44 @@ const modifyGeometryTool = tool({
     targetFace: z.string().optional().describe("The face or edge to apply the operation to"),
   }),
   execute: async ({ operation, parameters, targetFace }) => {
-    return {
-      success: true,
-      operation,
-      parameters,
-      targetFace,
-      message: `Applied ${operation} operation successfully.`,
+    try {
+      // Validate operation parameters
+      if (operation === 'add_hole') {
+        if (!parameters.diameter || !parameters.depth) {
+          throw new Error('Hole operation requires diameter and depth');
+        }
+        if (parameters.diameter <= 0 || parameters.depth <= 0) {
+          throw new Error('Hole dimensions must be positive');
+        }
+      } else if (operation === 'add_fillet') {
+        if (!parameters.radius) {
+          throw new Error('Fillet operation requires radius');
+        }
+        if (parameters.radius <= 0) {
+          throw new Error('Fillet radius must be positive');
+        }
+      } else if (operation === 'add_chamfer') {
+        if (!parameters.distance) {
+          throw new Error('Chamfer operation requires distance');
+        }
+        if (parameters.distance <= 0) {
+          throw new Error('Chamfer distance must be positive');
+        }
+      }
+      
+      return {
+        success: true,
+        operation,
+        parameters,
+        targetFace,
+        message: `Validated ${operation} operation. Client will execute via Cadmium Worker.`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: `Failed to validate ${operation} operation`,
+      };
     }
   },
 })
@@ -83,16 +151,59 @@ const analyzeManufacturabilityTool = tool({
     analysisType: z.enum(["dfm", "tolerance", "material", "cost"]),
   }),
   execute: async ({ analysisType }) => {
+    // Implement basic DFM analysis logic
+    const issues: Array<{ severity: string; message: string }> = [];
+    const suggestions: string[] = [];
+    let score = 100;
+    
+    if (analysisType === 'dfm') {
+      // Design for Manufacturing analysis
+      issues.push({
+        severity: "info",
+        message: "Design appears manufacturable with standard CNC processes"
+      });
+      
+      // Check for common DFM issues (would be based on actual geometry in production)
+      suggestions.push("Verify wall thickness is ≥ 1mm for structural integrity");
+      suggestions.push("Ensure holes are ≥ 2mm diameter for standard drill bits");
+      suggestions.push("Consider adding draft angles (1-3°) for molded parts");
+      
+      score = 85;
+    } else if (analysisType === 'tolerance') {
+      issues.push({
+        severity: "info",
+        message: "Standard tolerances (±0.1mm) assumed"
+      });
+      
+      suggestions.push("Specify tighter tolerances (±0.05mm) for critical dimensions");
+      suggestions.push("Looser tolerances (±0.2mm) acceptable for non-critical features");
+      
+      score = 90;
+    } else if (analysisType === 'material') {
+      suggestions.push("Aluminum 6061-T6: Excellent machinability, good strength");
+      suggestions.push("Stainless Steel 304: Higher corrosion resistance, harder to machine");
+      suggestions.push("ABS Plastic: Ideal for 3D printing, lower strength");
+      
+      score = 95;
+    } else if (analysisType === 'cost') {
+      issues.push({
+        severity: "info",
+        message: "Cost estimate requires material and quantity selection"
+      });
+      
+      suggestions.push("Larger batch sizes (100+) reduce per-unit costs");
+      suggestions.push("Simpler geometries reduce machining time and cost");
+      
+      score = 80;
+    }
+    
     return {
       success: true,
       analysisType,
-      score: 85,
-      issues: [
-        { severity: "warning", message: "Consider adding draft angles for easier mold release" },
-        { severity: "info", message: "Wall thickness is optimal for CNC machining" },
-      ],
-      suggestions: ["Add 1-degree draft to vertical walls", "Consider aluminum 6061-T6 for best machinability"],
-    }
+      score,
+      issues,
+      suggestions,
+    };
   },
 })
 
