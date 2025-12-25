@@ -185,6 +185,60 @@ function StudioContent() {
         }
         return
       }
+
+      // Tool shortcuts
+      if (!ctrlKey) {
+        switch (e.key.toLowerCase()) {
+          case 'v':
+            setActiveTool('select')
+            toast.info('Select tool activated')
+            return
+          case 's':
+            setActiveTool('sketch')
+            toast.info('Sketch tool activated')
+            return
+          case 'm':
+            setActiveTool('measure')
+            toast.info('Measure tool activated')
+            return
+          case 'b':
+            // Create box
+            const boxId = `box_${Date.now()}`
+            addObject(boxId, {
+              type: 'box',
+              dimensions: { width: 100, height: 100, depth: 100 },
+              visible: true,
+              selected: true,
+            })
+            selectObject(boxId)
+            toast.success('Box created')
+            return
+          case 'c':
+            // Create cylinder
+            const cylId = `cylinder_${Date.now()}`
+            addObject(cylId, {
+              type: 'cylinder',
+              dimensions: { radius: 50, height: 100 },
+              visible: true,
+              selected: true,
+            })
+            selectObject(cylId)
+            toast.success('Cylinder created')
+            return
+          case 'r':
+            // Create sphere (r for round)
+            const sphereId = `sphere_${Date.now()}`
+            addObject(sphereId, {
+              type: 'sphere',
+              dimensions: { radius: 50 },
+              visible: true,
+              selected: true,
+            })
+            selectObject(sphereId)
+            toast.success('Sphere created')
+            return
+        }
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown)
@@ -200,6 +254,7 @@ function StudioContent() {
     redo,
     canUndo,
     canRedo,
+    setActiveTool,
   ])
 
   const handleGeometryGenerated = (geometry: any) => {

@@ -109,6 +109,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const selectTool = (id: string) => setActiveTool(id);
 
   const selectObject = (id: string, multi: boolean = false) => {
+    const newSelectedId = id || null
+
     if (multi) {
       // Multi-select with Ctrl/Cmd
       setSelectedObjectIds((prev) => {
@@ -121,13 +123,13 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     } else {
       // Single select
       setSelectedObjectIds([id]);
-      setSelectedObjectId(id);
+      setSelectedObjectId(newSelectedId);
     }
-    
+
     setObjects((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((k) => {
-        next[k] = { ...next[k], selected: k === id || (multi && selectedObjectIds.includes(k)) };
+        next[k] = { ...next[k], selected: k === newSelectedId || (multi && selectedObjectIds.includes(k)) };
       });
       return next;
     });

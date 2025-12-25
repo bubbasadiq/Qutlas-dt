@@ -22,10 +22,10 @@ export function PriceDisplay({
   className = ""
 }: PriceDisplayProps) {
   const { formatPrice } = useCurrency()
-  
-  // Format the price without currency symbols - just plain numbers
-  const formattedPrice = formatPrice(amount, { showCode: false })
-  
+
+  // Format the price with Nigerian Naira symbol
+  const formattedPrice = formatPrice(amount, { showCode })
+
   // Apply variant styles
   const getVariantStyles = () => {
     switch (variant) {
@@ -38,7 +38,7 @@ export function PriceDisplay({
         return "text-lg font-semibold"
     }
   }
-  
+
   return (
     <div className={`flex items-baseline gap-1 ${className}`}>
       <span className={getVariantStyles()}>{formattedPrice}</span>

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Icon } from "@/components/ui/icon"
+import { Square, Circle, CircleDot, Upload, Api, Box, Cylinder, Wrench, Cmm, Layers, MousePointer2, Pencil, Ruler } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -11,17 +11,23 @@ import { toast } from "sonner"
 interface Tool {
   id: string
   label: string
-  icon: string
+  icon: React.ComponentType<{ size?: number; className?: string }>
   shortcut?: string
 }
 
 const tools: Tool[] = [
-  { id: "select", label: "Select", icon: "upload", shortcut: "V" },
-  { id: "sketch", label: "Sketch", icon: "api", shortcut: "S" },
-  { id: "extrude", label: "Extrude", icon: "mesh", shortcut: "E" },
-  { id: "fillet", label: "Fillet", icon: "gear", shortcut: "F" },
-  { id: "measure", label: "Measure", icon: "cmm", shortcut: "M" },
-  { id: "section", label: "Section", icon: "fixture", shortcut: "X" },
+  { id: "select", label: "Select", icon: MousePointer2, shortcut: "V" },
+  { id: "sketch", label: "Sketch", icon: Pencil, shortcut: "S" },
+  { id: "extrude", label: "Extrude", icon: Box, shortcut: "E" },
+  { id: "fillet", label: "Fillet", icon: Wrench, shortcut: "F" },
+  { id: "measure", label: "Measure", icon: Ruler, shortcut: "M" },
+  { id: "section", label: "Section", icon: Layers, shortcut: "X" },
+]
+
+const shapeTools: Tool[] = [
+  { id: "create-box", label: "Box", icon: Square },
+  { id: "create-cylinder", label: "Cylinder", icon: Circle },
+  { id: "create-sphere", label: "Sphere", icon: CircleDot },
 ]
 
 interface SidebarToolsProps {
@@ -106,6 +112,39 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     if (onToolSelect) {
       onToolSelect(toolId)
     }
+
+    // Handle shape creation tools
+    if (toolId === 'create-box') {
+      const id = `box_${Date.now()}`
+      addObject(id, {
+        type: 'box',
+        dimensions: { width: 100, height: 100, depth: 100 },
+        visible: true,
+        selected: true,
+      })
+      selectObject(id)
+      toast.success('Box created')
+    } else if (toolId === 'create-cylinder') {
+      const id = `cylinder_${Date.now()}`
+      addObject(id, {
+        type: 'cylinder',
+        dimensions: { radius: 50, height: 100 },
+        visible: true,
+        selected: true,
+      })
+      selectObject(id)
+      toast.success('Cylinder created')
+    } else if (toolId === 'create-sphere') {
+      const id = `sphere_${Date.now()}`
+      addObject(id, {
+        type: 'sphere',
+        dimensions: { radius: 50 },
+        visible: true,
+        selected: true,
+      })
+      selectObject(id)
+      toast.success('Sphere created')
+    }
   }
 
   // Mobile optimized styles with larger touch targets
@@ -133,7 +172,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
           className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors block touch-manipulation ${
             isMobile ? 'py-4' : ''
           } ${
-            isUploading 
+            isUploading
               ? "border-[var(--neutral-200)] bg-[var(--bg-100)] cursor-wait"
               : isUploadHover
               ? "border-[var(--primary-500)] bg-[var(--primary-50)]"
@@ -147,8 +186,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
             </div>
           ) : (
             <div className="flex flex-col items-center py-2">
-              <Icon
-                name="upload"
+              <Upload
                 size={isMobile ? 28 : 24}
                 className={`mb-2 ${isUploadHover ? "text-[var(--primary-700)]" : "text-[var(--neutral-400)]"}`}
               />
@@ -174,7 +212,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
               }`}
             >
               <div className="flex items-center gap-3">
-                <Icon name={tool.icon} size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
+                <tool.icon size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
                 <span className="font-medium">{tool.label}</span>
               </div>
               {tool.shortcut && (
@@ -188,6 +226,25 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
                   {tool.shortcut}
                 </span>
               )}
+            </button>
+          ))}
+        </div>
+
+        {/* Shape Creation Tools */}
+        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3 mt-4' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2 mt-3'}`}>Create Shapes</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {shapeTools.map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => handleToolSelect(tool.id)}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 border-dashed transition-colors ${
+                activeTool === tool.id
+                  ? "border-[var(--primary-700)] bg-[var(--primary-50)] text-[var(--primary-700)]"
+                  : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
+              }`}
+            >
+              <tool.icon size={isMobile ? 24 : 20} className="mb-1" />
+              <span className="text-xs font-medium">{tool.label}</span>
             </button>
           ))}
         </div>

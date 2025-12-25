@@ -169,7 +169,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
   // Generate THREE.js mesh from geometry metadata using the utility
   const createMeshFromGeometry = (objectData: any): THREE.Mesh => {
-    return generateMesh(workspaceObjectToMeshInput(objectData))
+    const input = workspaceObjectToMeshInput(objectData)
+    const mesh = generateMesh(input)
+    return mesh
   }
 
   // Initialize Three.js scene
@@ -349,11 +351,17 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     return (
       <div className="flex-1 bg-[var(--bg-100)] relative w-full h-full">
         {/* Three.js Canvas - Full screen on mobile */}
-        <div 
-          ref={mountRef} 
-          className="absolute inset-0 w-full h-full" 
+        <div
+          ref={mountRef}
+          className="absolute inset-0 w-full h-full cursor-crosshair"
           onClick={handleCanvasClick}
           onContextMenu={handleCanvasRightClick}
+          style={{
+            cursor: activeTool === 'select' ? 'default' :
+                   activeTool === 'measure' ? 'crosshair' :
+                   activeTool === 'sketch' ? 'crosshair' :
+                   'default'
+          }}
         />
 
         {/* Simple Fit View button on mobile - top right */}
@@ -393,11 +401,17 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   return (
     <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
       {/* Three.js Canvas */}
-      <div 
-        ref={mountRef} 
-        className="flex-1 w-full h-full" 
+      <div
+        ref={mountRef}
+        className="flex-1 w-full h-full cursor-crosshair"
         onClick={handleCanvasClick}
         onContextMenu={handleCanvasRightClick}
+        style={{
+          cursor: activeTool === 'select' ? 'default' :
+                 activeTool === 'measure' ? 'crosshair' :
+                 activeTool === 'sketch' ? 'crosshair' :
+                 'default'
+        }}
       />
 
       {/* View Controls */}
