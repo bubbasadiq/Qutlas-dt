@@ -155,9 +155,6 @@ importers:
       next-themes:
         specifier: ^0.4.4
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      opencascade.js:
-        specifier: 2.0.0-beta.b5ff984
-        version: 2.0.0-beta.b5ff984(ws@8.18.3)
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -2899,11 +2896,6 @@ packages:
   onetime@6.0.0:
     resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
-
-  opencascade.js@2.0.0-beta.b5ff984:
-    resolution: {integrity: sha512-4ZIrYrfrCV7SXvQFSmbHlfueSYngQNWGVrRVloVaAEZHDSY+R1k2htdY4AU5axbIGkbWVmrj+M8nmyeMLAelwA==}
-    peerDependencies:
-      ws: ^8.5.0
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -6130,10 +6122,6 @@ snapshots:
   onetime@6.0.0:
     dependencies:
       mimic-fn: 4.0.0
-
-  opencascade.js@2.0.0-beta.b5ff984(ws@8.18.3):
-    dependencies:
-      ws: 8.18.3
 
   optionator@0.9.4:
     dependencies:

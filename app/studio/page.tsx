@@ -9,6 +9,7 @@ import { TreeView } from "./components/tree-view"
 import { Toolbar } from "./components/toolbar"
 import { ContextMenu } from "./components/context-menu"
 import { IntentChat } from "@/components/intent-chat"
+import { AIGeometryPanel } from "@/components/ai-geometry-panel"
 import { AuthGuard } from "@/components/auth-guard"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { ErrorBoundary } from "@/components/error-boundary"
@@ -211,6 +212,11 @@ function StudioContent() {
           {/* Tool Icons at Top */}
           <div className="border-b border-[var(--neutral-200)] p-2">
             <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
+          </div>
+          
+          {/* AI Geometry Generator */}
+          <div className="border-b border-[var(--neutral-200)] p-3">
+            <AIGeometryPanel />
           </div>
           
           {/* AI Assistant - Takes remaining space */}
