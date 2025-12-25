@@ -49,40 +49,40 @@ export default function LandingPage() {
         </div>
       </nav>
 
-   {/* Hero Section - Primary Color Block */}
-<section className="min-h-screen flex items-center justify-center pt-20 relative overflow-hidden">
-  {/* Background Image */}
-  <div
-    className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-    style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
-  />
+      {/* Hero Section - Primary Color Block */}
+      <section className="min-h-screen flex items-center justify-center pt-20 relative overflow-hidden">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}
+        />
 
-  {/* Overlay */}
-  <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-[var(--primary-700)]/40" />
 
-  {/* Content container */}
-  <div className="relative z-10 text-center max-w-3xl mx-auto">
-    <h1 className="text-5xl md:text-7xl font-serif font-semibold text-white mb-8 text-balance leading-[1.1]">
-      Build yours,
-      <br />
-      <span className="text-[var(--accent-500)]">Become</span>
-    </h1>
+        {/* Content container */}
+        <div className="relative z-10 text-center max-w-3xl mx-auto px-6">
+          <h1 className="text-5xl md:text-7xl font-serif font-semibold text-white mb-8 text-balance leading-[1.1]">
+            Build yours,
+            <br />
+            <span className="text-[var(--accent-500)]">Become</span>
+          </h1>
 
-    <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto leading-relaxed text-pretty">
-      Describe what you want to create. Transform your ideas into manufacturable parts.
-    </p>
+          <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto leading-relaxed text-pretty">
+            Describe what you want to create. Transform your ideas into manufacturable parts.
+          </p>
 
-    <IntentChat variant="hero" placeholder="Describe what you want to create..." className="mb-8" />
+          <IntentChat variant="hero" placeholder="Describe what you want to create..." className="mb-8" />
 
-    <p className="text-sm text-white/50">
-      Or{" "}
-      <Link href="/auth/signup" className="text-[var(--accent-500)] hover:underline">
-        sign up
-      </Link>{" "}
-      to upload your CAD files directly
-    </p>
-  </div>
-</section>
+          <p className="text-sm text-white/50">
+            Or{" "}
+            <Link href="/auth/signup" className="text-[var(--accent-500)] hover:underline">
+              sign up
+            </Link>{" "}
+            to upload your CAD files directly
+          </p>
+        </div>
+      </section>
 
 
       <div className="relative h-24 bg-white overflow-hidden">
@@ -186,7 +186,7 @@ export default function LandingPage() {
           alt=""
           width={300}
           height={150}
-          className="absolute left-[15%] -top-6 w-[200px] md:w-[300px] h-auto opacity-10 -rotate-6"
+          className="absolute left-15% -top-6 w-[200px] md:w-[300px] h-auto opacity-10 -rotate-6"
           aria-hidden="true"
         />
       </div>

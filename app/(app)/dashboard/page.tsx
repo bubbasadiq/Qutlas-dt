@@ -8,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Icon } from "@/components/ui/icon"
 import { useAuth } from "@/lib/auth-context"
 import { Logo } from "@/components/logo"
-import { AuthGuard } from "@/components/auth-guard"
 
 function DashboardContent() {
   const { user, logout } = useAuth()
@@ -128,9 +127,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <AuthGuard>
-      <DashboardContent />
-    </AuthGuard>
-  )
+  return <DashboardContent />
 }

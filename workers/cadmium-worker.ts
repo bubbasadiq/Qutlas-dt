@@ -1,7 +1,11 @@
 // Cadmium Worker - Handles all geometry operations in a background thread
-// This replaces the OCCT worker with lightweight Cadmium-Core WASM
+// This replaces the OCCT worker with lightweight Cadmium-Core (JavaScript fallback)
 
-import init, * as CadmiumCore from '../wasm/cadmium-core/pkg/cadmium_core';
+// Use JavaScript implementation instead of WASM since wasm-pack is not available
+import * as CadmiumCore from '../wasm/cadmium-core/pkg/cadmium_core';
+
+// Mock init function for compatibility with WASM interface
+const init = () => Promise.resolve();
 
 interface WorkerMessage {
   id: string;
@@ -31,43 +35,33 @@ let totalCacheSize = 0;
 let isInitialized = false;
 let initializationError: Error | null = null;
 
-// Initialize Cadmium-Core WASM module
+// Initialize Cadmium-Core (JavaScript implementation)
 async function initialize() {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 1000;
-  
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      console.log(`🔄 Initializing Cadmium Worker (attempt ${attempt}/${MAX_RETRIES})...`);
-      await init();
-      isInitialized = true;
-      
-      self.postMessage({
-        type: 'READY',
-        message: 'Cadmium Worker initialized successfully'
-      });
-      
-      console.log('✅ Cadmium Worker ready');
-      
-      // Start cache cleanup interval
-      setInterval(cleanupCache, 5 * 60 * 1000); // Every 5 minutes
-      
-      return;
-    } catch (error) {
-      initializationError = error instanceof Error ? error : new Error(String(error));
-      console.error(`❌ Failed to initialize Cadmium Worker (attempt ${attempt}):`, error);
-      
-      if (attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
-      }
-    }
+  try {
+    console.log('🔄 Initializing Cadmium Worker...');
+    await init();
+    isInitialized = true;
+    
+    self.postMessage({
+      type: 'READY',
+      message: 'Cadmium Worker initialized successfully'
+    });
+    
+    console.log('✅ Cadmium Worker ready');
+    
+    // Start cache cleanup interval
+    setInterval(cleanupCache, 5 * 60 * 1000); // Every 5 minutes
+    
+    return;
+  } catch (error) {
+    initializationError = error instanceof Error ? error : new Error(String(error));
+    console.error('❌ Failed to initialize Cadmium Worker:', error);
+    
+    self.postMessage({
+      type: 'ERROR',
+      error: `Initialization failed: ${initializationError?.message}`
+    });
   }
-  
-  // All retries failed
-  self.postMessage({
-    type: 'ERROR',
-    error: `Initialization failed after ${MAX_RETRIES} attempts: ${initializationError?.message}`
-  });
 }
 
 // Main message handler

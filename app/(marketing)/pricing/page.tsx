@@ -182,7 +182,7 @@ export default function PricingPage() {
                 a: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect at the start of your next billing cycle.",
               },
               {
-                q: "What payment methods do you accept?",
+                q: "What payment methods do we accept?",
                 a: "We accept all major credit cards, wire transfers for enterprise accounts, and can arrange custom billing for large organizations.",
               },
               {
