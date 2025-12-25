@@ -6,6 +6,14 @@ use std::f64::consts::PI;
 use wasm_bindgen::prelude::*;
 use nalgebra::{Vector3 as Vec3, Point3};
 
+mod csg;
+mod validation;
+mod material;
+
+use csg::{CSGMesh, csg_union, csg_subtract, csg_intersect};
+use validation::*;
+pub use material::*;
+
 // ============ TYPES ============
 
 #[wasm_bindgen]
@@ -22,6 +30,7 @@ pub struct Mesh {
     vertices: Vec<f64>,
     faces: Vec<u32>,
     normals: Vec<f64>,
+    material: Option<Material>,
 }
 
 #[wasm_bindgen]
@@ -50,6 +59,16 @@ impl Mesh {
     pub fn face_count(&self) -> usize {
         self.faces.len() / 3
     }
+    
+    #[wasm_bindgen(getter)]
+    pub fn material(&self) -> Option<Material> {
+        self.material.clone()
+    }
+    
+    #[wasm_bindgen(setter)]
+    pub fn set_material(&mut self, material: Material) {
+        self.material = Some(material);
+    }
 }
 
 #[wasm_bindgen]
@@ -66,71 +85,105 @@ pub struct BoundingBox {
 // ============ BASIC SHAPE CREATION ============
 
 #[wasm_bindgen]
-pub fn create_box(width: f64, height: f64, depth: f64) -> Mesh {
-    generate_box_mesh(width, height, depth)
+pub fn create_box(width: f64, height: f64, depth: f64) -> Result<Mesh, JsValue> {
+    validate_box_dimensions(width, height, depth)
+        .map_err(|e| e.to_js_value())?;
+    
+    Ok(generate_box_mesh(width, height, depth))
 }
 
 #[wasm_bindgen]
-pub fn create_cylinder(radius: f64, height: f64, segments: Option<u32>) -> Mesh {
+pub fn create_cylinder(radius: f64, height: f64, segments: Option<u32>) -> Result<Mesh, JsValue> {
     let segs = segments.unwrap_or(32);
-    generate_cylinder_mesh(radius, height, segs)
+    validate_cylinder(radius, height, segs)
+        .map_err(|e| e.to_js_value())?;
+    
+    Ok(generate_cylinder_mesh(radius, height, segs))
 }
 
 #[wasm_bindgen]
-pub fn create_sphere(radius: f64, segments_lat: Option<u32>, segments_lon: Option<u32>) -> Mesh {
+pub fn create_sphere(radius: f64, segments_lat: Option<u32>, segments_lon: Option<u32>) -> Result<Mesh, JsValue> {
     let lat = segments_lat.unwrap_or(32);
     let lon = segments_lon.unwrap_or(32);
-    generate_sphere_mesh(radius, lat, lon)
+    validate_sphere(radius, lat, lon)
+        .map_err(|e| e.to_js_value())?;
+    
+    Ok(generate_sphere_mesh(radius, lat, lon))
 }
 
 #[wasm_bindgen]
-pub fn create_cone(radius: f64, height: f64, segments: Option<u32>) -> Mesh {
+pub fn create_cone(radius: f64, height: f64, segments: Option<u32>) -> Result<Mesh, JsValue> {
     let segs = segments.unwrap_or(32);
-    generate_cone_mesh(radius, height, segs)
+    validate_cone(radius, height, segs)
+        .map_err(|e| e.to_js_value())?;
+    
+    Ok(generate_cone_mesh(radius, height, segs))
 }
 
 #[wasm_bindgen]
-pub fn create_torus(major_radius: f64, minor_radius: f64, segments_major: Option<u32>, segments_minor: Option<u32>) -> Mesh {
+pub fn create_torus(major_radius: f64, minor_radius: f64, segments_major: Option<u32>, segments_minor: Option<u32>) -> Result<Mesh, JsValue> {
     let maj = segments_major.unwrap_or(32);
     let min = segments_minor.unwrap_or(16);
-    generate_torus_mesh(major_radius, minor_radius, maj, min)
+    validate_torus(major_radius, minor_radius, maj, min)
+        .map_err(|e| e.to_js_value())?;
+    
+    Ok(generate_torus_mesh(major_radius, minor_radius, maj, min))
 }
 
-// ============ BOOLEAN OPERATIONS (Simplified) ============
+// ============ BOOLEAN OPERATIONS (CSG) ============
 
 #[wasm_bindgen]
 pub fn boolean_union(mesh_a: &Mesh, mesh_b: &Mesh) -> Result<Mesh, JsValue> {
-    // For MVP: simple mesh merging (works for non-overlapping geometries)
-    let mut vertices = mesh_a.vertices.clone();
-    let mut faces = mesh_a.faces.clone();
-    let mut normals = mesh_a.normals.clone();
+    let csg_a = CSGMesh::from_buffers(&mesh_a.vertices, &mesh_a.faces);
+    let csg_b = CSGMesh::from_buffers(&mesh_b.vertices, &mesh_b.faces);
     
-    let vertex_offset = mesh_a.vertices.len() / 3;
+    let result = csg_union(&csg_a, &csg_b);
+    let (vertices, faces, normals) = result.to_buffers();
     
-    // Append mesh_b vertices and normals
-    vertices.extend_from_slice(&mesh_b.vertices);
-    normals.extend_from_slice(&mesh_b.normals);
+    let mut mesh = Mesh { vertices, faces, normals, material: None };
     
-    // Append mesh_b faces with offset
-    for &face_idx in &mesh_b.faces {
-        faces.push(face_idx + vertex_offset as u32);
+    // Preserve material from first mesh
+    if let Some(mat) = &mesh_a.material {
+        mesh.material = Some(mat.clone());
     }
     
-    Ok(Mesh { vertices, faces, normals })
+    Ok(mesh)
 }
 
 #[wasm_bindgen]
 pub fn boolean_subtract(base_mesh: &Mesh, tool_mesh: &Mesh) -> Result<Mesh, JsValue> {
-    // Simplified subtraction: for now, just return base mesh
-    // Full CSG implementation would use BVH and triangle intersection
-    // This is a placeholder that works for demo purposes
-    Ok(base_mesh.clone())
+    let csg_base = CSGMesh::from_buffers(&base_mesh.vertices, &base_mesh.faces);
+    let csg_tool = CSGMesh::from_buffers(&tool_mesh.vertices, &tool_mesh.faces);
+    
+    let result = csg_subtract(&csg_base, &csg_tool);
+    let (vertices, faces, normals) = result.to_buffers();
+    
+    let mut mesh = Mesh { vertices, faces, normals, material: None };
+    
+    // Preserve material from base mesh
+    if let Some(mat) = &base_mesh.material {
+        mesh.material = Some(mat.clone());
+    }
+    
+    Ok(mesh)
 }
 
 #[wasm_bindgen]
 pub fn boolean_intersect(mesh_a: &Mesh, mesh_b: &Mesh) -> Result<Mesh, JsValue> {
-    // Simplified intersection: return first mesh for MVP
-    Ok(mesh_a.clone())
+    let csg_a = CSGMesh::from_buffers(&mesh_a.vertices, &mesh_a.faces);
+    let csg_b = CSGMesh::from_buffers(&mesh_b.vertices, &mesh_b.faces);
+    
+    let result = csg_intersect(&csg_a, &csg_b);
+    let (vertices, faces, normals) = result.to_buffers();
+    
+    let mut mesh = Mesh { vertices, faces, normals, material: None };
+    
+    // Preserve material from first mesh
+    if let Some(mat) = &mesh_a.material {
+        mesh.material = Some(mat.clone());
+    }
+    
+    Ok(mesh)
 }
 
 // ============ FEATURE OPERATIONS ============
@@ -144,13 +197,18 @@ pub fn add_hole(
     diameter: f64,
     depth: f64,
 ) -> Result<Mesh, JsValue> {
+    validate_hole(diameter, depth)
+        .map_err(|e| e.to_js_value())?;
+    
     // Create a cylinder for the hole
     let radius = diameter / 2.0;
-    let hole_cylinder = create_cylinder(radius, depth, Some(32));
+    let mut hole_cylinder = create_cylinder(radius, depth, Some(32))?;
     
-    // In a full implementation, this would use boolean_subtract with proper CSG
-    // For MVP, we return the original mesh (the hole logic will be refined later)
-    Ok(geometry_mesh.clone())
+    // Translate the hole cylinder to the specified position
+    let hole_mesh = translate_mesh(&hole_cylinder, position_x, position_y, position_z);
+    
+    // Use CSG subtraction to create the hole
+    boolean_subtract(geometry_mesh, &hole_mesh)
 }
 
 #[wasm_bindgen]
@@ -159,8 +217,12 @@ pub fn add_fillet(
     edge_index: u32,
     radius: f64,
 ) -> Result<Mesh, JsValue> {
-    // Simplified fillet: return original mesh for MVP
-    // Full implementation would detect edges and apply rounding
+    validate_fillet_radius(radius)
+        .map_err(|e| e.to_js_value())?;
+    
+    // TODO: Implement edge detection and fillet generation
+    // For now, return original mesh with a note in console
+    web_sys::console::log_1(&"Fillet operation: Full implementation pending".into());
     Ok(geometry_mesh.clone())
 }
 
@@ -170,7 +232,12 @@ pub fn add_chamfer(
     edge_index: u32,
     distance: f64,
 ) -> Result<Mesh, JsValue> {
-    // Simplified chamfer: return original mesh for MVP
+    validate_chamfer_distance(distance)
+        .map_err(|e| e.to_js_value())?;
+    
+    // TODO: Implement edge detection and chamfer generation
+    // For now, return original mesh with a note in console
+    web_sys::console::log_1(&"Chamfer operation: Full implementation pending".into());
     Ok(geometry_mesh.clone())
 }
 
@@ -245,6 +312,23 @@ pub fn export_obj(mesh: &Mesh, filename: &str) -> Result<String, JsValue> {
 }
 
 // ============ MESH UTILITIES ============
+
+fn translate_mesh(mesh: &Mesh, tx: f64, ty: f64, tz: f64) -> Mesh {
+    let mut vertices = mesh.vertices.clone();
+    
+    for i in (0..vertices.len()).step_by(3) {
+        vertices[i] += tx;
+        vertices[i + 1] += ty;
+        vertices[i + 2] += tz;
+    }
+    
+    Mesh {
+        vertices,
+        faces: mesh.faces.clone(),
+        normals: mesh.normals.clone(),
+        material: mesh.material.clone(),
+    }
+}
 
 #[wasm_bindgen]
 pub fn compute_bounding_box(mesh: &Mesh) -> BoundingBox {
@@ -364,7 +448,7 @@ fn generate_box_mesh(width: f64, height: f64, depth: f64) -> Mesh {
     let mut normals = vec![0.0; vertices.len()];
     compute_normals(&vertices, &faces, &mut normals);
 
-    Mesh { vertices, faces, normals }
+    Mesh { vertices, faces, normals, material: None }
 }
 
 fn generate_cylinder_mesh(radius: f64, height: f64, segments: u32) -> Mesh {
@@ -414,7 +498,7 @@ fn generate_cylinder_mesh(radius: f64, height: f64, segments: u32) -> Mesh {
     let mut normals = vec![0.0; vertices.len()];
     compute_normals(&vertices, &faces, &mut normals);
     
-    Mesh { vertices, faces, normals }
+    Mesh { vertices, faces, normals, material: None }
 }
 
 fn generate_sphere_mesh(radius: f64, segments_lat: u32, segments_lon: u32) -> Mesh {
@@ -456,7 +540,7 @@ fn generate_sphere_mesh(radius: f64, segments_lat: u32, segments_lon: u32) -> Me
     let mut normals = vec![0.0; vertices.len()];
     compute_normals(&vertices, &faces, &mut normals);
     
-    Mesh { vertices, faces, normals }
+    Mesh { vertices, faces, normals, material: None }
 }
 
 fn generate_cone_mesh(radius: f64, height: f64, segments: u32) -> Mesh {
@@ -489,7 +573,7 @@ fn generate_cone_mesh(radius: f64, height: f64, segments: u32) -> Mesh {
     let mut normals = vec![0.0; vertices.len()];
     compute_normals(&vertices, &faces, &mut normals);
     
-    Mesh { vertices, faces, normals }
+    Mesh { vertices, faces, normals, material: None }
 }
 
 fn generate_torus_mesh(major_radius: f64, minor_radius: f64, segments_major: u32, segments_minor: u32) -> Mesh {
@@ -531,7 +615,7 @@ fn generate_torus_mesh(major_radius: f64, minor_radius: f64, segments_major: u32
     let mut normals = vec![0.0; vertices.len()];
     compute_normals(&vertices, &faces, &mut normals);
     
-    Mesh { vertices, faces, normals }
+    Mesh { vertices, faces, normals, material: None }
 }
 
 fn compute_normals(vertices: &[f64], faces: &[u32], normals: &mut [f64]) {
