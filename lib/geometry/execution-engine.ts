@@ -247,6 +247,11 @@ export class ExecutionEngine {
           segmentsMinor: params.segmentsMinor || 16,
         }
 
+      case 'LOAD_MESH':
+        return {
+          mesh: params.mesh
+        }
+
       case 'ADD_HOLE':
         return {
           geometryId: currentGeometryId,

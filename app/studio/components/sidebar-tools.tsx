@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Square, Circle, CircleDot, Upload, Api, Box, Cylinder, Wrench, Cmm, Layers, MousePointer2, Pencil, Ruler } from "lucide-react"
+import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Intersection, Disc } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -22,6 +22,13 @@ const tools: Tool[] = [
   { id: "fillet", label: "Fillet", icon: Wrench, shortcut: "F" },
   { id: "measure", label: "Measure", icon: Ruler, shortcut: "M" },
   { id: "section", label: "Section", icon: Layers, shortcut: "X" },
+]
+
+const booleanTools: Tool[] = [
+  { id: "union", label: "Union", icon: Plus, shortcut: "U" },
+  { id: "subtract", label: "Subtract", icon: Minus, shortcut: "D" },
+  { id: "intersect", label: "Intersect", icon: Intersection, shortcut: "I" },
+  { id: "hole", label: "Hole", icon: Disc, shortcut: "H" },
 ]
 
 const shapeTools: Tool[] = [
@@ -144,6 +151,12 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       })
       selectObject(id)
       toast.success('Sphere created')
+    } else if (toolId === 'union') {
+      toast.info('Select objects to union and use the properties panel to combine them')
+    } else if (toolId === 'subtract') {
+      toast.info('Select base and tool objects to subtract')
+    } else if (toolId === 'hole') {
+      toast.info('Select a face to place a hole')
     }
   }
 
@@ -226,6 +239,25 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
                   {tool.shortcut}
                 </span>
               )}
+            </button>
+          ))}
+        </div>
+
+        {/* Boolean & Feature Tools */}
+        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3 mt-4' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2 mt-3'}`}>Modify</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {booleanTools.map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => handleToolSelect(tool.id)}
+              className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                activeTool === tool.id
+                  ? "bg-[var(--primary-50)] border-[var(--primary-200)] text-[var(--primary-700)]"
+                  : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
+              }`}
+            >
+              <tool.icon size={14} />
+              <span className="text-xs font-medium">{tool.label}</span>
             </button>
           ))}
         </div>

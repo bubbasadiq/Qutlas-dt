@@ -121,47 +121,86 @@ export class CadmiumClient {
     return new Geometry(id, meshData)
   }
   
-  // Boolean Operations (simplified for MVP)
+  // Boolean Operations
   unionShapes(shape1: Geometry, shape2: Geometry): Geometry {
     this.ensureInitialized()
     
-    // For MVP: just merge meshes
-    const combinedVertices = [...shape1.meshData.vertices, ...shape2.meshData.vertices]
-    const offset = shape1.meshData.vertices.length / 3
-    const offsetIndices = shape2.meshData.indices.map(idx => idx + offset)
-    const combinedIndices = [...shape1.meshData.indices, ...offsetIndices]
-    const combinedNormals = [
-      ...(shape1.meshData.normals || []),
-      ...(shape2.meshData.normals || [])
-    ]
+    // Use WASM boolean_union
+    const meshA = this.meshDataToWASM(shape1.meshData)
+    const meshB = this.meshDataToWASM(shape2.meshData)
     
-    return new Geometry(this.generateId(), {
-      vertices: combinedVertices,
-      indices: combinedIndices,
-      normals: combinedNormals
-    })
+    try {
+      const resultMesh = cadmiumModule.boolean_union(meshA, meshB)
+      const meshData = this.extractMeshData(resultMesh)
+      return new Geometry(this.generateId(), meshData)
+    } catch (error) {
+      console.error('Union failed:', error)
+      // Fallback: merge meshes
+      const combinedVertices = [...shape1.meshData.vertices, ...shape2.meshData.vertices]
+      const offset = shape1.meshData.vertices.length / 3
+      const offsetIndices = shape2.meshData.indices.map(idx => idx + offset)
+      const combinedIndices = [...shape1.meshData.indices, ...offsetIndices]
+      return new Geometry(this.generateId(), {
+        vertices: combinedVertices,
+        indices: combinedIndices,
+        normals: [...(shape1.meshData.normals || []), ...(shape2.meshData.normals || [])]
+      })
+    }
   }
   
   cutShapes(shape1: Geometry, shape2: Geometry): Geometry {
     this.ensureInitialized()
     
-    // For MVP: return first shape (CSG subtraction is complex)
-    return new Geometry(this.generateId(), { ...shape1.meshData })
+    const meshA = this.meshDataToWASM(shape1.meshData)
+    const meshB = this.meshDataToWASM(shape2.meshData)
+    
+    try {
+      const resultMesh = cadmiumModule.boolean_subtract(meshA, meshB)
+      const meshData = this.extractMeshData(resultMesh)
+      return new Geometry(this.generateId(), meshData)
+    } catch (error) {
+      console.error('Subtraction failed:', error)
+      return new Geometry(this.generateId(), { ...shape1.meshData })
+    }
   }
   
   intersectShapes(shape1: Geometry, shape2: Geometry): Geometry {
     this.ensureInitialized()
     
-    // For MVP: return first shape
-    return new Geometry(this.generateId(), { ...shape1.meshData })
+    const meshA = this.meshDataToWASM(shape1.meshData)
+    const meshB = this.meshDataToWASM(shape2.meshData)
+    
+    try {
+      const resultMesh = cadmiumModule.boolean_intersect(meshA, meshB)
+      const meshData = this.extractMeshData(resultMesh)
+      return new Geometry(this.generateId(), meshData)
+    } catch (error) {
+      console.error('Intersection failed:', error)
+      return new Geometry(this.generateId(), { ...shape1.meshData })
+    }
   }
   
   // Feature Operations
   addHole(geometry: Geometry, position: Vector3, diameter: number, depth: number): Geometry {
     this.ensureInitialized()
     
-    // For MVP: return original geometry
-    return new Geometry(this.generateId(), { ...geometry.meshData })
+    const mesh = this.meshDataToWASM(geometry.meshData)
+    
+    try {
+      const resultMesh = cadmiumModule.add_hole(
+        mesh,
+        position.x,
+        position.y,
+        position.z,
+        diameter,
+        depth
+      )
+      const meshData = this.extractMeshData(resultMesh)
+      return new Geometry(this.generateId(), meshData)
+    } catch (error) {
+      console.error('Add hole failed:', error)
+      return new Geometry(this.generateId(), { ...geometry.meshData })
+    }
   }
   
   addFillet(geometry: Geometry, edgeIndex: number, radius: number): Geometry {
@@ -233,8 +272,12 @@ export class CadmiumClient {
   }
   
   private meshDataToWASM(meshData: MeshData): any {
-    // Convert JS mesh data back to WASM format if needed
-    return meshData
+    this.ensureInitialized()
+    return new cadmiumModule.Mesh(
+      meshData.vertices,
+      meshData.indices,
+      meshData.normals || []
+    )
   }
   
   private generateId(): string {

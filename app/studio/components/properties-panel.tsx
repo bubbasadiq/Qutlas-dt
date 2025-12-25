@@ -17,12 +17,13 @@ import { cn } from "@/lib/utils"
 
 export interface PropertiesPanelProps {
   selectedObject?: string
+  selectedObjects?: string[]
 }
 
-export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject }) => {
+export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject, selectedObjects = [] }) => {
   const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState("properties")
-  const { getObjectParameters, updateObjectParameters, getObjectGeometry, updateObject } = useWorkspace()
+  const { getObjectParameters, updateObjectParameters, getObjectGeometry, updateObject, performBoolean, deleteObject } = useWorkspace()
   const [params, setParams] = useState<Record<string, number>>({})
   const [applying, setApplying] = useState(false)
   const [showMaterialLibrary, setShowMaterialLibrary] = useState(false)
@@ -184,6 +185,50 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
                     </div>
                   </div>
                 </button>
+              </div>
+            )}
+
+            {/* Boolean Operations for Multi-selection */}
+            {selectedObjects.length > 1 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                  Boolean Operations
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      toast.promise(performBoolean('union', selectedObjects[0], selectedObjects[1]), {
+                        loading: 'Performing union...',
+                        success: 'Objects combined',
+                        error: 'Union failed'
+                      });
+                    }}
+                  >
+                    <Icon name="plus" className="w-3 h-3" />
+                    Union
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      toast.promise(performBoolean('subtract', selectedObjects[0], selectedObjects[1]), {
+                        loading: 'Performing subtraction...',
+                        success: 'Object subtracted',
+                        error: 'Subtraction failed'
+                      });
+                    }}
+                  >
+                    <Icon name="minus" className="w-3 h-3" />
+                    Subtract
+                  </Button>
+                </div>
+                <p className="text-xs text-[var(--neutral-500)] italic">
+                  * First selected object is the target.
+                </p>
               </div>
             )}
 

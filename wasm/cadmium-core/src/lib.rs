@@ -35,6 +35,16 @@ pub struct Mesh {
 
 #[wasm_bindgen]
 impl Mesh {
+    #[wasm_bindgen(constructor)]
+    pub fn new(vertices: Vec<f64>, faces: Vec<u32>, normals: Vec<f64>) -> Mesh {
+        Mesh {
+            vertices,
+            faces,
+            normals,
+            material: None,
+        }
+    }
+
     #[wasm_bindgen(getter)]
     pub fn vertices(&self) -> Vec<f64> {
         self.vertices.clone()
