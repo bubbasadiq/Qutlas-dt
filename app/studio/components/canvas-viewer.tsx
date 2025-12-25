@@ -352,6 +352,48 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     })
   }, [workspaceObjects, selectedObjectId])
 
+  // Enhanced selection highlighting with edge outline (desktop + mobile)
+  useEffect(() => {
+    if (!sceneRef.current) return
+
+    meshRefs.current.forEach((mesh, meshId) => {
+      const isSelected = selectedObjectId === meshId
+      const material = mesh.material as THREE.MeshStandardMaterial
+      
+      if (isSelected) {
+        // Selection highlight - stronger emissive for visibility
+        material.emissive.setHex(0x2a2a72)
+        material.emissive.multiplyScalar(0.5)
+        
+        // Add edge outline for clear selection feedback
+        let edgesMesh = mesh.userData.edgesMesh as THREE.LineSegments | undefined
+        if (!edgesMesh) {
+          const edges = new THREE.EdgesGeometry(mesh.geometry)
+          const wireframe = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ 
+              color: 0x2a2a72, 
+              linewidth: 3,
+              transparent: true,
+              opacity: 0.8
+            })
+          )
+          mesh.add(wireframe)
+          mesh.userData.edgesMesh = wireframe
+          edgesMesh = wireframe
+        }
+        if (edgesMesh) edgesMesh.visible = true
+      } else {
+        // Deselection - reset emissive
+        material.emissive.setHex(0x000000)
+        const edgesMesh = mesh.userData.edgesMesh as THREE.LineSegments | undefined
+        if (edgesMesh) {
+          edgesMesh.visible = false
+        }
+      }
+    })
+  }, [selectedObjectId])
+
   // Hide viewport controls on mobile
   if (isMobileView) {
     return (
