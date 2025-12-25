@@ -8,6 +8,7 @@ import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { generateMesh, workspaceObjectToMeshInput } from "@/lib/mesh-generator"
 import { setCanvasScene } from "@/lib/canvas-utils"
+import { useIsMobile } from "@/hooks/use-media-query"
 
 interface CanvasViewerProps {
   activeTool: string
@@ -17,6 +18,7 @@ interface CanvasViewerProps {
   onViewChange?: (view: string) => void
   onContextMenu?: (position: { x: number; y: number }, actions: any[]) => void
   onFitView?: () => void
+  isMobile?: boolean
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({ 
@@ -26,10 +28,12 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   onObjectSelect,
   onViewChange, 
   onContextMenu,
-  onFitView
+  onFitView,
+  isMobile = false,
 }) => {
+  const isMobileView = isMobile || useIsMobile()
   const [viewType, setViewType] = useState<string>("iso")
-  const [showGrid, setShowGrid] = useState(true)
+  const [showGrid, setShowGrid] = useState(!isMobileView) // Hide grid on mobile by default
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map())
@@ -191,7 +195,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
-    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) // Optimize for mobile
     renderer.shadowMap.enabled = true
     mountRef.current.appendChild(renderer.domElement)
     rendererRef.current = renderer
@@ -200,27 +204,41 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
     directionalLight.position.set(50, 50, 50)
     directionalLight.castShadow = true
-    directionalLight.shadow.mapSize.width = 2048
-    directionalLight.shadow.mapSize.height = 2048
+    directionalLight.shadow.mapSize.width = 1024 // Reduce for mobile performance
+    directionalLight.shadow.mapSize.height = 1024
     scene.add(directionalLight)
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
     scene.add(ambientLight)
 
-    // Grid
+    // Grid - hidden on mobile by default
     const grid = new THREE.GridHelper(100, 20, 0xcccccc, 0xe0e0e0)
     grid.visible = showGrid
     gridRef.current = grid
     scene.add(grid)
 
-    // Axes helper
-    const axesHelper = new THREE.AxesHelper(20)
-    scene.add(axesHelper)
+    // Axes helper - hidden on mobile by default
+    if (!isMobileView) {
+      const axesHelper = new THREE.AxesHelper(20)
+      scene.add(axesHelper)
+    }
 
-    // Orbit controls
+    // Orbit controls - optimized for touch on mobile
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.05
+    controls.enablePan = !isMobileView // Disable pan on mobile for simpler touch interaction
+    controls.enableZoom = true
+    controls.enableRotate = true
+    
+    // Touch gestures configuration for mobile
+    if (isMobileView) {
+      controls.touches = {
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN,
+      }
+    }
+    
     controlsRef.current = controls
 
     // Animation loop
@@ -247,7 +265,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
         mountRef.current.removeChild(renderer.domElement)
       }
     }
-  }, [])
+  }, [isMobileView])
 
   // Update grid visibility
   useEffect(() => {
@@ -326,6 +344,52 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     })
   }, [workspaceObjects, selectedObjectId])
 
+  // Hide viewport controls on mobile
+  if (isMobileView) {
+    return (
+      <div className="flex-1 bg-[var(--bg-100)] relative w-full h-full">
+        {/* Three.js Canvas - Full screen on mobile */}
+        <div 
+          ref={mountRef} 
+          className="absolute inset-0 w-full h-full" 
+          onClick={handleCanvasClick}
+          onContextMenu={handleCanvasRightClick}
+        />
+
+        {/* Simple Fit View button on mobile - top right */}
+        <button
+          onClick={fitCameraToObjects}
+          className="absolute top-4 right-4 p-3 bg-white rounded-xl shadow-lg touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center transition-transform active:scale-95"
+          title="Fit view to all objects (F)"
+        >
+          <svg className="w-6 h-6 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+        </button>
+
+        {/* Active Tool Indicator */}
+        {activeTool && (
+          <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md px-4 py-2">
+            <p className="text-sm">
+              <span className="text-[var(--neutral-500)]">Tool:</span>{" "}
+              <span className="font-medium text-[var(--primary-700)]">
+                {activeTool.charAt(0).toUpperCase() + activeTool.slice(1)}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Measurement Overlay */}
+        {activeTool === "measure" && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-[var(--accent-500)] text-[var(--neutral-900)] rounded-lg px-4 py-2 shadow-lg">
+            <p className="text-sm font-medium">Click two points to measure distance</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop view with full controls
   return (
     <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
       {/* Three.js Canvas */}
