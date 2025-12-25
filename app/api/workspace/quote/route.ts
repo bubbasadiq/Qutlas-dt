@@ -35,7 +35,12 @@ export async function POST(req: Request) {
       featureCount,
     })
 
-    const manufacturability = assessManufacturability({ parameters: geometryParams, process })
+    const manufacturability = assessManufacturability({
+      dimensions: geometryParams,
+      features: obj.features || [],
+      material: material || 'aluminum-6061',
+      process,
+    })
 
     const quote = estimateQuote({
       quantity,

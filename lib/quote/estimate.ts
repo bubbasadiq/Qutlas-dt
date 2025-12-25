@@ -1,76 +1,301 @@
-import { selectToolpath } from "@/lib/toolpath/select-toolpath"
+// lib/quote/estimate.ts
+// Complete quote calculation engine with full NGN pricing
 
-export interface QuoteEstimateInput {
+import { getMaterialPrice, calculateMaterialCost, type MaterialPrice } from '../pricing/materials'
+import { getDefaultMachineForProcess, calculateMachineTimeCost, estimateProcessingTime, type MachineRate } from '../pricing/machines'
+import { estimateToolCosts } from '../pricing/tools'
+import { calculateToolpath, type ToolpathCalculatorInput } from '../toolpath/calculator'
+import { assessManufacturability } from '../manufacturability/assess'
+
+export interface QuoteInput {
+  geometryParams: Record<string, any>
+  objectType?: string
+  material: string
+  process: string
   quantity: number
-  material?: string
-  process?: string
-  toolpathId?: string
-  geometryParams?: Record<string, any>
-  featureCount?: number
+  features?: Array<{ type: string; parameters: Record<string, any> }>
 }
 
-export interface QuoteEstimate {
-  unitPrice: number
+export interface QuoteBreakdown {
+  materialCost: number
+  materialWaste: number
+  machineTimeMinutes: number
+  machineCost: number
+  setupCost: number
+  toolCost: number
+  laborCost: number
   subtotal: number
   platformFee: number
+  platformFeePercent: number
   totalPrice: number
   leadTimeDays: number
+  unitPrice: number
 }
 
-function normalize(s: string | undefined) {
-  return (s || "").trim().toLowerCase()
+export interface QuoteResult {
+  success: boolean
+  jobId?: string
+  timestamp: string
+  geometry: {
+    type: string
+    volumeMm3: number
+    volumeCm3: number
+  }
+  material: {
+    type: string
+    name: string
+    density: number
+    massKg: number
+    pricePerKg: number
+    volumeCm3: number
+  }
+  process: string
+  manufacturability: {
+    score: number
+    compatible: boolean
+    issuesCount: number
+  }
+  toolpath: {
+    strategy: string
+    machine: string
+    timeMinutes: number
+  }
+  breakdown: QuoteBreakdown
+  currency: string
+  pricingValidMinutes: number
 }
 
-function computeVolumeCm3(params: Record<string, any>) {
-  const length = Number(params.length ?? params.width ?? params.x ?? 0)
-  const width = Number(params.width ?? params.depth ?? params.y ?? 0)
-  const height = Number(params.height ?? params.depth ?? params.z ?? 0)
-  if (!length || !width || !height) return 0
-  const volumeMm3 = length * width * height
-  return volumeMm3 / 1000
+export interface DetailedQuoteResult extends QuoteResult {
+  details: {
+    materialDetails: string
+    machineDetails: string
+    toolDetails: string
+    notes: string[]
+  }
 }
 
-export function estimateQuote(input: QuoteEstimateInput): QuoteEstimate {
-  const quantity = Math.max(1, Math.floor(input.quantity || 1))
-  const material = normalize(input.material)
-  const process = normalize(input.process)
+// Calculate volume in mm³ from geometry parameters
+function calculateVolume(params: Record<string, any>): number {
+  const width = params.width || params.length || params.x || 50
+  const height = params.height || params.depth || params.y || 50
+  const depth = params.depth || params.width || params.z || 50
+  const radius = params.radius || (params.diameter ? params.diameter / 2 : 25)
+  
+  // Detect object type from dimensions
+  if (params.type === 'cylinder') {
+    return Math.PI * radius * radius * height
+  } else if (params.type === 'sphere') {
+    return (4/3) * Math.PI * Math.pow(radius, 3)
+  } else if (params.type === 'cone') {
+    return (1/3) * Math.PI * radius * radius * height
+  } else if (params.type === 'torus') {
+    const majorRadius = params.majorRadius || params.radius || 50
+    const minorRadius = params.minorRadius || params.tube || 15
+    return Math.PI * minorRadius * minorRadius * 2 * Math.PI * majorRadius
+  }
+  
+  // Default to box volume
+  return width * height * depth
+}
 
-  const volumeCm3 = computeVolumeCm3(input.geometryParams || {})
-  const toolpath = selectToolpath({
-    process: input.process,
-    material: input.material,
-    objectType: normalize(String((input.geometryParams as any)?.type)) || undefined,
-    geometryParams: input.geometryParams,
-    featureCount: input.featureCount,
+// Get lead time in days based on process and quantity
+function getLeadTimeDays(process: string, quantity: number, timeMinutes: number): number {
+  const baseDays: Record<string, number> = {
+    'cnc-milling': 3,
+    'cnc-turning': 2,
+    'laser-cutting': 2,
+    '3d-printing': 3,
+    'sheet-metal': 4,
+  }
+  
+  const processKey = Object.keys(baseDays).find(k => 
+    process.toLowerCase().includes(k.replace('cnc-', ''))
+  )
+  
+  const base = baseDays[processKey || 'cnc-milling']
+  
+  // Add days for quantity
+  const quantityDays = Math.ceil(quantity / 5)
+  
+  // Add days for complexity (based on machine time)
+  const complexityDays = Math.ceil(timeMinutes / 60 / 4) // 1 day per 4 hours
+  
+  return base + quantityDays + complexityDays
+}
+
+export function generateQuote(input: QuoteInput): DetailedQuoteResult {
+  const { geometryParams, objectType, material, process, quantity, features = [] } = input
+  
+  // Generate job ID
+  const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  // Calculate volume
+  const volumeMm3 = calculateVolume(geometryParams)
+  const volumeCm3 = volumeMm3 / 1000
+  
+  // Get material pricing
+  const materialData = getMaterialPrice(material)
+  
+  // Calculate material cost
+  const materialCost = calculateMaterialCost(volumeMm3, material)
+  
+  // Get machine rate and calculate time
+  const machine = getDefaultMachineForProcess(process)
+  
+  // Estimate processing time
+  const estimatedMinutes = estimateProcessingTime(volumeMm3, process, material)
+  
+  // Calculate machine time cost
+  const machineTimeMinutes = estimatedMinutes * Math.ceil(quantity / 10) // Batch processing
+  const machineCost = calculateMachineTimeCost(machineTimeMinutes, machine?.id || 'cnc-3axis')
+  
+  // Calculate tool costs
+  const toolCost = estimateToolCosts(process, material, features.length, volumeMm3) * Math.ceil(quantity / 10)
+  
+  // Calculate setup cost
+  const setupCost = machine?.setupFee || 1500
+  
+  // Calculate labor cost (setup time + inspection)
+  const laborMinutes = 30 + (features.length * 5) // Base 30 min + 5 min per feature
+  const laborRate = 500 // NGN per minute
+  const laborCost = laborMinutes * laborRate
+  
+  // Calculate material waste (typically 15-30% depending on process)
+  const wasteFactor = process.includes('cnc') ? 0.25 : process.includes('print') ? 0.15 : 0.2
+  const materialWaste = materialCost * wasteFactor
+  
+  // Calculate subtotal
+  const subtotal = materialCost + machineCost + toolCost + setupCost + laborCost + materialWaste
+  
+  // Platform fee (5%)
+  const platformFeePercent = 0.05
+  const platformFee = subtotal * platformFeePercent
+  
+  // Total price
+  const totalPrice = subtotal + platformFee
+  const unitPrice = totalPrice / quantity
+  
+  // Get lead time
+  const leadTimeDays = getLeadTimeDays(process, quantity, machineTimeMinutes)
+  
+  // Assess manufacturability
+  const manufactResult = assessManufacturability({
+    dimensions: geometryParams,
+    features,
+    material,
+    process,
+    quantity,
   })
+  
+  // Calculate toolpath
+  const toolpathInput: ToolpathCalculatorInput = {
+    objectType: objectType || (geometryParams.type as string) || 'box',
+    dimensions: geometryParams,
+    features,
+    material,
+    process,
+    quantity,
+    volumeMm3,
+  }
+  const toolpathResult = calculateToolpath(toolpathInput)
+  
+  return {
+    success: true,
+    jobId,
+    timestamp: new Date().toISOString(),
+    geometry: {
+      type: objectType || (geometryParams.type as string) || 'box',
+      volumeMm3,
+      volumeCm3: Math.round(volumeCm3 * 1000) / 1000,
+    },
+    material: {
+      type: material,
+      name: materialData?.name || material,
+      density: materialData?.density || 2.7,
+      massKg: Math.round((volumeCm3 * (materialData?.density || 2.7) / 1000) * 1000) / 1000,
+      pricePerKg: materialData?.pricePerKg || 2500,
+      volumeCm3: Math.round(volumeCm3 * 1000) / 1000,
+    },
+    process,
+    manufacturability: {
+      score: manufactResult.score,
+      compatible: manufactResult.compatible,
+      issuesCount: manufactResult.issues.length,
+    },
+    toolpath: {
+      strategy: toolpathResult.strategy,
+      machine: toolpathResult.machine,
+      timeMinutes: toolpathResult.timeMinutes,
+    },
+    breakdown: {
+      materialCost: Math.round(materialCost * 100) / 100,
+      materialWaste: Math.round(materialWaste * 100) / 100,
+      machineTimeMinutes,
+      machineCost: Math.round(machineCost * 100) / 100,
+      setupCost,
+      toolCost: Math.round(toolCost * 100) / 100,
+      laborCost: Math.round(laborCost * 100) / 100,
+      subtotal: Math.round(subtotal * 100) / 100,
+      platformFee: Math.round(platformFee * 100) / 100,
+      platformFeePercent,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      leadTimeDays,
+      unitPrice: Math.round(unitPrice * 100) / 100,
+    },
+    currency: 'NGN',
+    pricingValidMinutes: 60,
+    details: {
+      materialDetails: `Volume: ${volumeCm3.toFixed(2)}cm³, Density: ${materialData?.density || 2.7}g/cm³`,
+      machineDetails: `${toolpathResult.machine}, ${machineTimeMinutes} minutes`,
+      toolDetails: `Tools: ${toolpathResult.notes.join(', ')}`,
+      notes: [
+        ...toolpathResult.notes,
+        ...manufactResult.warnings,
+        quantity > 10 ? 'Quantity discount applied' : '',
+      ].filter(Boolean),
+    },
+  }
+}
 
-  const materialMultiplier =
-    material.includes("titan") ? 2.2 : material.includes("stainless") ? 1.6 : material.includes("steel") ? 1.3 : material.includes("brass") ? 1.4 : material.includes("abs") || material.includes("plastic") ? 0.8 : 1
+// Simple quote estimate function for quick calculations
+export function estimateQuote(input: QuoteInput): QuoteBreakdown {
+  const result = generateQuote(input)
+  return result.breakdown
+}
 
-  const processMultiplier =
-    process.includes("laser") ? 0.8 : process.includes("print") ? 0.9 : process.includes("cnc") || process.includes("milling") ? 1.1 : 1
+// Format price in Nigerian Naira
+export function formatPriceNGN(amount: number): string {
+  return `₦ ${new Intl.NumberFormat('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)}`
+}
 
-  const toolpathMultiplier =
-    toolpath.id.includes("3d") ? 1.25 : toolpath.id.includes("turn") ? 1.15 : toolpath.id.includes("laser") ? 0.85 : 1
+// Get price breakdown summary
+export function getPriceSummary(breakdown: QuoteBreakdown): string {
+  return `
+Material: ${formatPriceNGN(breakdown.materialCost)}
+Machine: ${formatPriceNGN(breakdown.machineCost)}
+Labor: ${formatPriceNGN(breakdown.laborCost)}
+Tools: ${formatPriceNGN(breakdown.toolCost)}
+Setup: ${formatPriceNGN(breakdown.setupCost)}
+Subtotal: ${formatPriceNGN(breakdown.subtotal)}
+Platform Fee (${(breakdown.platformFeePercent * 100).toFixed(0)}%): ${formatPriceNGN(breakdown.platformFee)}
+Total: ${formatPriceNGN(breakdown.totalPrice)}
+  `.trim()
+}
 
-  const base = 8
-  const volumeCost = volumeCm3 > 0 ? volumeCm3 * 0.06 : 5
-  const complexityCost = (input.featureCount || 0) * 0.75
-
-  let unitPrice = (base + volumeCost + complexityCost) * materialMultiplier * processMultiplier * toolpathMultiplier
-
-  // Volume discounts
-  if (quantity >= 10) unitPrice *= 0.95
-  if (quantity >= 50) unitPrice *= 0.9
-  if (quantity >= 100) unitPrice *= 0.85
-
-  unitPrice = Math.round(unitPrice * 100) / 100
-
-  const subtotal = Math.round(unitPrice * quantity * 100) / 100
-  const platformFee = Math.round(subtotal * 0.15 * 100) / 100
-  const totalPrice = Math.round((subtotal + platformFee) * 100) / 100
-
-  const leadTimeDays = process.includes("laser") ? 3 : process.includes("print") ? 4 : 5
-
-  return { unitPrice, subtotal, platformFee, totalPrice, leadTimeDays }
+// Export quote as JSON
+export function exportQuoteAsJSON(result: DetailedQuoteResult): string {
+  return JSON.stringify({
+    jobId: result.jobId,
+    timestamp: result.timestamp,
+    geometry: result.geometry,
+    material: result.material,
+    process: result.process,
+    manufacturability: result.manufacturability,
+    toolpath: result.toolpath,
+    breakdown: result.breakdown,
+    currency: result.currency,
+  }, null, 2)
 }

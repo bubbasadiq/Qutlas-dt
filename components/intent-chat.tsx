@@ -9,11 +9,25 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { toast } from "sonner"
 
 interface AttachedFile {
   file: File
   preview: string
   type: "image" | "cad"
+}
+
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
+  geometry?: {
+    id: string
+    type: string
+    dimensions: Record<string, number>
+    material: string
+  }
 }
 
 interface IntentChatProps {
@@ -36,33 +50,48 @@ export function IntentChat({
   const [input, setInput] = useState(initialIntent || "")
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // Use workspace context for workspace variant
+  // Workspace context for workspace variant
   let workspace: ReturnType<typeof useWorkspace> | null = null
   try {
     if (variant === "workspace") {
       workspace = useWorkspace()
     }
   } catch (error) {
-    // Workspace context not available, will use callback instead
     console.warn("Workspace context not available in IntentChat")
   }
 
-  const { messages, append, status } = useChat({
-    api: "/api/ai/geometry",
-    onFinish: (message) => {
-      if (message.toolInvocations) {
-        const geometryResult = message.toolInvocations.find(
-          (t) => t.toolName === "generateGeometry" && t.state === "result",
-        )
-        if (geometryResult && "result" in geometryResult) {
-          const result = geometryResult.result
+  const { append, status, isLoading } = useChat({
+    api: "/api/ai/generate",
+    onFinish: async (message) => {
+      // Parse the response
+      try {
+        const content = message.content
+        let result: any = null
+        
+        // Try to extract JSON from the response
+        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          result = JSON.parse(jsonMatch[0])
+        }
+
+        // Add assistant message to history
+        setMessages(prev => [...prev, {
+          id: message.id,
+          role: 'assistant',
+          content: content,
+          timestamp: new Date(),
+          geometry: result?.geometry,
+        }])
+
+        if (result?.geometry) {
+          const geoData = result.geometry
           
           // Add to workspace if context available
-          if (workspace && result?.geometry) {
-            const geoData = result.geometry
+          if (workspace && result.geometry) {
             const id = geoData.id || `geo_${Date.now()}`
             
             workspace.addObject(id, {
@@ -70,26 +99,27 @@ export function IntentChat({
               dimensions: geoData.dimensions || {},
               features: geoData.features || [],
               material: geoData.material || 'aluminum',
-              description: geoData.description || '',
+              description: result.intent?.description || input,
               color: '#0077ff',
               visible: true,
               selected: false,
             })
             
-            // Select the newly created object
             workspace.selectObject(id)
+            
+            toast.success('Geometry created successfully!')
           }
           
-          // Also call the callback if provided
           if (onGeometryGenerated) {
             onGeometryGenerated(result)
           }
         }
+      } catch (error) {
+        console.error('Failed to parse AI response:', error)
+        toast.error('Failed to generate geometry')
       }
     },
   })
-
-  const isLoading = status === "streaming"
 
   // Auto-resize textarea
   useEffect(() => {
@@ -101,10 +131,10 @@ export function IntentChat({
 
   // Process initial intent if provided
   useEffect(() => {
-    if (initialIntent && variant === "workspace") {
+    if (initialIntent && variant === "workspace" && user) {
       handleSubmit(initialIntent)
     }
-  }, [initialIntent, variant])
+  }, [initialIntent, variant, user])
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -130,7 +160,6 @@ export function IntentChat({
       }
     })
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -148,21 +177,16 @@ export function IntentChat({
     // If on landing page (hero variant), check authentication first
     if (variant === "hero") {
       if (!user) {
-        // Store the intent and files in sessionStorage for after authentication
         const encodedIntent = encodeURIComponent(userInput)
         if (attachedFiles.length > 0) {
           sessionStorage.setItem("qutlas_attachments", JSON.stringify(attachedFiles.map((f) => f.preview)))
         }
         sessionStorage.setItem("qutlas_pending_intent", encodedIntent)
-        
-        // Redirect to login page
         router.push("/auth/login")
         return
       }
       
-      // User is authenticated, proceed to workspace
       const encodedIntent = encodeURIComponent(userInput)
-      // Store attached files in sessionStorage for workspace to pick up
       if (attachedFiles.length > 0) {
         sessionStorage.setItem("qutlas_attachments", JSON.stringify(attachedFiles.map((f) => f.preview)))
       }
@@ -170,10 +194,18 @@ export function IntentChat({
       return
     }
 
+    // Add user message to history
+    const userMessage: Message = {
+      id: `msg_${Date.now()}`,
+      role: 'user',
+      content: userInput,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, userMessage])
+
     // Build message content with images
     const content: any[] = [{ type: "text", text: userInput || "Analyze this sketch and create geometry based on it." }]
 
-    // Add images to the message
     for (const attached of attachedFiles) {
       if (attached.type === "image" && attached.preview) {
         content.push({
@@ -203,6 +235,7 @@ export function IntentChat({
   const suggestions = [
     "Create a bracket with mounting holes",
     "Make a gear with 24 teeth",
+    "Design a cylindrical shaft",
   ]
 
   // Hero variant - Landing page
@@ -282,13 +315,13 @@ export function IntentChat({
           </div>
         </div>
 
-        {/* Auth required message for unauthenticated users */}
+        {/* Auth required message */}
         {!user && !isAuthLoading && (
-         <div className="mt-3 text-center">
-           <p className="text-sm text-white/70">
-             <span className="text-white font-medium">Sign in</span> to create your design
-           </p>
-         </div>
+          <div className="mt-3 text-center">
+            <p className="text-sm text-white/70">
+              <span className="text-white font-medium">Sign in</span> to create your design
+            </p>
+          </div>
         )}
 
         {/* Suggestions */}
@@ -304,7 +337,6 @@ export function IntentChat({
           ))}
         </div>
 
-        {/* Hint about attachments */}
         <p className="mt-4 text-center text-sm text-white/50">
           <Paperclip className="w-4 h-4 inline-block mr-1" />
           Attach sketches or CAD files (STEP, STL, OBJ) for AI analysis
@@ -317,7 +349,7 @@ export function IntentChat({
   if (variant === "workspace") {
     return (
       <div className={cn("w-full", className)}>
-        {/* Messages */}
+        {/* Conversation History */}
         {messages.length > 0 && (
           <div className="mb-4 space-y-3 max-h-60 overflow-y-auto">
             {messages.map((message) => (
@@ -330,47 +362,22 @@ export function IntentChat({
                     : "bg-[var(--bg-200)] text-[var(--neutral-700)] mr-4",
                 )}
               >
-                {typeof message.content === "string" ? (
-                  <p>{message.content}</p>
-                ) : (
-                  Array.isArray(message.content) &&
-                  message.content.map((part: any, idx: number) => {
-                    if (part.type === "text") return <p key={idx}>{part.text}</p>
-                    if (part.type === "image")
-                      return (
-                        <Image
-                          key={idx}
-                          src={part.image || "/placeholder.svg"}
-                          alt="Attached"
-                          width={100}
-                          height={100}
-                          className="rounded mt-2"
-                        />
-                      )
-                    return null
-                  })
+                <p>{message.content}</p>
+                {message.geometry && (
+                  <div className="mt-2 text-xs opacity-75">
+                    Generated: {message.geometry.type} • {JSON.stringify(message.geometry.dimensions)}
+                  </div>
                 )}
-                {message.toolInvocations?.map((tool, idx) => {
-                  if (tool.toolName === "generateGeometry") {
-                    if (tool.state === "call") {
-                      return (
-                        <p key={idx} className="text-[var(--accent-600)] mt-2">
-                          Generating geometry...
-                        </p>
-                      )
-                    }
-                    if (tool.state === "result") {
-                      return (
-                        <p key={idx} className="text-green-600 mt-2">
-                          Geometry created successfully
-                        </p>
-                      )
-                    }
-                  }
-                  return null
-                })}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="mb-3 flex items-center gap-2 text-sm text-[var(--neutral-500)]">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>AI is analyzing your request...</span>
           </div>
         )}
 
@@ -446,11 +453,15 @@ export function IntentChat({
           </div>
         </div>
 
-        {/* Quick actions for workspace */}
+        {/* Quick actions */}
         {messages.length === 0 && (
           <div className="mt-3 space-y-1">
-            <p className="text-xs text-[var(--neutral-400)] mb-2">Quick actions</p>
-            {["Add a hole", "Fillet edges", "Extrude face"].map((action, idx) => (
+            <p className="text-xs text-[var(--neutral-400)] mb-2">Try saying...</p>
+            {[
+              "Create a 100mm aluminum box",
+              "Make a cylinder 50mm diameter",
+              "Design a sphere 25mm radius",
+            ].map((action, idx) => (
               <button
                 key={idx}
                 onClick={() => setInput(action)}

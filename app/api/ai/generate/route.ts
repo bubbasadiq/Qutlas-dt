@@ -1,54 +1,96 @@
-// API Route for AI Geometry Generation
-// Parses user intent and returns structured geometry operations
+// app/api/ai/generate/route.ts
+// API route for AI geometry generation using Deepseek
 
-import { NextResponse } from 'next/server'
-import { parseIntent } from '@/lib/geometry/intent-parser'
-import { buildOperationSequence } from '@/lib/geometry/operation-sequencer'
+import { NextRequest, NextResponse } from 'next/server'
+import { generateGeometryFromIntent as parseDeepseekIntent, generateGeometryFromIntent as deepseekGenerate } from '@/lib/deepseek-client'
+import { generateMeshFromIntent, intentToWorkspaceObject, type GeometryIntent } from '@/lib/geometry-generator'
 
-export const runtime = 'nodejs'
-
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { intent } = await req.json()
+    const body = await request.json()
+    const { intent, conversationHistory } = body
 
     if (!intent || typeof intent !== 'string') {
       return NextResponse.json(
-        { 
-          success: false,
-          error: 'Intent is required and must be a string' 
-        },
+        { success: false, error: 'Intent is required and must be a string' },
         { status: 400 }
       )
     }
 
-    console.log('🤖 AI Generate API: Received intent:', intent)
+    // Check if Deepseek API key is configured
+    const apiKey = process.env.DEEPSEEK_API_KEY
+    if (!apiKey) {
+      return NextResponse.json(
+        { success: false, error: 'AI geometry generation is not configured. Please set DEEPSEEK_API_KEY.' },
+        { status: 503 }
+      )
+    }
 
-    // Parse natural language intent into structured geometry
-    const parseResult = await parseIntent(intent)
-    
-    console.log('🤖 AI Generate API: Parsed intent successfully')
+    // Generate geometry from intent using Deepseek
+    const deepseekResult = await deepseekGenerate(intent, conversationHistory)
 
-    // Build operation sequence from parsed intent
-    const operations = buildOperationSequence(parseResult.intent)
+    if (deepseekResult.error) {
+      return NextResponse.json(
+        { success: false, error: deepseekResult.error },
+        { status: 500 }
+      )
+    }
+
+    // Validate the generated intent
+    if (!deepseekResult.intent || !deepseekResult.intent.type) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to generate valid geometry intent' },
+        { status: 500 }
+      )
+    }
+
+    // Generate the actual geometry mesh
+    const geometryResult = generateMeshFromIntent(deepseekResult.intent)
     
-    console.log('🤖 AI Generate API: Built operation sequence:', operations.length, 'operations')
+    if (!geometryResult.success) {
+      return NextResponse.json(
+        { success: false, error: geometryResult.errors?.join(', ') || 'Failed to generate geometry' },
+        { status: 500 }
+      )
+    }
+
+    // Convert to workspace object format
+    const workspaceObject = intentToWorkspaceObject(deepseekResult.intent, geometryResult.geometry?.id)
 
     return NextResponse.json({
       success: true,
-      intent: parseResult.intent,
-      operations,
-      processingTime: parseResult.processingTime,
+      intent: deepseekResult.intent,
+      geometry: {
+        id: geometryResult.geometry?.id,
+        type: geometryResult.geometry?.type,
+        dimensions: geometryResult.geometry?.dimensions,
+        features: geometryResult.geometry?.features,
+        material: geometryResult.geometry?.material,
+        volume: geometryResult.geometry?.volume,
+        boundingBox: geometryResult.geometry?.boundingBox,
+      },
+      workspaceObject,
+      conversationHistory: deepseekResult.conversationHistory,
+      warnings: geometryResult.warnings,
     })
   } catch (error) {
-    console.error('AI generation error:', error)
-    
+    console.error('AI geometry generation error:', error)
     return NextResponse.json(
-      { 
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate geometry',
-        details: error instanceof Error ? error.stack : undefined,
-      },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    message: 'AI Geometry Generation API',
+    endpoints: {
+      POST: 'Generate geometry from natural language intent',
+    },
+    example: {
+      intent: 'Create a 100mm aluminum box with 5mm holes in each corner',
+    },
+  })
 }
