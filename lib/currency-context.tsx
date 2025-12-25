@@ -106,15 +106,14 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
   const formatPrice = useCallback((amount: number, options: { showCode?: boolean } = {}) => {
     const { showCode = false } = options
 
-    // Format as plain number without any currency symbols
-    const formattedNumber = new Intl.NumberFormat("en-US", {
-      style: "decimal",
+    // Format number with proper locale
+    const formattedNumber = new Intl.NumberFormat("en-NG", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
 
-    // Only show currency code if explicitly requested, never show symbols
-    return showCode ? `${formattedNumber} ${currency.code}` : formattedNumber
+    // Always show Nigerian Naira symbol with amount
+    return `${currency.symbol} ${formattedNumber}`
   }, [currency])
 
   const convertPrice = useCallback((amount: number, fromCurrency: string, toCurrency: string) => {
