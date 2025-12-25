@@ -89,6 +89,7 @@ function TreeNode({
     : "hover:bg-[var(--bg-200)] border border-transparent"
   const rowClass = isMobile ? "flex items-center gap-3 px-4 py-3" : "flex items-center gap-2 px-2 py-1.5"
   const iconButtonClass = isMobile ? "w-8 h-8 flex items-center justify-center" : "w-4 h-4 flex items-center justify-center"
+  const actionButtonClass = isMobile ? "w-10 h-10" : "w-4 h-4"
   
   return (
     <div className={`${nodeClass} ${selected ? nodeSelectedClass : nodeNormalClass}`}>
