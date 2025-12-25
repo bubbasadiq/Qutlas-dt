@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { generateMesh, workspaceObjectToMeshInput } from "@/lib/mesh-generator"
+import { setCanvasScene } from "@/lib/canvas-utils"
 
 interface CanvasViewerProps {
   activeTool: string
@@ -173,6 +174,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xf5f5f5)
+
+    // Register scene globally so worker-driven geometry updates can render
+    setCanvasScene(scene)
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(
