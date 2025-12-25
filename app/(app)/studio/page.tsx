@@ -2,15 +2,14 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { SidebarTools } from "./components/sidebar-tools"
-import { CanvasViewer } from "./components/canvas-viewer"
-import { PropertiesPanel } from "./components/properties-panel"
-import { TreeView } from "./components/tree-view"
-import { Toolbar } from "./components/toolbar"
-import { ContextMenu } from "./components/context-menu"
+import { SidebarTools } from "../../studio/components/sidebar-tools"
+import { CanvasViewer } from "../../studio/components/canvas-viewer"
+import { PropertiesPanel } from "../../studio/components/properties-panel"
+import { TreeView } from "../../studio/components/tree-view"
+import { Toolbar } from "../../studio/components/toolbar"
+import { ContextMenu } from "../../studio/components/context-menu"
 import { IntentChat } from "@/components/intent-chat"
 import { AIGeometryPanel } from "@/components/ai-geometry-panel"
-import { AuthGuard } from "@/components/auth-guard"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { toast } from "sonner"
@@ -58,7 +57,7 @@ function StudioContent() {
       const activeElement = document.activeElement
       if (activeElement instanceof HTMLInputElement ||
           activeElement instanceof HTMLTextAreaElement ||
-          activeElement?.getAttribute('contenteditable') === 'true') {
+          activeElement?.getAttribute('contenteditable') === "true") {
         // Allow some shortcuts even in inputs (Ctrl+S to save)
         if (ctrlKey && e.key === 's') {
           e.preventDefault()
@@ -255,7 +254,7 @@ function StudioContent() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">AI Assistant</p>
-                <p className="text-xs text-white/70">Powered by Claude</p>
+                <p className="text-xs text-white/70">Powered by Deepseek</p>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
@@ -309,21 +308,19 @@ function StudioContent() {
 
 export default function StudioWorkspacePage() {
   return (
-    <AuthGuard>
-      <ErrorBoundary>
-        <Suspense
-          fallback={
-            <div className="flex h-full w-full items-center justify-center bg-gray-100">
-              <div className="text-center">
-                <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
-                <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
-              </div>
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="flex h-full w-full items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="inline-block w-8 h-8 border-4 border-[var(--primary-700)] border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p className="text-sm text-[var(--neutral-600)]">Loading workspace...</p>
             </div>
-          }
-        >
-          <StudioContent />
-        </Suspense>
-      </ErrorBoundary>
-    </AuthGuard>
+          </div>
+        }
+      >
+        <StudioContent />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
