@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Icon } from "@/components/ui/icon"
 import { Logo } from "@/components/logo"
 import { toast } from "sonner"
+import { useCurrency } from "@/hooks/use-currency"
+import { PriceDisplay } from "@/components/price-display"
+import { CurrencySelector } from "@/components/currency-selector"
 
 interface PartDetail {
   id: string
@@ -38,6 +41,7 @@ interface QuoteData {
   totalPrice: number
   leadTimeDays: number
   manufacturability: number
+  currency?: string
 }
 
 interface HubMatch {
@@ -57,6 +61,7 @@ export default function PartDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const partId = params.partId as string
+  const { currency, formatPrice, convertPrice } = useCurrency()
 
   const [part, setPart] = useState<PartDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -160,6 +165,7 @@ export default function PartDetailPage() {
           quantity,
           material: selectedMaterial?.name,
           parameters,
+          currency: currency.code,
         }),
       })
 
@@ -275,6 +281,7 @@ export default function PartDetailPage() {
               <span className="text-[var(--neutral-700)]">{part.name}</span>
             </div>
           </div>
+          <CurrencySelector />
         </div>
       </header>
 
@@ -418,7 +425,7 @@ export default function PartDetailPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[var(--neutral-500)]">Unit Price</span>
                   <span className="font-medium text-[var(--neutral-900)]">
-                    ${(part.basePrice * (selectedMaterial?.priceMultiplier || 1)).toFixed(2)}
+                    <PriceDisplay amount={part.basePrice * (selectedMaterial?.priceMultiplier || 1)} variant="compact" />
                   </span>
                 </div>
                 <div className="flex items-center justify-between mb-4">
@@ -427,7 +434,9 @@ export default function PartDetailPage() {
                 </div>
                 <div className="flex items-center justify-between text-lg">
                   <span className="font-medium text-[var(--neutral-900)]">Total</span>
-                  <span className="font-bold text-[var(--primary-700)]">${calculatedPrice.toFixed(2)}</span>
+                  <span className="font-bold text-[var(--primary-700)]">
+                    <PriceDisplay amount={calculatedPrice} variant="default" />
+                  </span>
                 </div>
               </div>
 
@@ -517,15 +526,21 @@ export default function PartDetailPage() {
               <div className="border-t border-[var(--neutral-200)] pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--neutral-500)]">Subtotal</span>
-                  <span className="text-[var(--neutral-900)]">${quote.subtotal.toFixed(2)}</span>
+                  <span className="text-[var(--neutral-900)]">
+                    <PriceDisplay amount={quote.subtotal} variant="compact" />
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--neutral-500)]">Platform Fee (15%)</span>
-                  <span className="text-[var(--neutral-900)]">${quote.platformFee.toFixed(2)}</span>
+                  <span className="text-[var(--neutral-900)]">
+                    <PriceDisplay amount={quote.platformFee} variant="compact" />
+                  </span>
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                   <span className="text-[var(--neutral-900)]">Total</span>
-                  <span className="text-[var(--primary-700)]">${quote.totalPrice.toFixed(2)}</span>
+                  <span className="text-[var(--primary-700)]">
+                    <PriceDisplay amount={quote.totalPrice} variant="default" />
+                  </span>
                 </div>
               </div>
 
@@ -558,7 +573,7 @@ export default function PartDetailPage() {
               </p>
               <div className="bg-[var(--bg-50)] rounded-xl p-4 mb-6">
                 <p className="text-sm text-[var(--neutral-500)]">Amount Due</p>
-                <p className="text-2xl font-bold text-[var(--primary-700)]">${quote.totalPrice.toFixed(2)}</p>
+                <PriceDisplay amount={quote.totalPrice} variant="large" className="text-[var(--primary-700)]" />
               </div>
               <PaymentModalWrapper
                 jobId={`job-${Date.now()}`}
@@ -599,5 +614,5 @@ function PaymentModalWrapper({
   }
 
   const PaymentModal = require("@/app/studio/components/payment-modal").default
-  return <PaymentModal isOpen={true} jobId={jobId} jobCost={jobCost} description={description} onSuccess={onSuccess} onClose={onClose} />
+  return <PaymentModal isOpen={true} jobId={jobId} jobCost={jobCost} description={description} currency={currency.code} onSuccess={onSuccess} onClose={onClose} />
 }

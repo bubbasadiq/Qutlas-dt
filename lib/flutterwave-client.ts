@@ -90,6 +90,7 @@ export async function initializePayment(payload: {
   name: string
   phone: string
   description: string
+  currency?: string
 }): Promise<{ link: string; tx_ref: string }> {
   const response = await fetch("/api/payment/create", {
     method: "POST",

@@ -9,6 +9,9 @@ import { Icon } from "@/components/ui/icon"
 import { Logo } from "@/components/logo"
 import { AuthGuard } from "@/components/auth-guard"
 import { useAuth } from "@/lib/auth-context"
+import { useCurrency } from "@/hooks/use-currency"
+import { PriceDisplay } from "@/components/price-display"
+import { CurrencySelector } from "@/components/currency-selector"
 
 const categories = [
   { id: "all", label: "All Parts" },
@@ -39,6 +42,7 @@ interface CatalogPart {
 
 function CatalogContent() {
   const { user } = useAuth()
+  const { currency, formatPrice } = useCurrency()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("all")
@@ -121,10 +125,15 @@ function CatalogContent() {
       </header>
 
       <div className="bg-white border-b border-[var(--neutral-200)]">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-serif text-[var(--neutral-900)] mb-2">Parts Catalog</h1>
-          <p className="text-[var(--neutral-500)]">Browse thousands of ready-to-manufacture parts</p>
-        </div>
+       <div className="max-w-7xl mx-auto px-6 py-8">
+         <div className="flex items-center justify-between">
+           <div>
+             <h1 className="text-3xl font-serif text-[var(--neutral-900)] mb-2">Parts Catalog</h1>
+             <p className="text-[var(--neutral-500)]">Browse thousands of ready-to-manufacture parts</p>
+           </div>
+           <CurrencySelector />
+         </div>
+       </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -285,7 +294,7 @@ function CatalogContent() {
 
                       <div className="flex items-center justify-between mt-4">
                         <div>
-                          <p className="text-lg font-semibold text-[var(--neutral-900)]">${part.basePrice}</p>
+                          <PriceDisplay amount={part.basePrice} variant="default" />
                           <p className="text-xs text-[var(--neutral-500)]">{part.leadTime || "5 days"}</p>
                         </div>
                         <Button
