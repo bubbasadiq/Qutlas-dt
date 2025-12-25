@@ -27,7 +27,7 @@ const iconMap: Record<string, any> = {
   'triangle': Icons.Triangle,
   'layers': Icons.Layers,
   'minus': Icons.Minus,
-  'intersect': Icons.Cut,
+  'intersect': Icons.Scissors,
   'zap': Icons.Zap,
   'hammer': Icons.Hammer,
   'dollar-sign': Icons.DollarSign,
