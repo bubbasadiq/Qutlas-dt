@@ -49,6 +49,7 @@ function StudioContent() {
   const {
     objects,
     selectedObjectId,
+    selectedObjectIds,
     selectObject,
     deleteObject,
     updateObject,
