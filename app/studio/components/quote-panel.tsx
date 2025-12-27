@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { CheckoutModal } from "./checkout-modal"
+import { exportQuoteAsPDF, downloadQuoteAsJSON } from "@/lib/quote/pdf-export"
 
 const PROCESSES = [
   { id: 'cnc-milling', name: 'CNC Milling', icon: 'settings' },
@@ -205,18 +206,39 @@ export function QuotePanel() {
 
       {/* Actions */}
       <div className="p-3 border-t space-y-2">
-        <Button
-          onClick={() => {
-            navigator.clipboard.writeText(JSON.stringify(quote, null, 2))
-            toast.success('Quote copied to clipboard')
-          }}
-          variant="outline"
-          size={isMobile ? "default" : "sm"}
-          className="w-full"
-        >
-          <Icon name="copy" className="w-4 h-4 mr-2" />
-          Copy Quote
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={() => {
+              downloadQuoteAsJSON(quote)
+              toast.success('Quote downloaded as JSON')
+            }}
+            variant="outline"
+            size={isMobile ? "default" : "sm"}
+            className="w-full"
+          >
+            <Icon name="download" className="w-4 h-4 mr-1" />
+            JSON
+          </Button>
+          <Button
+            onClick={async () => {
+              try {
+                await exportQuoteAsPDF(quote, {
+                  includeBreakdown: true,
+                  includeNotes: true,
+                })
+                toast.success('Quote PDF opened for printing')
+              } catch (error) {
+                toast.error('Failed to export PDF')
+              }
+            }}
+            variant="outline"
+            size={isMobile ? "default" : "sm"}
+            className="w-full"
+          >
+            <Icon name="file-text" className="w-4 h-4 mr-1" />
+            PDF
+          </Button>
+        </div>
         <Button
           onClick={() => setShowCheckout(true)}
           size={isMobile ? "default" : "sm"}
