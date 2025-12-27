@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { Hexagon, Settings, Keyboard, Info, Menu, Save, Undo, Redo, BarChart3, FileText, Zap, CreditCard } from "lucide-react"
+import { Hexagon, Menu, Save, Undo, Redo, ChevronDown, ChevronUp } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -13,13 +12,15 @@ import { ImportDialog } from "./import-dialog"
 import { SettingsDialog } from "./settings-dialog"
 import { HelpDialog } from "./help-dialog"
 import { MenuButton, MenuItem } from "@/components/toolbar-menu"
-import { shortcutsRegistry, Keys } from "@/lib/shortcuts-registry"
+import { Keys } from "@/lib/shortcuts-registry"
 
 interface ToolbarProps {
   onMobileMenuOpen?: () => void
+  onAnalyzeClick?: () => void
+  onQuoteClick?: () => void
 }
 
-export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
+export function Toolbar({ onMobileMenuOpen, onAnalyzeClick, onQuoteClick }: ToolbarProps) {
   const { 
     objects, 
     clearWorkspace, 
@@ -44,6 +45,7 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [showHelpDialog, setShowHelpDialog] = useState(false)
   const [objectsSnapshot, setObjectsSnapshot] = useState<string>("")
+  const [menuCollapsed, setMenuCollapsed] = useState(false)
   
   // Track changes to objects to update saved state
   useEffect(() => {
@@ -151,7 +153,6 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
 
     try {
       for (const file of files) {
-        // Upload/parsing is handled elsewhere; for now we add a usable placeholder shape
         const id = `geo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
         addObject(id, {
           type: "box",
@@ -172,8 +173,6 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
     const toastId = toast.loading(`Creating ${type}...`)
 
     try {
-      // Geometry preview in the studio is generated client-side (THREE/Cadmium fallback).
-      // We create the object immediately so users can always build shapes.
       const id = `geo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
       const dimensions: Record<string, number> = {}
 
@@ -221,7 +220,6 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
     { id: 'new', label: 'New', icon: 'file', shortcut: [Keys.Ctrl, 'n'], onClick: handleNew },
     { id: 'open', label: 'Open', icon: 'folder-open', shortcut: [Keys.Ctrl, 'o'], onClick: () => setShowLoadDialog(true) },
     { id: 'save', label: 'Save', icon: 'save', shortcut: [Keys.Ctrl, 's'], onClick: () => setShowSaveDialog(true) },
-    { id: 'save-as', label: 'Save As...', icon: 'save', shortcut: [Keys.Ctrl, Keys.Shift, 's'], onClick: () => setShowSaveDialog(true) },
     { divider: true },
     { id: 'import', label: 'Import...', icon: 'upload', shortcut: [Keys.Ctrl, 'i'], onClick: () => setShowImportDialog(true) },
     { id: 'export', label: 'Export...', icon: 'download', shortcut: [Keys.Ctrl, 'e'], onClick: () => setShowExportDialog(true) },
@@ -232,27 +230,21 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
     { id: 'redo', label: 'Redo', icon: 'redo', shortcut: [Keys.Ctrl, 'y'], onClick: () => { if (canRedo) redo() }, disabled: !canRedo },
     { divider: true },
     { id: 'delete', label: 'Delete', icon: 'trash', shortcut: ['Delete'], onClick: () => { if (selectedObjectId) deleteObject(selectedObjectId) }, disabled: !selectedObjectId },
-    { id: 'duplicate', label: 'Duplicate', icon: 'copy', shortcut: [Keys.Ctrl, 'd'], onClick: () => { if (selectedObjectId) createGeometry('box') }, disabled: !selectedObjectId },
-    { divider: true },
-    { id: 'select-all', label: 'Select All', icon: 'square', shortcut: [Keys.Ctrl, 'a'], onClick: () => toast.info('Select All - Coming soon') },
   ]
 
   const viewMenuItems: MenuItem[] = [
-    { id: 'zoom-in', label: 'Zoom In', icon: 'zoom-in', onClick: () => toast.info('Zoom In - Coming soon') },
-    { id: 'zoom-out', label: 'Zoom Out', icon: 'zoom-out', onClick: () => toast.info('Zoom Out - Coming soon') },
     { id: 'fit', label: 'Fit View', icon: 'maximize', shortcut: ['f'], onClick: () => document.querySelector('[title="Fit view to all objects (F)"]')?.dispatchEvent(new MouseEvent('click')) },
     { id: 'reset', label: 'Reset Camera', icon: 'camera', onClick: () => toast.info('Reset Camera - Coming soon') },
     { divider: true },
     { id: 'toggle-grid', label: 'Toggle Grid', icon: 'grid', onClick: () => toast.info('Toggle Grid - Coming soon') },
-    { id: 'toggle-panels', label: 'Toggle Panels', icon: 'layout', onClick: () => toast.info('Toggle Panels - Coming soon') },
   ]
 
   const createMenuItems: MenuItem[] = [
     { id: 'box', label: 'Box', icon: 'square', shortcut: ['b'], onClick: () => createGeometry('box') },
     { id: 'cylinder', label: 'Cylinder', icon: 'circle', shortcut: ['c'], onClick: () => createGeometry('cylinder') },
     { id: 'sphere', label: 'Sphere', icon: 'circle', shortcut: ['s'], onClick: () => createGeometry('sphere') },
-    { id: 'cone', label: 'Cone', icon: 'triangle', shortcut: ['o'], onClick: () => createGeometry('cone') },
-    { id: 'torus', label: 'Torus', icon: 'circle', shortcut: ['t'], onClick: () => createGeometry('torus') },
+    { id: 'cone', label: 'Cone', icon: 'triangle', onClick: () => createGeometry('cone') },
+    { id: 'torus', label: 'Torus', icon: 'circle', onClick: () => createGeometry('torus') },
   ]
 
   const modifyMenuItems: MenuItem[] = [
@@ -309,23 +301,13 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
     },
   ]
 
-  const featuresMenuItems: MenuItem[] = [
-    { id: 'hole', label: 'Add Hole', icon: 'circle', shortcut: ['h'], onClick: () => toast.info('Add Hole - Coming soon') },
-    { id: 'fillet', label: 'Fillet', icon: 'rounded-corner', shortcut: ['f'], onClick: () => toast.info('Fillet - Coming soon') },
-    { id: 'chamfer', label: 'Chamfer', icon: 'corner-down-right', shortcut: ['e'], onClick: () => toast.info('Chamfer - Coming soon') },
-    { id: 'pocket', label: 'Pocket', icon: 'box', onClick: () => toast.info('Pocket - Coming soon') },
-  ]
-
   const manufactureMenuItems: MenuItem[] = [
-    { id: 'analyze-dfm', label: 'Analyze DFM', icon: 'zap', onClick: () => router.push('/catalog/quote') },
-    { id: 'generate-job', label: 'Generate Job', icon: 'hammer', onClick: () => toast.info('Generate Job - Coming soon') },
-    { id: 'get-quote', label: 'Get Quote', icon: 'banknote', onClick: () => router.push('/catalog/quote') },
+    { id: 'analyze-dfm', label: 'Analyze Manufacturability', icon: 'zap', onClick: onAnalyzeClick },
+    { id: 'get-quote', label: 'Get Quote', icon: 'banknote', onClick: onQuoteClick },
   ]
 
   const helpMenuItems: MenuItem[] = [
-    { id: 'docs', label: 'Documentation', icon: 'book', onClick: () => window.open('https://docs.qutlas.com', '_blank') },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: 'keyboard', shortcut: ['?'], onClick: () => setShowHelpDialog(true) },
-    { divider: true },
     { id: 'settings', label: 'Settings', icon: 'settings', onClick: () => setShowSettingsDialog(true) },
     { divider: true },
     { id: 'about', label: 'About', icon: 'info', onClick: () => toast.info('Qutlas Studio v1.0.0') },
@@ -334,11 +316,11 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
   // Mobile toolbar - simplified
   if (isMobile) {
     return (
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 shadow-sm safe-area-inset-top">
-        {/* Left: Logo + Menu button */}
-        <div className="flex items-center gap-3">
-          <Hexagon className="w-6 h-6 text-[var(--primary-700)]" />
-          <span className="font-semibold text-[var(--primary-700)] hidden sm:inline">Qutlas</span>
+      <div className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-3 shadow-sm safe-area-inset-top">
+        {/* Left: Logo */}
+        <div className="flex items-center gap-2">
+          <Hexagon className="w-5 h-5 text-[var(--primary-700)]" />
+          <span className="font-semibold text-sm text-[var(--primary-700)] hidden sm:inline">Qutlas</span>
         </div>
 
         {/* Center: Quick actions */}
@@ -346,26 +328,26 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
           <button
             onClick={() => { if (canUndo) undo() }}
             disabled={!canUndo}
-            className="p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-30"
+            className="p-2 rounded-md transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center disabled:opacity-30"
             title="Undo"
           >
-            <Undo className="w-5 h-5 text-gray-700" />
+            <Undo className="w-4 h-4 text-gray-700" />
           </button>
           <button
             onClick={() => { if (canRedo) redo() }}
             disabled={!canRedo}
-            className="p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-30"
+            className="p-2 rounded-md transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center disabled:opacity-30"
             title="Redo"
           >
-            <Redo className="w-5 h-5 text-gray-700" />
+            <Redo className="w-4 h-4 text-gray-700" />
           </button>
           {!saved && (
             <button
               onClick={() => setShowSaveDialog(true)}
-              className="p-2.5 rounded-lg bg-[var(--primary-700)] text-white transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="p-2 rounded-md bg-[var(--primary-700)] text-white transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
               title="Save"
             >
-              <Save className="w-5 h-5" />
+              <Save className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -373,10 +355,10 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
         {/* Right: Menu button */}
         <button
           onClick={onMobileMenuOpen}
-          className="p-2.5 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="p-2 rounded-md hover:bg-gray-100 transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
           title="Menu"
         >
-          <Menu className="w-6 h-6 text-gray-700" />
+          <Menu className="w-5 h-5 text-gray-700" />
         </button>
 
         {/* Dialogs */}
@@ -412,141 +394,91 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
     )
   }
 
-  // Desktop toolbar - full version
+  // Desktop toolbar - full version with collapsible menu
   return (
-    <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-4 shadow-sm">
-      {/* Logo */}
-      <div className="flex items-center gap-2 pr-4 border-r">
-        <Hexagon className="w-6 h-6 text-[var(--primary-700)]" />
-        <span className="font-semibold text-[var(--primary-700)]">Qutlas Studio</span>
-      </div>
+    <div className="bg-white border-b border-gray-200 shadow-sm">
+      {/* Main toolbar row */}
+      <div className="h-12 flex items-center px-3 gap-3">
+        {/* Logo */}
+        <div className="flex items-center gap-2 pr-3 border-r border-gray-200">
+          <Hexagon className="w-5 h-5 text-[var(--primary-700)]" />
+          <span className="font-semibold text-sm text-[var(--primary-700)]">Qutlas Studio</span>
+        </div>
 
-      {/* Menu Bar */}
-      <div className="flex items-center gap-1">
-        <MenuButton label="File" items={fileMenuItems} />
-        <MenuButton label="Edit" items={editMenuItems} />
-        <MenuButton label="View" items={viewMenuItems} />
-        <MenuButton label="Create" items={createMenuItems} icon="plus" />
-        <MenuButton label="Modify" items={modifyMenuItems} />
-        <MenuButton label="Features" items={featuresMenuItems} />
-        <MenuButton label="Manufacture" items={manufactureMenuItems} />
-        <MenuButton label="Help" items={helpMenuItems} />
-      </div>
+        {/* Collapse toggle */}
+        <button
+          onClick={() => setMenuCollapsed(!menuCollapsed)}
+          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+          title={menuCollapsed ? "Expand menu" : "Collapse menu"}
+        >
+          {menuCollapsed ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronUp className="w-4 h-4 text-gray-600" />}
+        </button>
 
-      <div className="flex-1" />
-
-      {/* Quick Actions */}
-      <div className="flex items-center gap-2">
-        {!saved && (
+        {/* Quick Actions - Always visible */}
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setShowSaveDialog(true)}
-            className="px-3 py-1.5 text-sm bg-[var(--primary-700)] text-white rounded hover:bg-[var(--primary-800)] transition"
-            title="Save (Ctrl+S)"
+            onClick={() => { if (canUndo) undo() }}
+            disabled={!canUndo}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Undo (Ctrl+Z)"
           >
-            Save*
+            <Undo className="w-4 h-4 text-gray-700" />
           </button>
-        )}
-        <button
-          onClick={() => document.querySelector('[title="Fit view to all objects (F)"]')?.dispatchEvent(new MouseEvent('click'))}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
-          title="Fit View (F)"
-        >
-          Fit
-        </button>
+          <button
+            onClick={() => { if (canRedo) redo() }}
+            disabled={!canRedo}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo className="w-4 h-4 text-gray-700" />
+          </button>
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Right section - Save & Manufacturing actions */}
+        <div className="flex items-center gap-2">
+          {!saved && (
+            <button
+              onClick={() => setShowSaveDialog(true)}
+              className="px-2.5 py-1 text-xs bg-[var(--primary-700)] text-white rounded hover:bg-[var(--primary-800)] transition font-medium"
+              title="Save (Ctrl+S)"
+            >
+              Save*
+            </button>
+          )}
+          <button
+            onClick={onAnalyzeClick}
+            disabled={Object.keys(objects).length === 0}
+            className="px-2.5 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            title="Analyze Manufacturability"
+          >
+            Analyze
+          </button>
+          <button
+            onClick={onQuoteClick}
+            disabled={Object.keys(objects).length === 0}
+            className="px-2.5 py-1 text-xs bg-[var(--primary-700)] text-white rounded hover:bg-[var(--primary-800)] transition disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            title="Get Quote"
+          >
+            Quote
+          </button>
+        </div>
       </div>
 
-      {/* Production & Checkout Flow */}
-      <div className="flex items-center gap-2 border-l pl-4 ml-4">
-        <button
-          onClick={() => {
-            if (Object.keys(objects).length === 0) {
-              toast.error('Add objects to workspace first')
-              return
-            }
-            toast.info('Opening manufacturability analysis...')
-            // Could open analysis panel or navigate to analysis view
-          }}
-          disabled={Object.keys(objects).length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Analyze manufacturability"
-        >
-          <BarChart3 size={16} />
-          <span className="hidden lg:inline">Analyze</span>
-        </button>
-        <button
-          onClick={() => {
-            if (Object.keys(objects).length === 0) {
-              toast.error('Add objects to workspace first')
-              return
-            }
-            router.push('/catalog')
-          }}
-          disabled={Object.keys(objects).length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Generate quote"
-        >
-          <FileText size={16} />
-          <span className="hidden lg:inline">Quote</span>
-        </button>
-        <button
-          onClick={() => {
-            if (Object.keys(objects).length === 0) {
-              toast.error('Add objects to workspace first')
-              return
-            }
-            toast.info('Initiating production order...')
-            // Could open production dialog
-          }}
-          disabled={Object.keys(objects).length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Initiate production order"
-        >
-          <Zap size={16} />
-          <span className="hidden lg:inline">Production</span>
-        </button>
-        <button
-          onClick={() => router.push('/catalog/quote')}
-          disabled={Object.keys(objects).length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--primary-700)] hover:bg-[var(--primary-800)] text-white rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Proceed to checkout"
-        >
-          <CreditCard size={16} />
-          <span className="hidden lg:inline">Checkout</span>
-        </button>
-      </div>
-
-      <div className="flex-1" />
-
-      {/* User Menu */}
-      <div className="flex items-center gap-2 border-l pl-4">
-        <button
-          onClick={() => setShowHelpDialog(true)}
-          className="p-2 hover:bg-gray-100 rounded transition"
-          title="Keyboard Shortcuts"
-        >
-          <Keyboard className="w-4 h-4 text-gray-600" />
-        </button>
-        <button
-          onClick={() => setShowSettingsDialog(true)}
-          className="p-2 hover:bg-gray-100 rounded transition"
-          title="Settings"
-        >
-          <Settings className="w-4 h-4 text-gray-600" />
-        </button>
-        <div className="w-px h-6 bg-gray-200" />
-        <button
-          onClick={() => router.push('/dashboard/profile')}
-          className="px-3 py-2 text-sm hover:bg-gray-100 rounded transition"
-        >
-          Profile
-        </button>
-        <button
-          onClick={() => router.push('/auth/logout')}
-          className="px-3 py-2 text-sm hover:bg-red-50 text-red-600 rounded transition"
-        >
-          Logout
-        </button>
-      </div>
+      {/* Collapsible Menu Bar */}
+      {!menuCollapsed && (
+        <div className="h-9 flex items-center px-3 gap-1 bg-gray-50/50 border-t border-gray-100">
+          <MenuButton label="File" items={fileMenuItems} />
+          <MenuButton label="Edit" items={editMenuItems} />
+          <MenuButton label="View" items={viewMenuItems} />
+          <MenuButton label="Create" items={createMenuItems} icon="plus" />
+          <MenuButton label="Modify" items={modifyMenuItems} />
+          <MenuButton label="Manufacture" items={manufactureMenuItems} />
+          <div className="flex-1" />
+          <MenuButton label="Help" items={helpMenuItems} />
+        </div>
+      )}
 
       {/* Dialogs */}
       <SaveWorkspaceDialog
