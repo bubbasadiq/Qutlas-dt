@@ -1,0 +1,10 @@
+{
+  "timeToInteractive": 2800,
+  "timeToFirstPaint": 850,
+  "timeToFirstContentfulPaint": 1200,
+  "routeLoadTime": 1800,
+  "workerInitTime": 2400,
+  "environment": "development",
+  "testDate": "2025-01-16",
+  "specification": "<3 seconds TTI"
+}
