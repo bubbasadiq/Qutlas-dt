@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Hexagon, Settings, Keyboard, Info, Menu, Save, Undo, Redo } from "lucide-react"
+import { Hexagon, Settings, Keyboard, Info, Menu, Save, Undo, Redo, BarChart3, FileText, Zap, CreditCard } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -452,6 +452,66 @@ export function Toolbar({ onMobileMenuOpen }: ToolbarProps) {
           title="Fit View (F)"
         >
           Fit
+        </button>
+      </div>
+
+      {/* Production & Checkout Flow */}
+      <div className="flex items-center gap-2 border-l pl-4 ml-4">
+        <button
+          onClick={() => {
+            if (Object.keys(objects).length === 0) {
+              toast.error('Add objects to workspace first')
+              return
+            }
+            toast.info('Opening manufacturability analysis...')
+            // Could open analysis panel or navigate to analysis view
+          }}
+          disabled={Object.keys(objects).length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Analyze manufacturability"
+        >
+          <BarChart3 size={16} />
+          <span className="hidden lg:inline">Analyze</span>
+        </button>
+        <button
+          onClick={() => {
+            if (Object.keys(objects).length === 0) {
+              toast.error('Add objects to workspace first')
+              return
+            }
+            router.push('/catalog')
+          }}
+          disabled={Object.keys(objects).length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Generate quote"
+        >
+          <FileText size={16} />
+          <span className="hidden lg:inline">Quote</span>
+        </button>
+        <button
+          onClick={() => {
+            if (Object.keys(objects).length === 0) {
+              toast.error('Add objects to workspace first')
+              return
+            }
+            toast.info('Initiating production order...')
+            // Could open production dialog
+          }}
+          disabled={Object.keys(objects).length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Initiate production order"
+        >
+          <Zap size={16} />
+          <span className="hidden lg:inline">Production</span>
+        </button>
+        <button
+          onClick={() => router.push('/catalog/quote')}
+          disabled={Object.keys(objects).length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--primary-700)] hover:bg-[var(--primary-800)] text-white rounded transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Proceed to checkout"
+        >
+          <CreditCard size={16} />
+          <span className="hidden lg:inline">Checkout</span>
         </button>
       </div>
 

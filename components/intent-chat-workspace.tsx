@@ -9,6 +9,7 @@ interface IntentChatWorkspaceProps {
   placeholder?: string
   initialIntent?: string
   className?: string
+  onGeometryGenerated?: (geometry: any) => void
 }
 
 /**
@@ -19,6 +20,7 @@ export function IntentChatWorkspace({
   placeholder = "Describe what to create or modify...",
   initialIntent,
   className,
+  onGeometryGenerated,
 }: IntentChatWorkspaceProps) {
   const { addObject, selectObject } = useWorkspace()
   const { isGenerating, progress, status, error, generateGeometry } = useAIGeometry()
@@ -42,6 +44,10 @@ export function IntentChatWorkspace({
 
       selectObject(id)
       toast.success('Geometry created successfully!')
+
+      if (onGeometryGenerated) {
+        onGeometryGenerated(geometry)
+      }
     }
   }
 

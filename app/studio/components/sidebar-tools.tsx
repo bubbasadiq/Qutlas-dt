@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Crosshair, Disc } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Crosshair, Disc, ChevronRight } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -46,9 +45,18 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const isMobile = useIsMobile()
   const [isUploadHover, setIsUploadHover] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    tools: true,
+    modify: true,
+    shapes: !isMobile, // Collapsed on mobile by default, expanded on desktop
+  })
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
   
   const activeTool = externalActiveTool || contextActiveTool
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
+  }
 
   // handle CAD file upload
   const handleUpload = async (file: File) => {
@@ -211,74 +219,120 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       </div>
 
       {/* Tools */}
-      <div className={`${isMobile ? 'px-3 pb-3' : 'flex-1 px-3 pb-3 overflow-y-auto'}`}>
-        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2'}`}>Tools</h3>
-        <div className="space-y-1.5">
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => handleToolSelect(tool.id)}
-              className={`${mobileButtonClass} ${
-                activeTool === tool.id
-                  ? "bg-[var(--primary-700)] text-white"
-                  : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <tool.icon size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
-                <span className="font-medium">{tool.label}</span>
-              </div>
-              {tool.shortcut && (
-                <span
-                  className={`text-xs px-2 py-0.5 rounded ${
+      <div className={`${isMobile ? 'pb-3' : 'flex-1 pb-3 overflow-y-auto'}`}>
+        {/* Tools Group */}
+        <div className="border-b border-[var(--neutral-200)]">
+          <button
+            onClick={() => toggleGroup('tools')}
+            className="w-full flex items-center gap-2 px-3 py-3 hover:bg-[var(--neutral-50)] transition-colors"
+          >
+            <Wrench size={16} className="text-[var(--neutral-600)]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Tools</span>
+            <span className="ml-auto text-xs text-[var(--neutral-500)]">{tools.length}</span>
+            <ChevronRight 
+              size={14} 
+              className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.tools ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {expandedGroups.tools && (
+            <div className="px-3 pb-3 space-y-1.5">
+              {tools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
+                  className={`${mobileButtonClass} ${
                     activeTool === tool.id
-                      ? "bg-white/20 text-white"
-                      : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"
+                      ? "bg-[var(--primary-700)] text-white"
+                      : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
                   }`}
                 >
-                  {tool.shortcut}
-                </span>
-              )}
-            </button>
-          ))}
+                  <div className="flex items-center gap-3">
+                    <tool.icon size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
+                    <span className="font-medium">{tool.label}</span>
+                  </div>
+                  {tool.shortcut && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        activeTool === tool.id
+                          ? "bg-white/20 text-white"
+                          : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"
+                      }`}
+                    >
+                      {tool.shortcut}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Boolean & Feature Tools */}
-        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3 mt-4' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2 mt-3'}`}>Modify</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {booleanTools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => handleToolSelect(tool.id)}
-              className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
-                activeTool === tool.id
-                  ? "bg-[var(--primary-50)] border-[var(--primary-200)] text-[var(--primary-700)]"
-                  : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
-              }`}
-            >
-              <tool.icon size={14} />
-              <span className="text-xs font-medium">{tool.label}</span>
-            </button>
-          ))}
+        {/* Modify Group */}
+        <div className="border-b border-[var(--neutral-200)]">
+          <button
+            onClick={() => toggleGroup('modify')}
+            className="w-full flex items-center gap-2 px-3 py-3 hover:bg-[var(--neutral-50)] transition-colors"
+          >
+            <Layers size={16} className="text-[var(--neutral-600)]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Modify</span>
+            <span className="ml-auto text-xs text-[var(--neutral-500)]">{booleanTools.length}</span>
+            <ChevronRight 
+              size={14} 
+              className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.modify ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {expandedGroups.modify && (
+            <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+              {booleanTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
+                  className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                    activeTool === tool.id
+                      ? "bg-[var(--primary-50)] border-[var(--primary-200)] text-[var(--primary-700)]"
+                      : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
+                  }`}
+                >
+                  <tool.icon size={14} />
+                  <span className="text-xs font-medium">{tool.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Shape Creation Tools */}
-        <h3 className={`${isMobile ? 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-3 mt-4' : 'text-xs font-semibold uppercase tracking-wider text-[var(--neutral-400)] mb-2 mt-3'}`}>Create Shapes</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {shapeTools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => handleToolSelect(tool.id)}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 border-dashed transition-colors ${
-                activeTool === tool.id
-                  ? "border-[var(--primary-700)] bg-[var(--primary-50)] text-[var(--primary-700)]"
-                  : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
-              }`}
-            >
-              <tool.icon size={isMobile ? 24 : 20} className="mb-1" />
-              <span className="text-xs font-medium">{tool.label}</span>
-            </button>
-          ))}
+        {/* Create Shapes Group */}
+        <div className="border-b border-[var(--neutral-200)]">
+          <button
+            onClick={() => toggleGroup('shapes')}
+            className="w-full flex items-center gap-2 px-3 py-3 hover:bg-[var(--neutral-50)] transition-colors"
+          >
+            <Box size={16} className="text-[var(--neutral-600)]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Create Shapes</span>
+            <span className="ml-auto text-xs text-[var(--neutral-500)]">{shapeTools.length}</span>
+            <ChevronRight 
+              size={14} 
+              className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.shapes ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {expandedGroups.shapes && (
+            <div className="px-3 pb-3 grid grid-cols-3 gap-2">
+              {shapeTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 border-dashed transition-colors ${
+                    activeTool === tool.id
+                      ? "border-[var(--primary-700)] bg-[var(--primary-50)] text-[var(--primary-700)]"
+                      : "border-[var(--neutral-200)] hover:border-[var(--neutral-300)] hover:bg-[var(--bg-100)] text-[var(--neutral-700)]"
+                  }`}
+                >
+                  <tool.icon size={isMobile ? 24 : 20} className="mb-1" />
+                  <span className="text-xs font-medium">{tool.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
