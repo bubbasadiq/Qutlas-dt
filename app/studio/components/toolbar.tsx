@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Hexagon, Menu, Save, Undo, Redo, ChevronDown, ChevronUp } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
