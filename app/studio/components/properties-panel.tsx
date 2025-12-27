@@ -122,20 +122,22 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
   return (
     <div className={`bg-white flex flex-col ${isMobile ? '' : 'border-l border-[var(--neutral-200)]'}`}>
       {/* Tabs */}
-      <div className={`${isMobile ? 'p-2' : 'border-b border-[var(--neutral-200)] p-2'}`}>
+      <div className={`${isMobile ? 'p-3 border-b border-[var(--neutral-200)]' : 'border-b border-[var(--neutral-200)] p-2'}`}>
         <div className={`flex gap-1 ${isMobile ? 'bg-gray-100 p-1 rounded-xl' : 'bg-[var(--neutral-100)] rounded-lg p-1'}`}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`${mobileTabClass} flex items-center justify-center gap-1 ${
+              className={`${mobileTabClass} flex items-center justify-center touch-manipulation ${
+                isMobile ? 'flex-col gap-0.5' : 'gap-1'
+              } ${
                 activeTab === tab.id 
                   ? "bg-white text-[var(--neutral-900)] shadow-sm" 
-                  : "text-[var(--neutral-500)]"
+                  : "text-[var(--neutral-600)] hover:text-[var(--neutral-900)]"
               }`}
             >
-              <Icon name={tab.icon} className="w-3 h-3" />
-              <span className={isMobile ? 'hidden' : ''}>{tab.label}</span>
+              <Icon name={tab.icon} className={isMobile ? "w-4 h-4" : "w-3 h-3"} />
+              <span className={isMobile ? 'text-[11px] leading-none' : ''}>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -148,16 +150,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
           <div className="space-y-6">
             {/* Object Info */}
             <div>
-              <h3 className="text-base font-semibold text-[var(--neutral-900)] mb-1">
+              <h3 className={`font-semibold text-[var(--neutral-900)] mb-1 ${isMobile ? 'text-lg' : 'text-base'}`}>
                 {selectedObject || "No Selection"}
               </h3>
-              <p className="text-sm text-[var(--neutral-500)]">Parametric Object</p>
+              <p className={`text-[var(--neutral-500)] ${isMobile ? 'text-base' : 'text-sm'}`}>Parametric Object</p>
             </div>
 
             {/* Material Selection */}
             {selectedObject && (
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                <h4 className={`font-semibold uppercase tracking-wider text-[var(--neutral-700)] ${isMobile ? 'text-sm' : 'text-xs'}`}>
                   Material
                 </h4>
                 <button
@@ -191,14 +193,17 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
             {/* Boolean Operations for Multi-selection */}
             {selectedObjects.length > 1 && (
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                <h4 className={`font-semibold uppercase tracking-wider text-[var(--neutral-700)] ${isMobile ? 'text-sm' : 'text-xs'}`}>
                   Boolean Operations
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2"
+                    size={isMobile ? "default" : "sm"}
+                    className={cn(
+                      "flex items-center gap-2 touch-manipulation",
+                      isMobile ? "min-h-[44px]" : ""
+                    )}
                     onClick={() => {
                       toast.promise(performBoolean('union', selectedObjects[0], selectedObjects[1]), {
                         loading: 'Performing union...',
@@ -212,8 +217,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
                   </Button>
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="flex items-center gap-2"
+                    size={isMobile ? "default" : "sm"}
+                    className={cn(
+                      "flex items-center gap-2 touch-manipulation",
+                      isMobile ? "min-h-[44px]" : ""
+                    )}
                     onClick={() => {
                       toast.promise(performBoolean('subtract', selectedObjects[0], selectedObjects[1]), {
                         loading: 'Performing subtraction...',
@@ -235,12 +243,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedObject
             {/* Transform / Parameters */}
             {selectedObject ? (
               <div className="space-y-4">
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--neutral-400)]">
+                <h4 className={cn(
+                  "font-semibold uppercase tracking-wider text-[var(--neutral-700)]",
+                  isMobile ? "text-sm" : "text-xs"
+                )}>
                   Parameters
                 </h4>
                 {getParametersForObject().map((param) => (
                   <div key={param.key}>
-                    <Label className={`text-[var(--neutral-500)] ${isMobile ? 'text-sm mb-2 block' : 'text-xs'}`}>
+                    <Label
+                      className={cn(
+                        "font-medium text-[var(--neutral-700)] block",
+                        isMobile ? "text-sm mb-2" : "text-xs mb-1"
+                      )}
+                    >
                       {param.label} ({param.unit})
                     </Label>
                     <Input

@@ -539,13 +539,8 @@ function StudioContent() {
         title="AI Assistant"
       >
         <div className="pb-4">
-          <IntentChat
-            variant="workspace"
+          <IntentChatWorkspace
             placeholder="Describe what to create or modify..."
-            onGeometryGenerated={(geo) => {
-              handleGeometryGenerated(geo)
-              setShowAISheet(false)
-            }}
             initialIntent={initialIntent}
           />
         </div>
