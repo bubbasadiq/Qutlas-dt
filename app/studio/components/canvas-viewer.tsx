@@ -107,6 +107,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const isMobileView = isMobile || useIsMobile()
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(!isMobileView) // Hide grid on mobile by default
+  
+  // Sketch mode state
+  const [isSketchMode, setIsSketchMode] = useState(false)
+  const [sketchPoints, setSketchPoints] = useState<Array<{x: number; y: number; z: number}>>([])
+  const [sketchLines, setSketchLines] = useState<THREE.Line[]>([])
 
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -369,6 +374,12 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   useEffect(() => {
     if (!mountRef.current) return
 
+    console.log('📐 Canvas mounting with dimensions:', {
+      width: mountRef.current.clientWidth,
+      height: mountRef.current.clientHeight,
+      isMobile: isMobileView
+    })
+
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xf5f5f5)
 
@@ -385,6 +396,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
 
+    console.log('📷 Camera positioned at:', camera.position)
+
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" })
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView ? 1.5 : 2))
@@ -393,6 +406,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     mountRef.current.appendChild(renderer.domElement)
     rendererRef.current = renderer
+
+    console.log('🎨 Renderer created, pixel ratio:', window.devicePixelRatio)
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
     directionalLight.position.set(50, 50, 50)
@@ -456,6 +471,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       renderer.setSize(width, height)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView ? 1.5 : 2))
 
+      console.log('📏 Canvas resized to:', width, 'x', height)
       requestRender()
     })
 
@@ -620,6 +636,104 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     requestRender()
   }, [applyMeshVisualState, requestRender, selectedObjectId, workspaceObjects])
+
+  // Handle sketch mode activation
+  useEffect(() => {
+    if (activeTool === 'sketch') {
+      setIsSketchMode(true)
+      console.log('✏️ Sketch mode activated')
+    } else {
+      setIsSketchMode(false)
+      // Clear sketch points when switching away from sketch tool
+      setSketchPoints([])
+      sketchLines.forEach(line => {
+        line.geometry.dispose()
+        line.material.dispose()
+      })
+      setSketchLines([])
+    }
+  }, [activeTool, sketchLines])
+
+  // Add sketch click handler
+  useEffect(() => {
+    const canvas = rendererRef.current?.domElement
+    if (!canvas || !isSketchMode) return
+
+    const handleSketchClick = (event: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+
+      // Use raycaster to find 3D position on the ground plane
+      const raycaster = new THREE.Raycaster()
+      const mouse = new THREE.Vector2(
+        (x / rect.width) * 2 - 1,
+        -(y / rect.height) * 2 + 1
+      )
+
+      const camera = cameraRef.current
+      if (!camera) return
+
+      raycaster.setFromCamera(mouse, camera)
+
+      // Create a ground plane at y=0 for intersection
+      const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+      const intersectionPoint = new THREE.Vector3()
+      
+      if (raycaster.ray.intersectPlane(groundPlane, intersectionPoint)) {
+        console.log('📍 Sketch point added:', intersectionPoint)
+        
+        // Add point to sketch
+        const newPoint = { x: intersectionPoint.x, y: intersectionPoint.y, z: intersectionPoint.z }
+        const newPoints = [...sketchPoints, newPoint]
+        setSketchPoints(newPoints)
+        
+        // Draw line from previous point
+        if (sketchPoints.length > 0) {
+          const scene = sceneRef.current
+          if (scene) {
+            const prevPoint = sketchPoints[sketchPoints.length - 1]
+            const points = [
+              new THREE.Vector3(prevPoint.x, prevPoint.y, prevPoint.z),
+              new THREE.Vector3(newPoint.x, newPoint.y, newPoint.z)
+            ]
+            const geometry = new THREE.BufferGeometry().setFromPoints(points)
+            const material = new THREE.LineBasicMaterial({ color: 0x2a2a72 })
+            const line = new THREE.Line(geometry, material)
+            scene.add(line)
+            setSketchLines([...sketchLines, line])
+          }
+        }
+      }
+    }
+
+    const handleSketchDoubleClick = (event: MouseEvent) => {
+      if (sketchPoints.length < 3) {
+        console.log('Need at least 3 points for a sketch')
+        return
+      }
+
+      console.log('✅ Sketch completed with', sketchPoints.length, 'points')
+      // TODO: Convert sketch to extrusion
+      // For now, just log and clear
+      
+      // Clear sketch
+      setSketchPoints([])
+      sketchLines.forEach(line => {
+        line.geometry.dispose()
+        line.material.dispose()
+      })
+      setSketchLines([])
+    }
+
+    canvas.addEventListener('click', handleSketchClick)
+    canvas.addEventListener('dblclick', handleSketchDoubleClick)
+
+    return () => {
+      canvas.removeEventListener('click', handleSketchClick)
+      canvas.removeEventListener('dblclick', handleSketchDoubleClick)
+    }
+  }, [isSketchMode, sketchPoints, sketchLines])
 
   // Hide viewport controls on mobile
   if (isMobileView) {

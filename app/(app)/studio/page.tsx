@@ -1,4 +1,5 @@
 "use client"
+export const dynamic = "force-dynamic"
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
@@ -25,8 +26,6 @@ import { toast } from "sonner"
 import { mapErrorMessage } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import * as Icons from "lucide-react"
-
-export const dynamic = "force-dynamic"
 
 function StudioContent() {
   const searchParams = useSearchParams()

@@ -1,11 +1,35 @@
 // Cadmium Worker - Handles all geometry operations in a background thread
 // This replaces the OCCT worker with lightweight Cadmium-Core (JavaScript fallback)
 
-// Use JavaScript implementation instead of WASM since wasm-pack is not available
-import * as CadmiumCore from '../wasm/cadmium-core/pkg/cadmium_core';
+// Try to import Cadmium-Core WASM module, fall back to JavaScript implementation
+let CadmiumCore: any;
+let wasmAvailable = false;
 
-// Mock init function for compatibility with WASM interface
-const init = () => Promise.resolve();
+async function initializeCadmiumCore() {
+  try {
+    // Try to import the WASM module
+    const wasmModule = await import('../wasm/cadmium-core/pkg/cadmium_core');
+    CadmiumCore = wasmModule;
+    wasmAvailable = true;
+    console.log('✅ Cadmium WASM module loaded');
+    return true;
+  } catch (wasmError) {
+    console.warn('WASM module not available, checking for JS fallback...', wasmError);
+    try {
+      // Try JavaScript fallback if WASM fails
+      const jsModule = await import('../lib/cadmium/javascript-core');
+      if (jsModule && jsModule.create_box) {
+        CadmiumCore = jsModule;
+        wasmAvailable = false;
+        console.log('✅ Cadmium JavaScript fallback loaded');
+        return true;
+      }
+    } catch (jsError) {
+      console.warn('JavaScript fallback not available either:', jsError);
+    }
+    return false;
+  }
+}
 
 interface WorkerMessage {
   id: string;
@@ -39,7 +63,13 @@ let initializationError: Error | null = null;
 async function initialize() {
   try {
     console.log('🔄 Initializing Cadmium Worker...');
-    await init();
+    
+    const initialized = await initializeCadmiumCore();
+    
+    if (!initialized) {
+      throw new Error('Neither WASM nor JavaScript implementation of Cadmium-Core is available');
+    }
+    
     isInitialized = true;
     
     self.postMessage({
@@ -97,6 +127,16 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 };
 
 async function handleOperation(operation: string, payload: any): Promise<any> {
+  // Check if CadmiumCore is available
+  if (!CadmiumCore) {
+    throw new Error('Cadmium Core not initialized. Please refresh the page.');
+  }
+  
+  // Special case: INIT is handled separately
+  if (operation === 'INIT') {
+    return { success: true, message: 'Worker is ready' };
+  }
+
   switch (operation) {
     // ===== BASIC SHAPES =====
     case 'CREATE_BOX': {
