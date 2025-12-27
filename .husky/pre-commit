@@ -1,2 +1,2 @@
-npx tsc -b
+npx tsc --noEmit
 npx lint-staged

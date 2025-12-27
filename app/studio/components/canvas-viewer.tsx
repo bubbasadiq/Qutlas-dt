@@ -1,18 +1,23 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { generateMesh, workspaceObjectToMeshInput } from "@/lib/mesh-generator"
+import {
+  generateMesh,
+  workspaceObjectToMeshInput,
+  type MeshGeneratorInput,
+} from "@/lib/mesh-generator"
 import { setCanvasScene } from "@/lib/canvas-utils"
 import { useIsMobile } from "@/hooks/use-media-query"
+import type { WorkspaceObject } from "@/hooks/use-workspace"
 
 interface CanvasViewerProps {
   activeTool: string
-  workspaceObjects: Record<string, any>
+  workspaceObjects: Record<string, WorkspaceObject>
   selectedObjectId: string | null
   onObjectSelect?: (id: string | null) => void
   onViewChange?: (view: string) => void
@@ -21,12 +26,80 @@ interface CanvasViewerProps {
   isMobile?: boolean
 }
 
-export const CanvasViewer: React.FC<CanvasViewerProps> = ({ 
-  activeTool, 
+const SELECTION_COLOR = 0x2a2a72
+
+function parseHexColor(color: string | undefined, fallback: number): number {
+  if (!color) return fallback
+  const normalized = color.startsWith("#") ? color.slice(1) : color
+  const parsed = Number.parseInt(normalized, 16)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function getDimensionsKey(dimensions: Record<string, number | undefined> | undefined): string {
+  if (!dimensions) return ""
+
+  return Object.keys(dimensions)
+    .sort()
+    .map((k) => `${k}:${dimensions[k] ?? ""}`)
+    .join("|")
+}
+
+function getGeometryKey(obj: WorkspaceObject): string {
+  const meshKey = obj.meshData
+    ? `mesh:${obj.meshData.vertices.length}:${obj.meshData.indices.length}`
+    : "mesh:none"
+  return `${obj.type}|${getDimensionsKey(obj.dimensions)}|${meshKey}`
+}
+
+function disposeMesh(mesh: THREE.Mesh): void {
+  mesh.traverse((child) => {
+    const childMesh = child as THREE.Mesh
+
+    if (childMesh.geometry) {
+      childMesh.geometry.dispose()
+    }
+
+    const material = childMesh.material
+    if (!material) return
+
+    if (Array.isArray(material)) {
+      material.forEach((m) => m.dispose())
+    } else {
+      material.dispose()
+    }
+  })
+}
+
+function getOrCreateEdgesMesh(mesh: THREE.Mesh): THREE.LineSegments {
+  const existing = mesh.userData.edgesMesh as THREE.LineSegments | undefined
+  if (existing) return existing
+
+  const edges = new THREE.EdgesGeometry(mesh.geometry)
+  const wireframe = new THREE.LineSegments(
+    edges,
+    new THREE.LineBasicMaterial({
+      color: SELECTION_COLOR,
+      transparent: true,
+      opacity: 0.8,
+      depthTest: true,
+    })
+  )
+
+  wireframe.name = "selection-edges"
+  wireframe.visible = false
+
+  mesh.add(wireframe)
+  mesh.userData.edgesMesh = wireframe
+
+  return wireframe
+}
+
+export const CanvasViewer: React.FC<CanvasViewerProps> = ({
+  activeTool,
   workspaceObjects,
   selectedObjectId,
   onObjectSelect,
-  onViewChange, 
+  onViewChange,
   onContextMenu,
   onFitView,
   isMobile = false,
@@ -34,15 +107,127 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const isMobileView = isMobile || useIsMobile()
   const [viewType, setViewType] = useState<string>("iso")
   const [showGrid, setShowGrid] = useState(!isMobileView) // Hide grid on mobile by default
+
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const meshRefs = useRef<Map<string, THREE.Mesh>>(new Map())
+  const pickableMeshesRef = useRef<THREE.Object3D[]>([])
+
   const raycaster = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouse = useRef<THREE.Vector2>(new THREE.Vector2())
+
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const gridRef = useRef<THREE.GridHelper | null>(null)
+
+  const hoveredIdRef = useRef<string | null>(null)
+  const isOrbitingRef = useRef(false)
+
+  const animationFrameRef = useRef<number | null>(null)
+  const isLoopRunningRef = useRef(false)
+  const renderRequestedRef = useRef(true)
+  const idleFramesRef = useRef(0)
+  const lastCameraStateRef = useRef({
+    position: new THREE.Vector3(),
+    quaternion: new THREE.Quaternion(),
+    zoom: 1,
+  })
+
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null)
+
+  const requestRender = useCallback(() => {
+    renderRequestedRef.current = true
+
+    if (!isLoopRunningRef.current) {
+      isLoopRunningRef.current = true
+      idleFramesRef.current = 0
+
+      const tick = () => {
+        const renderer = rendererRef.current
+        const scene = sceneRef.current
+        const camera = cameraRef.current
+        if (!renderer || !scene || !camera) {
+          isLoopRunningRef.current = false
+          return
+        }
+
+        const controls = controlsRef.current
+        controls?.update()
+
+        const last = lastCameraStateRef.current
+
+        const positionDelta = camera.position.distanceToSquared(last.position)
+        const quaternionDelta = 1 - Math.abs(camera.quaternion.dot(last.quaternion))
+        const zoomDelta = Math.abs(camera.zoom - last.zoom)
+
+        const cameraChanged = positionDelta > 1e-10 || quaternionDelta > 1e-10 || zoomDelta > 1e-10
+
+        const shouldRender = cameraChanged || renderRequestedRef.current
+
+        if (shouldRender) {
+          last.position.copy(camera.position)
+          last.quaternion.copy(camera.quaternion)
+          last.zoom = camera.zoom
+
+          renderer.render(scene, camera)
+          renderRequestedRef.current = false
+          idleFramesRef.current = 0
+        } else {
+          idleFramesRef.current += 1
+        }
+
+        if (idleFramesRef.current > 10) {
+          isLoopRunningRef.current = false
+          animationFrameRef.current = null
+          return
+        }
+
+        animationFrameRef.current = requestAnimationFrame(tick)
+      }
+
+      animationFrameRef.current = requestAnimationFrame(tick)
+    }
+  }, [])
+
+  const applyMeshVisualState = useCallback(
+    (meshId: string) => {
+      const mesh = meshRefs.current.get(meshId)
+      if (!mesh) return
+
+      const objectData = workspaceObjects[meshId]
+      const isSelected = Boolean(objectData?.selected || meshId === selectedObjectId)
+      const isHovered = hoveredIdRef.current === meshId
+
+      const material = mesh.material as THREE.MeshStandardMaterial
+      const baseColor = parseHexColor(objectData?.color, 0x0077ff)
+
+      material.color.setHex(baseColor)
+
+      if (isSelected) {
+        material.emissive.setHex(SELECTION_COLOR)
+        material.emissiveIntensity = 0.35
+      } else if (isHovered) {
+        material.emissive.setHex(SELECTION_COLOR)
+        material.emissiveIntensity = 0.18
+      } else {
+        material.emissive.setHex(0x000000)
+        material.emissiveIntensity = 0
+      }
+
+      const existingEdgesMesh = mesh.userData.edgesMesh as THREE.LineSegments | undefined
+
+      if (isSelected || isHovered) {
+        const edgesMesh = existingEdgesMesh ?? getOrCreateEdgesMesh(mesh)
+        edgesMesh.visible = true
+        const edgesMaterial = edgesMesh.material as THREE.LineBasicMaterial
+        edgesMaterial.opacity = isSelected ? 0.85 : 0.35
+      } else if (existingEdgesMesh) {
+        existingEdgesMesh.visible = false
+      }
+    },
+    [selectedObjectId, workspaceObjects]
+  )
 
   const fitCameraToObjects = () => {
     if (!cameraRef.current || !controlsRef.current || meshRefs.current.size === 0) return
@@ -51,8 +236,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     const controls = controlsRef.current
     const box = new THREE.Box3()
 
-    // Calculate bounding box of all visible meshes
-    meshRefs.current.forEach(mesh => {
+    meshRefs.current.forEach((mesh) => {
       if (mesh.visible) {
         box.expandByObject(mesh)
       }
@@ -65,115 +249,129 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     const maxDim = Math.max(size.x, size.y, size.z)
     const fov = camera.fov * (Math.PI / 180)
     let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
-    
-    // Add some padding
+
     cameraZ *= 1.5
 
     camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ * 0.5)
     controls.target.copy(center)
     controls.update()
 
+    requestRender()
     if (onFitView) onFitView()
   }
 
   const handleViewChange = (view: string) => {
     setViewType(view)
     onViewChange?.(view)
-    
-    // Animate camera to view position
+
     if (cameraRef.current && controlsRef.current) {
       const camera = cameraRef.current
       const distance = 100
-      
+
       let targetPosition = { x: 0, y: 0, z: 0 }
-      
+
       switch (view) {
-        case 'front':
+        case "front":
           targetPosition = { x: 0, y: 0, z: distance }
           break
-        case 'top':
+        case "top":
           targetPosition = { x: 0, y: distance, z: 0 }
           break
-        case 'right':
+        case "right":
           targetPosition = { x: distance, y: 0, z: 0 }
           break
-        case 'iso':
+        case "iso":
         default:
           targetPosition = { x: distance * 0.7, y: distance * 0.7, z: distance * 0.7 }
           break
       }
-      
+
       camera.position.set(targetPosition.x, targetPosition.y, targetPosition.z)
       controlsRef.current.update()
+      requestRender()
     }
   }
 
-  const pickObjectAt = (clientX: number, clientY: number): string | null => {
-    if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return null
+  const pickObjectAt = useCallback(
+    (clientX: number, clientY: number): string | null => {
+      const camera = cameraRef.current
+      const renderer = rendererRef.current
+      if (!camera || !renderer) return null
 
-    const rect = rendererRef.current.domElement.getBoundingClientRect()
-    mouse.current.x = ((clientX - rect.left) / rect.width) * 2 - 1
-    mouse.current.y = -((clientY - rect.top) / rect.height) * 2 + 1
+      const rect = renderer.domElement.getBoundingClientRect()
+      mouse.current.x = ((clientX - rect.left) / rect.width) * 2 - 1
+      mouse.current.y = -((clientY - rect.top) / rect.height) * 2 + 1
 
-    raycaster.current.setFromCamera(mouse.current, cameraRef.current)
-    const intersects = raycaster.current.intersectObjects(sceneRef.current.children, true)
-    const pickedObject = intersects.find((i) => i.object.userData.id)
+      raycaster.current.setFromCamera(mouse.current, camera)
 
-    return (pickedObject?.object.userData.id as string | undefined) || null
-  }
+      const intersects = raycaster.current.intersectObjects(pickableMeshesRef.current, true)
 
-  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const pickedId = pickObjectAt(event.clientX, event.clientY)
-    onObjectSelect?.(pickedId)
-  }
+      for (const hit of intersects) {
+        let obj: THREE.Object3D | null = hit.object
+        while (obj && !obj.userData.id) {
+          obj = obj.parent
+        }
+        if (obj?.userData?.id) {
+          return obj.userData.id as string
+        }
+      }
 
-  const handleCanvasRightClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault()
+      return null
+    },
+    []
+  )
 
-    const objectId = pickObjectAt(event.clientX, event.clientY)
+  const handleCanvasRightClick = useCallback(
+    (event: MouseEvent) => {
+      event.preventDefault()
 
-    let actions: any[] = []
+      const objectId = pickObjectAt(event.clientX, event.clientY)
 
-    if (objectId) {
-      actions = [
-        { label: 'Delete', icon: 'trash', objectId },
-        { label: 'Duplicate', icon: 'copy', objectId },
-        { label: 'Properties', icon: 'settings', objectId },
-        { divider: true },
-        { label: 'Hide', icon: 'eye-off', objectId },
-        { label: 'Lock', icon: 'lock', objectId },
-      ]
-    } else {
-      actions = [
-        { label: 'Paste', icon: 'clipboard', disabled: true },
-        { label: 'Select All', icon: 'select-all' },
-        { divider: true },
-        { label: 'Fit View', icon: 'maximize' },
-        { label: 'Clear All', icon: 'trash' },
-      ]
+      let actions: any[] = []
+
+      if (objectId) {
+        actions = [
+          { label: "Delete", icon: "trash", objectId },
+          { label: "Duplicate", icon: "copy", objectId },
+          { label: "Properties", icon: "settings", objectId },
+          { divider: true },
+          { label: "Hide", icon: "eye-off", objectId },
+          { label: "Lock", icon: "lock", objectId },
+        ]
+      } else {
+        actions = [
+          { label: "Paste", icon: "clipboard", disabled: true },
+          { label: "Select All", icon: "select-all" },
+          { divider: true },
+          { label: "Fit View", icon: "maximize" },
+          { label: "Clear All", icon: "trash" },
+        ]
+      }
+
+      onContextMenu?.({ x: event.clientX, y: event.clientY }, actions)
+    },
+    [onContextMenu, pickObjectAt]
+  )
+
+  const createMeshFromGeometry = (id: string, objectData: WorkspaceObject): THREE.Mesh => {
+    const input: MeshGeneratorInput = {
+      ...workspaceObjectToMeshInput(objectData),
+      selected: false,
     }
-    
-    if (onContextMenu) {
-      onContextMenu({ x: event.clientX, y: event.clientY }, actions)
-    }
-  }
 
-  // Generate THREE.js mesh from geometry metadata using the utility
-  const createMeshFromGeometry = (id: string, objectData: any): THREE.Mesh => {
-    const input = workspaceObjectToMeshInput(objectData)
-    input.selected = Boolean(input.selected || id === selectedObjectId)
     const mesh = generateMesh(input)
+    mesh.userData.id = id
+    mesh.userData.geometryKey = getGeometryKey(objectData)
+
     return mesh
   }
 
-  // Initialize Three.js scene
   useEffect(() => {
     if (!mountRef.current) return
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xf5f5f5)
 
-    // Register scene globally so worker-driven geometry updates can render
     setCanvasScene(scene)
     sceneRef.current = scene
 
@@ -187,212 +385,241 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" })
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) // Optimize for mobile
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView ? 1.5 : 2))
     renderer.shadowMap.enabled = true
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+
     mountRef.current.appendChild(renderer.domElement)
     rendererRef.current = renderer
 
-    // Lighting
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
     directionalLight.position.set(50, 50, 50)
     directionalLight.castShadow = true
-    directionalLight.shadow.mapSize.width = 1024 // Reduce for mobile performance
-    directionalLight.shadow.mapSize.height = 1024
+    directionalLight.shadow.mapSize.width = isMobileView ? 512 : 1024
+    directionalLight.shadow.mapSize.height = isMobileView ? 512 : 1024
     scene.add(directionalLight)
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
     scene.add(ambientLight)
 
-    // Grid - hidden on mobile by default
     const grid = new THREE.GridHelper(100, 20, 0xcccccc, 0xe0e0e0)
     grid.visible = showGrid
     gridRef.current = grid
     scene.add(grid)
 
-    // Axes helper - hidden on mobile by default
     if (!isMobileView) {
       const axesHelper = new THREE.AxesHelper(20)
       scene.add(axesHelper)
     }
 
-    // Orbit controls - optimized for touch on mobile
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.05
-    controls.enablePan = !isMobileView // Disable pan on mobile for simpler touch interaction
+    controls.enablePan = !isMobileView
     controls.enableZoom = true
     controls.enableRotate = true
-    
-    // Touch gestures configuration for mobile
+
     if (isMobileView) {
       controls.touches = {
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }
     }
-    
+
+    controls.addEventListener("start", () => {
+      isOrbitingRef.current = true
+      requestRender()
+    })
+    controls.addEventListener("end", () => {
+      isOrbitingRef.current = false
+      requestRender()
+    })
+    controls.addEventListener("change", requestRender)
+
     controlsRef.current = controls
 
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate)
-      controls.update()
-      renderer.render(scene, camera)
-    }
-    animate()
+    const ro = new ResizeObserver(() => {
+      const container = mountRef.current
+      const camera = cameraRef.current
+      const renderer = rendererRef.current
+      if (!container || !camera || !renderer) return
 
-    // Handle window resize
-    const handleResize = () => {
-      if (!mountRef.current || !camera || !renderer) return
-      camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight
+      const width = container.clientWidth
+      const height = container.clientHeight
+      if (width === 0 || height === 0) return
+
+      camera.aspect = width / height
       camera.updateProjectionMatrix()
-      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
-    }
-    window.addEventListener('resize', handleResize)
+
+      renderer.setSize(width, height)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView ? 1.5 : 2))
+
+      requestRender()
+    })
+
+    ro.observe(mountRef.current)
+
+    requestRender()
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      ro.disconnect()
+
+      controls.dispose()
+      controlsRef.current = null
+
+      setCanvasScene(null)
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      isLoopRunningRef.current = false
+
+      meshRefs.current.forEach((mesh) => {
+        scene.remove(mesh)
+        disposeMesh(mesh)
+      })
+      meshRefs.current.clear()
+      pickableMeshesRef.current = []
+
       renderer.dispose()
       if (mountRef.current) {
         mountRef.current.removeChild(renderer.domElement)
       }
-    }
-  }, [isMobileView])
 
-  // Attach selection handler directly to the canvas element (desktop reliability)
+      rendererRef.current = null
+      cameraRef.current = null
+      sceneRef.current = null
+    }
+  }, [isMobileView, requestRender])
+
   useEffect(() => {
     const canvas = rendererRef.current?.domElement
     if (!canvas) return
 
     const handlePointerDown = (event: PointerEvent) => {
-      // Only primary button; right-click is handled separately
       if (event.button !== 0) return
+      pointerDownRef.current = { x: event.clientX, y: event.clientY }
+    }
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.button !== 0) return
+      const down = pointerDownRef.current
+      pointerDownRef.current = null
+
+      if (!down) return
+
+      const dx = event.clientX - down.x
+      const dy = event.clientY - down.y
+      const distSq = dx * dx + dy * dy
+
+      if (distSq > 9 || isOrbitingRef.current) return
+
       const pickedId = pickObjectAt(event.clientX, event.clientY)
       onObjectSelect?.(pickedId)
     }
 
-    canvas.addEventListener("pointerdown", handlePointerDown)
-    return () => canvas.removeEventListener("pointerdown", handlePointerDown)
-  }, [isMobileView, onObjectSelect])
+    let hoverRaf: number | null = null
+    const handlePointerMove = (event: PointerEvent) => {
+      if (activeTool !== "select" || isOrbitingRef.current) return
 
-  // Update grid visibility
+      if (hoverRaf) return
+      hoverRaf = requestAnimationFrame(() => {
+        hoverRaf = null
+
+        const nextHoveredId = pickObjectAt(event.clientX, event.clientY)
+        const prevHoveredId = hoveredIdRef.current
+
+        if (nextHoveredId === prevHoveredId) return
+
+        hoveredIdRef.current = nextHoveredId
+        if (prevHoveredId) applyMeshVisualState(prevHoveredId)
+        if (nextHoveredId) applyMeshVisualState(nextHoveredId)
+
+        requestRender()
+      })
+    }
+
+    const handlePointerLeave = () => {
+      const prevHoveredId = hoveredIdRef.current
+      hoveredIdRef.current = null
+      if (prevHoveredId) {
+        applyMeshVisualState(prevHoveredId)
+        requestRender()
+      }
+    }
+
+    canvas.addEventListener("pointerdown", handlePointerDown)
+    canvas.addEventListener("pointerup", handlePointerUp)
+    canvas.addEventListener("pointermove", handlePointerMove)
+    canvas.addEventListener("pointerleave", handlePointerLeave)
+    canvas.addEventListener("contextmenu", handleCanvasRightClick)
+
+    return () => {
+      canvas.removeEventListener("pointerdown", handlePointerDown)
+      canvas.removeEventListener("pointerup", handlePointerUp)
+      canvas.removeEventListener("pointermove", handlePointerMove)
+      canvas.removeEventListener("pointerleave", handlePointerLeave)
+      canvas.removeEventListener("contextmenu", handleCanvasRightClick)
+
+      if (hoverRaf) cancelAnimationFrame(hoverRaf)
+    }
+  }, [activeTool, applyMeshVisualState, handleCanvasRightClick, onObjectSelect, pickObjectAt, requestRender])
+
   useEffect(() => {
     if (gridRef.current) {
       gridRef.current.visible = showGrid
+      requestRender()
     }
-  }, [showGrid])
+  }, [requestRender, showGrid])
 
-  // Update meshes when workspace objects change
   useEffect(() => {
-    if (!sceneRef.current) return
-
     const scene = sceneRef.current
+    if (!scene) return
+
     const currentMeshIds = new Set(Object.keys(workspaceObjects))
     const existingMeshIds = new Set(meshRefs.current.keys())
 
-    // Remove deleted objects
-    existingMeshIds.forEach(id => {
+    existingMeshIds.forEach((id) => {
       if (!currentMeshIds.has(id)) {
         const mesh = meshRefs.current.get(id)
         if (mesh) {
           scene.remove(mesh)
-          mesh.geometry.dispose()
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach(m => m.dispose())
-          } else {
-            mesh.material.dispose()
-          }
+          disposeMesh(mesh)
           meshRefs.current.delete(id)
         }
       }
     })
 
-    // Add or update objects
     Object.entries(workspaceObjects).forEach(([id, objectData]) => {
       const existingMesh = meshRefs.current.get(id)
-      
-      // Check if dimensions have changed by comparing stringified dimensions
-      const needsRebuild = existingMesh && 
-        JSON.stringify(existingMesh.userData.dimensions) !== JSON.stringify(objectData.dimensions)
-      
-      if (!existingMesh || needsRebuild) {
-        // Remove old mesh if rebuilding
-        if (existingMesh && needsRebuild) {
+      const nextGeometryKey = getGeometryKey(objectData)
+
+      if (!existingMesh || existingMesh.userData.geometryKey !== nextGeometryKey) {
+        if (existingMesh) {
           scene.remove(existingMesh)
-          existingMesh.geometry.dispose()
-          if (Array.isArray(existingMesh.material)) {
-            existingMesh.material.forEach(m => m.dispose())
-          } else {
-            existingMesh.material.dispose()
-          }
+          disposeMesh(existingMesh)
           meshRefs.current.delete(id)
         }
-        
-        // Create new mesh
+
         const mesh = createMeshFromGeometry(id, objectData)
-        mesh.userData.id = id
-        mesh.userData.dimensions = objectData.dimensions // Store for comparison
         mesh.visible = objectData.visible !== false
+
         scene.add(mesh)
         meshRefs.current.set(id, mesh)
       } else {
-        // Update existing mesh properties without rebuilding
         existingMesh.visible = objectData.visible !== false
-        
-        // Update selection highlight
-        const material = existingMesh.material as THREE.MeshStandardMaterial
-        const isSelected = objectData.selected || id === selectedObjectId
-        const baseColor = objectData.color ? Number.parseInt(String(objectData.color).replace('#', '0x')) : 0x0077ff
-
-        material.color.setHex(isSelected ? 0xff8800 : baseColor)
-        material.emissive.setHex(isSelected ? 0x442200 : 0x000000)
       }
-    })
-  }, [workspaceObjects, selectedObjectId])
 
-  // Enhanced selection highlighting with edge outline (desktop + mobile)
-  useEffect(() => {
-    if (!sceneRef.current) return
-
-    meshRefs.current.forEach((mesh, meshId) => {
-      const isSelected = selectedObjectId === meshId
-      const material = mesh.material as THREE.MeshStandardMaterial
-      
-      if (isSelected) {
-        // Selection highlight - stronger emissive for visibility
-        material.emissive.setHex(0x2a2a72)
-        material.emissive.multiplyScalar(0.5)
-        
-        // Add edge outline for clear selection feedback
-        let edgesMesh = mesh.userData.edgesMesh as THREE.LineSegments | undefined
-        if (!edgesMesh) {
-          const edges = new THREE.EdgesGeometry(mesh.geometry)
-          const wireframe = new THREE.LineSegments(
-            edges,
-            new THREE.LineBasicMaterial({ 
-              color: 0x2a2a72, 
-              linewidth: 3,
-              transparent: true,
-              opacity: 0.8
-            })
-          )
-          mesh.add(wireframe)
-          mesh.userData.edgesMesh = wireframe
-          edgesMesh = wireframe
-        }
-        if (edgesMesh) edgesMesh.visible = true
-      } else {
-        // Deselection - reset emissive
-        material.emissive.setHex(0x000000)
-        const edgesMesh = mesh.userData.edgesMesh as THREE.LineSegments | undefined
-        if (edgesMesh) {
-          edgesMesh.visible = false
-        }
-      }
+      applyMeshVisualState(id)
     })
-  }, [selectedObjectId])
+
+    pickableMeshesRef.current = Array.from(meshRefs.current.values())
+
+    requestRender()
+  }, [applyMeshVisualState, requestRender, selectedObjectId, workspaceObjects])
 
   // Hide viewport controls on mobile
   if (isMobileView) {
@@ -402,13 +629,15 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
         <div
           ref={mountRef}
           className="absolute inset-0 w-full h-full cursor-crosshair"
-          onClick={handleCanvasClick}
-          onContextMenu={handleCanvasRightClick}
           style={{
-            cursor: activeTool === 'select' ? 'default' :
-                   activeTool === 'measure' ? 'crosshair' :
-                   activeTool === 'sketch' ? 'crosshair' :
-                   'default'
+            cursor:
+              activeTool === "select"
+                ? "default"
+                : activeTool === "measure"
+                  ? "crosshair"
+                  : activeTool === "sketch"
+                    ? "crosshair"
+                    : "default",
           }}
         />
 
@@ -418,7 +647,13 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
           className="absolute top-4 right-4 p-3 bg-white rounded-xl shadow-lg touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center transition-transform active:scale-95"
           title="Fit view to all objects (F)"
         >
-          <svg className="w-6 h-6 text-gray-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-6 h-6 text-gray-700"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
           </svg>
         </button>
@@ -452,13 +687,15 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       <div
         ref={mountRef}
         className="flex-1 w-full h-full cursor-crosshair"
-        onClick={handleCanvasClick}
-        onContextMenu={handleCanvasRightClick}
         style={{
-          cursor: activeTool === 'select' ? 'default' :
-                 activeTool === 'measure' ? 'crosshair' :
-                 activeTool === 'sketch' ? 'crosshair' :
-                 'default'
+          cursor:
+            activeTool === "select"
+              ? "default"
+              : activeTool === "measure"
+                ? "crosshair"
+                : activeTool === "sketch"
+                  ? "crosshair"
+                  : "default",
         }}
       />
 

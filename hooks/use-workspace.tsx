@@ -1,11 +1,20 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from "react";
-import { ExecutionEngine } from "@/lib/geometry/execution-engine";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { ExecutionEngine } from '@/lib/geometry/execution-engine';
 
 export interface WorkspaceObject {
   id: string;
   type: 'box' | 'cylinder' | 'sphere' | 'extrusion' | 'revolution' | 'compound' | string;
+  geometryId?: string;
   dimensions: {
     width?: number;
     height?: number;
@@ -25,6 +34,7 @@ export interface WorkspaceObject {
   meshData?: {
     vertices: Float32Array;
     indices: Uint32Array;
+    normals?: Float32Array;
   };
   color?: string;
   params?: Record<string, any>;
@@ -62,7 +72,11 @@ interface WorkspaceState {
   updateObjectParameters: (id: string, params: any) => void;
   updateObjectGeometry: (id: string, geometry: Partial<WorkspaceObject>) => void;
   getObjectGeometry: (id: string) => WorkspaceObject | undefined;
-  performBoolean: (operation: 'union' | 'subtract' | 'intersect', targetId: string, toolId: string) => Promise<void>;
+  performBoolean: (
+    operation: 'union' | 'subtract' | 'intersect',
+    targetId: string,
+    toolId: string
+  ) => Promise<void>;
   clearWorkspace: () => void;
   undo: () => void;
   redo: () => void;
@@ -78,113 +92,128 @@ interface HistoryEntry {
   selectedObjectIds: string[];
 }
 
+function cloneHistoryEntry(entry: HistoryEntry): HistoryEntry {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(entry);
+  }
+
+  return JSON.parse(JSON.stringify(entry)) as HistoryEntry;
+}
+
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
-  const [activeTool, setActiveTool] = useState("select");
-  const [objects, setObjects] = useState<Record<string, any>>({});
+  const [activeTool, setActiveTool] = useState('select');
+  const [objects, setObjects] = useState<Record<string, WorkspaceObject>>({});
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
-  
-  // Undo/Redo history
+
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
   const engineRef = useRef<ExecutionEngine | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       engineRef.current = new ExecutionEngine();
     }
+
     return () => engineRef.current?.dispose();
   }, []);
 
-  // Save state to history
   const saveHistory = useCallback(() => {
-    const newEntry: HistoryEntry = {
-      objects: JSON.parse(JSON.stringify(objects)),
+    const entry = cloneHistoryEntry({
+      objects,
       selectedObjectId,
       selectedObjectIds: [...selectedObjectIds],
-    };
-    
-    // Remove any future history if we're not at the end
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newEntry);
-    
-    // Limit history to 50 entries
-    if (newHistory.length > 50) {
-      newHistory.shift();
-    } else {
-      setHistoryIndex(historyIndex + 1);
-    }
-    
-    setHistory(newHistory);
-  }, [objects, selectedObjectId, selectedObjectIds, history, historyIndex]);
+    });
+
+    setHistory((prevHistory) => {
+      const base = prevHistory.slice(0, historyIndex + 1);
+      const next = [...base, entry].slice(-50);
+      setHistoryIndex(next.length - 1);
+      return next;
+    });
+  }, [objects, selectedObjectId, selectedObjectIds, historyIndex]);
 
   const selectTool = (id: string) => setActiveTool(id);
 
   const selectObject = (id: string, multi: boolean = false) => {
-    const normalizedId = id?.trim?.() ? id : ""
+    const normalizedId = id?.trim?.() ? id : '';
 
     setSelectedObjectIds((prevSelected) => {
-      let nextSelected: string[]
+      let nextSelected: string[];
 
       if (multi && normalizedId) {
         nextSelected = prevSelected.includes(normalizedId)
           ? prevSelected.filter((objId) => objId !== normalizedId)
-          : [...prevSelected, normalizedId]
+          : [...prevSelected, normalizedId];
       } else {
-        nextSelected = normalizedId ? [normalizedId] : []
+        nextSelected = normalizedId ? [normalizedId] : [];
       }
 
-      setSelectedObjectId(nextSelected[0] ?? null)
+      setSelectedObjectId(nextSelected[0] ?? null);
 
       setObjects((prevObjects) => {
-        const next = { ...prevObjects }
-        Object.keys(next).forEach((k) => {
-          next[k] = { ...next[k], selected: nextSelected.includes(k) }
-        })
-        return next
-      })
+        const idsToUpdate = new Set([...prevSelected, ...nextSelected]);
+        if (idsToUpdate.size === 0) return prevObjects;
 
-      return nextSelected
-    })
+        const nextObjects = { ...prevObjects };
+        idsToUpdate.forEach((objId) => {
+          const obj = nextObjects[objId];
+          if (!obj) return;
+          nextObjects[objId] = { ...obj, selected: nextSelected.includes(objId) };
+        });
+
+        return nextObjects;
+      });
+
+      return nextSelected;
+    });
   };
 
   const addObject = (id: string, data: Partial<WorkspaceObject>) => {
     saveHistory();
-    setObjects((prev) => ({ 
-      ...prev, 
-      [id]: { 
+
+    setObjects((prev) => ({
+      ...prev,
+      [id]: {
         id,
         type: data.type || 'box',
+        geometryId: data.geometryId,
         dimensions: data.dimensions || {},
         features: data.features || [],
         material: data.material || 'aluminum',
         visible: data.visible !== false,
         selected: false,
+        meshData: data.meshData,
         color: data.color || '#0077ff',
         params: data.params || data.dimensions || {},
         description: data.description || '',
         ...data,
-      } as WorkspaceObject
+      } as WorkspaceObject,
     }));
   };
 
   const deleteObject = (id: string) => {
     saveHistory();
+
     setObjects((prev) => {
       const { [id]: _, ...rest } = prev;
       return rest;
     });
+
     if (selectedObjectId === id) {
       setSelectedObjectId(null);
     }
-    setSelectedObjectIds((prev) => prev.filter(objId => objId !== id));
+
+    setSelectedObjectIds((prev) => prev.filter((objId) => objId !== id));
   };
 
   const updateObject = (id: string, data: Partial<WorkspaceObject>) => {
     saveHistory();
+
     setObjects((prev) => ({
       ...prev,
-      [id]: { ...prev[id], ...data } as WorkspaceObject
+      [id]: { ...prev[id], ...data } as WorkspaceObject,
     }));
   };
 
@@ -194,14 +223,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   const updateObjectParameters = (id: string, params: any) => {
     saveHistory();
+
     setObjects((prev) => {
       if (!prev[id]) return prev;
+
       return {
         ...prev,
-        [id]: { 
-          ...prev[id], 
+        [id]: {
+          ...prev[id],
           params: { ...prev[id].params, ...params },
-          dimensions: { ...prev[id].dimensions, ...params }
+          dimensions: { ...prev[id].dimensions, ...params },
         },
       };
     });
@@ -209,8 +240,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   const updateObjectGeometry = (id: string, geometry: Partial<WorkspaceObject>) => {
     saveHistory();
+
     setObjects((prev) => {
       if (!prev[id]) return prev;
+
       return {
         ...prev,
         [id]: {
@@ -227,16 +260,20 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     return objects[id];
   };
 
-  const performBoolean = async (op: 'union' | 'subtract' | 'intersect', targetId: string, toolId: string) => {
+  const performBoolean = async (
+    op: 'union' | 'subtract' | 'intersect',
+    targetId: string,
+    toolId: string
+  ) => {
     if (!engineRef.current) return;
-    
+
     const target = objects[targetId];
     const tool = objects[toolId];
     if (!target || !tool) return;
 
     try {
       await engineRef.current.ensureReady();
-      
+
       const ops = [
         {
           id: 'base',
@@ -244,7 +281,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           operation: target.meshData ? 'LOAD_MESH' : `CREATE_${target.type.toUpperCase()}`,
           parameters: target.meshData ? { mesh: target.meshData } : target.dimensions,
           dependsOn: [],
-          description: `Initialize base`,
+          description: 'Initialize base',
         },
         {
           id: 'tool',
@@ -252,7 +289,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           operation: tool.meshData ? 'LOAD_MESH' : `CREATE_${tool.type.toUpperCase()}`,
           parameters: tool.meshData ? { mesh: tool.meshData } : tool.dimensions,
           dependsOn: [],
-          description: `Initialize tool`,
+          description: 'Initialize tool',
         },
         {
           id: 'result',
@@ -261,18 +298,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           parameters: { toolGeometryId: 'tool' },
           dependsOn: ['base', 'tool'],
           description: `${op} operation`,
-        }
+        },
       ];
 
-      // Note: This logic assumes executeSequence can handle LOAD_MESH which might need implementation
-      // For now, let's use a simpler approach since the sequencer might not have LOAD_MESH
-      
       const resultId = await engineRef.current.executeSequence(ops as any);
       const resultData = engineRef.current.getGeometry(resultId);
 
-      if (resultData && resultData.mesh) {
+      if (resultData?.mesh) {
         saveHistory();
-        setObjects(prev => {
+
+        setObjects((prev) => {
           const next = { ...prev };
           next[targetId] = {
             ...next[targetId],
@@ -282,6 +317,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
           delete next[toolId];
           return next;
         });
+
         setSelectedObjectId(targetId);
         setSelectedObjectIds([targetId]);
       }
@@ -299,25 +335,29 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const prevIndex = historyIndex - 1;
-      const prevState = history[prevIndex];
-      setObjects(prevState.objects);
-      setSelectedObjectId(prevState.selectedObjectId);
-      setSelectedObjectIds(prevState.selectedObjectIds);
-      setHistoryIndex(prevIndex);
-    }
+    if (historyIndex <= 0) return;
+
+    const prevIndex = historyIndex - 1;
+    const prevState = history[prevIndex];
+    if (!prevState) return;
+
+    setObjects(prevState.objects);
+    setSelectedObjectId(prevState.selectedObjectId);
+    setSelectedObjectIds(prevState.selectedObjectIds);
+    setHistoryIndex(prevIndex);
   }, [history, historyIndex]);
 
   const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const nextIndex = historyIndex + 1;
-      const nextState = history[nextIndex];
-      setObjects(nextState.objects);
-      setSelectedObjectId(nextState.selectedObjectId);
-      setSelectedObjectIds(nextState.selectedObjectIds);
-      setHistoryIndex(nextIndex);
-    }
+    if (historyIndex >= history.length - 1) return;
+
+    const nextIndex = historyIndex + 1;
+    const nextState = history[nextIndex];
+    if (!nextState) return;
+
+    setObjects(nextState.objects);
+    setSelectedObjectId(nextState.selectedObjectId);
+    setSelectedObjectIds(nextState.selectedObjectIds);
+    setHistoryIndex(nextIndex);
   }, [history, historyIndex]);
 
   return (
@@ -352,7 +392,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error("useWorkspace must be used within a WorkspaceProvider");
+    throw new Error('useWorkspace must be used within a WorkspaceProvider');
   }
   return context;
 }
