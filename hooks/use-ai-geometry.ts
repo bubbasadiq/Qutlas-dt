@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { ExecutionEngine, type ExecutionProgress } from '@/lib/geometry/execution-engine'
-import { updateCanvasMesh } from '@/lib/canvas-utils'
+import { updateCanvasMesh, clearAllMeshes } from '@/lib/canvas-utils'
 import { useWorkspace } from '@/hooks/use-workspace'
 
 export interface AIGeometryState {
@@ -63,7 +63,6 @@ export function useAIGeometry() {
       }))
       
       // Step 1: Parse intent via API
-      console.log('📡 Calling /api/ai/generate with intent:', intent)
       const parseResponse = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,6 +150,8 @@ export function useAIGeometry() {
         })
 
         selectObject(objectId)
+
+        clearAllMeshes()
       }
 
       setState({
@@ -172,6 +173,8 @@ export function useAIGeometry() {
 
       return finalGeometryId
     } catch (error) {
+      clearAllMeshes()
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
       setState({

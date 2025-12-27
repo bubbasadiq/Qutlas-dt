@@ -1,19 +1,11 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
-<<<<<<< HEAD
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "config": "",
-    "css": "app/globals.css",
-=======
-  "rsc": false,
-  "tsx": true,
-  "tailwind": {
     "config": "tailwind.config.js",
-    "css": "src/index.css",
->>>>>>> cada/master
+    "css": "app/globals.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -24,10 +16,6 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
-<<<<<<< HEAD
   },
   "iconLibrary": "lucide"
-=======
-  }
->>>>>>> cada/master
 }

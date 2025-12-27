@@ -1,11 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+import animate from 'tailwindcss-animate';
+
 export default {
   darkMode: ['class'],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './hooks/**/*.{ts,tsx}',
+    './lib/**/*.{ts,tsx}',
+    './styles/**/*.{css}',
   ],
   safelist: ['w-6', 'w-7', 'w-8', 'w-9', 'w-10', 'w-11', 'w-12'],
   theme: {
@@ -25,42 +28,6 @@ export default {
         'kumbh-sans': ['Kumbh Sans', 'sans-serif'],
       },
       colors: {
-        'adam-bg-dark': '#191A1A',
-        // ??? lol that's what its called in Figma!
-        'adam-background-light': '#F1F1F1',
-        'adam-bg-secondary-dark': '#212121',
-        'adam-bg-light': '#E5E5E3',
-        'adam-bg-secondary-light': '#ECECEB',
-        'adam-blue': '#00A6FF',
-        'adam-text-primary': '#E5E5E5',
-        'adam-text-secondary': '#949494',
-        'adam-text-tertiary': '#676767',
-        'secondary-tan': '#E5E5E3',
-        'background-color': '#191A1A',
-        'adam-neutral-100': '#D7D7D7',
-        'adam-neutral-200': '#ADADAD',
-        'adam-neutral-700': '#3B3B3B',
-        'adam-neutral-900': '#171818',
-        'white-16%': 'rgba(255,255,255,0.16)',
-        'white-700': '#D7D7D7',
-        'white-500': '#949494',
-        'adam-background-1': '#212121',
-        'adam-background-2': '#191A1A',
-        'adam-neutral-950': '#111111',
-        'adam-neutral-900': '#171818',
-        'adam-neutral-800': '#2D2D2D',
-        'adam-neutral-700': '#3B3B3B',
-        'adam-neutral-500': '#5A5A5A',
-        'adam-neutral-400': '#676767',
-        'adam-neutral-300': '#949494',
-        'adam-neutral-200': '#ADADAD',
-        'adam-neutral-100': '#D7D7D7',
-        'adam-neutral-50': '#E5E5E5',
-        'adam-neutral-10': '#F2F2F2',
-        'adam-neutral-0': '#F6F6F6',
-        pink: '#00A6FF',
-        'sidebar-color': '#212121',
-        'bg-gray': 'rgba(29, 29, 29)',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -141,5 +108,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [animate],
 };
