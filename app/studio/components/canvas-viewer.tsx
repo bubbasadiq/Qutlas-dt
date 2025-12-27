@@ -14,6 +14,7 @@ import {
 import { setCanvasScene } from "@/lib/canvas-utils"
 import { useIsMobile } from "@/hooks/use-media-query"
 import type { WorkspaceObject } from "@/hooks/use-workspace"
+import { useWorkspaceKernelResult } from "@/hooks/use-workspace-kernel"
 
 interface CanvasViewerProps {
   activeTool: string
@@ -112,6 +113,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const [isSketchMode, setIsSketchMode] = useState(false)
   const [sketchPoints, setSketchPoints] = useState<Array<{x: number; y: number; z: number}>>([])
   const [sketchLines, setSketchLines] = useState<THREE.Line[]>([])
+
+  // NEW: Get kernel result for optional kernel-based rendering
+  const kernelResult = useWorkspaceKernelResult()
 
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -636,6 +640,43 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     requestRender()
   }, [applyMeshVisualState, requestRender, selectedObjectId, workspaceObjects])
+
+  // NEW: Optional kernel mesh rendering
+  // This effect runs when kernel produces a mesh, allowing kernel-based geometry
+  useEffect(() => {
+    if (!kernelResult?.mesh || kernelResult.status === 'fallback' || kernelResult.status === 'error') {
+      // No kernel mesh available, use legacy rendering (handled by effect above)
+      return
+    }
+
+    const scene = sceneRef.current
+    if (!scene) return
+
+    console.log('🎨 Kernel mesh available:', {
+      status: kernelResult.status,
+      hash: kernelResult.intentHash,
+      vertices: kernelResult.mesh.vertices.length / 3,
+      triangles: kernelResult.mesh.indices.length / 3
+    })
+
+    // For now, we keep using the legacy mesh generation
+    // In the future, this is where we would:
+    // 1. Create a single unified mesh from kernel output
+    // 2. Replace all individual object meshes with the kernel mesh
+    // 3. Handle selection/highlighting on the unified mesh
+
+    // TODO: Implement kernel mesh rendering when kernel produces valid meshes
+    // const geometry = new THREE.BufferGeometry()
+    // geometry.setAttribute('position', new THREE.BufferAttribute(kernelResult.mesh.vertices, 3))
+    // geometry.setIndex(new THREE.BufferAttribute(kernelResult.mesh.indices, 1))
+    // if (kernelResult.mesh.normals.length > 0) {
+    //   geometry.setAttribute('normal', new THREE.BufferAttribute(kernelResult.mesh.normals, 3))
+    // } else {
+    //   geometry.computeVertexNormals()
+    // }
+    // ... (replace scene meshes with kernel mesh)
+
+  }, [kernelResult])
 
   // Handle sketch mode activation
   useEffect(() => {

@@ -10,6 +10,9 @@ import React, {
   type ReactNode,
 } from 'react';
 import { ExecutionEngine } from '@/lib/geometry/execution-engine';
+import { IntentCompiler } from '@/lib/geometry/intent-compiler';
+import { IntentHistory } from '@/lib/geometry/intent-history';
+import { KernelBridge, type KernelResult } from '@/lib/geometry/kernel-bridge';
 
 export interface WorkspaceObject {
   id: string;
@@ -63,6 +66,7 @@ interface WorkspaceState {
   objects: Record<string, WorkspaceObject>;
   selectedObjectId: string | null;
   selectedObjectIds: string[];
+  kernelResult: KernelResult | null;
   selectTool: (id: string) => void;
   selectObject: (id: string, multi?: boolean) => void;
   addObject: (id: string, data: Partial<WorkspaceObject>) => void;
@@ -111,9 +115,20 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
   const engineRef = useRef<ExecutionEngine | null>(null);
 
+  // NEW: Intent compilation layer
+  const intentCompilerRef = useRef(new IntentCompiler());
+  const intentHistoryRef = useRef(new IntentHistory());
+  const kernelBridgeRef = useRef(new KernelBridge());
+  const [kernelResult, setKernelResult] = useState<KernelResult | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       engineRef.current = new ExecutionEngine();
+      
+      // Initialize kernel bridge
+      kernelBridgeRef.current.initialize().catch(err => {
+        console.warn('Failed to initialize geometry kernel:', err);
+      });
     }
 
     return () => engineRef.current?.dispose();
@@ -360,6 +375,45 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     setHistoryIndex(nextIndex);
   }, [history, historyIndex]);
 
+  // NEW: Compile intent whenever objects change
+  useEffect(() => {
+    // Skip if no objects
+    if (Object.keys(objects).length === 0) {
+      setKernelResult(null);
+      return;
+    }
+
+    const compileAsync = async () => {
+      try {
+        // Compile workspace to intent
+        const ir = intentCompilerRef.current.compileWorkspace(objects);
+        
+        // Push to intent history (only if it's a new intent hash)
+        const currentIntent = intentHistoryRef.current.current();
+        if (!currentIntent || currentIntent.hash !== ir.hash) {
+          intentHistoryRef.current.push(ir);
+        }
+        
+        // Send to kernel (if available)
+        const result = await kernelBridgeRef.current.compileIntent(ir);
+        setKernelResult(result);
+        
+        // Log the compilation
+        console.log('🔧 Intent compiled:', {
+          hash: result.intentHash,
+          status: result.status,
+          operations: ir.operations.length,
+          hasMesh: result.mesh !== null
+        });
+        
+      } catch (error) {
+        console.error('Intent compilation failed:', error);
+      }
+    };
+    
+    compileAsync();
+  }, [objects]);  // Recompile whenever objects change
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -367,6 +421,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         objects,
         selectedObjectId,
         selectedObjectIds,
+        kernelResult,
         selectTool,
         selectObject,
         addObject,
