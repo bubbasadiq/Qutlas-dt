@@ -9,6 +9,7 @@ Browser-first CAD/CAM studio for designing, validating, and ordering parts from 
 - **Auth & Storage**: Supabase
 - **Payments**: Flutterwave (**NGN-only**)
 - **Geometry**: Three.js rendering + Cadmium worker execution engine
+- **Intent Bridge**: Deterministic geometry kernel (Rust/WASM) - NEW! 🎉
 
 ## Local development
 
@@ -41,10 +42,12 @@ npx supabase start
 
 ## Key docs
 
+- `INTENT_BRIDGE_ARCHITECTURE.md` - **NEW!** Intent-based geometry compilation
 - `AI_GEOMETRY_SYSTEM.md`
 - `PRODUCTION_HARDENING.md`
 - `docs/CSG_IMPLEMENTATION.md`
 - `docs/TOOLPATH_FEATURE.md`
+- `wasm/geometry-kernel/README.md` - Rust geometry kernel
 
 ## License
 
