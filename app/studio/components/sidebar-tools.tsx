@@ -50,7 +50,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     modify: true,
     shapes: !isMobile, // Collapsed on mobile by default, expanded on desktop
   })
-  const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject } = useWorkspace()
+  const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject, performBoolean } = useWorkspace()
   
   const activeTool = externalActiveTool || contextActiveTool
 
@@ -122,7 +122,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     }
   }
   
-  const handleToolSelect = (toolId: string) => {
+  const handleToolSelect = async (toolId: string) => {
     selectTool(toolId)
     if (onToolSelect) {
       onToolSelect(toolId)
@@ -159,10 +159,26 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       })
       selectObject(id)
       toast.success('Sphere created')
-    } else if (toolId === 'union') {
-      toast.info('Select objects to union and use the properties panel to combine them')
-    } else if (toolId === 'subtract') {
-      toast.info('Select base and tool objects to subtract')
+    } else if (toolId === 'union' || toolId === 'subtract' || toolId === 'intersect') {
+      // Boolean operations require exactly 2 objects selected
+      const selectedIds = Object.values(objects)
+        .filter(obj => obj.selected)
+        .map(obj => obj.id)
+
+      if (selectedIds.length !== 2) {
+        toast.error(`Select exactly 2 objects to perform ${toolId} operation`)
+        return
+      }
+
+      const [targetId, toolObjId] = selectedIds
+
+      try {
+        toast.loading(`Performing ${toolId} operation...`)
+        await performBoolean(toolId as 'union' | 'subtract' | 'intersect', targetId, toolObjId)
+        toast.success(`${toolId} completed successfully`)
+      } catch (error) {
+        toast.error(`${toolId} operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
     } else if (toolId === 'hole') {
       toast.info('Select a face to place a hole')
     }
