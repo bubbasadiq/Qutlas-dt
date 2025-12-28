@@ -16,7 +16,14 @@ import { KernelBridge, type KernelResult } from '@/lib/geometry/kernel-bridge';
 
 export interface WorkspaceObject {
   id: string;
-  type: 'box' | 'cylinder' | 'sphere' | 'extrusion' | 'revolution' | 'compound' | string;
+  type:
+    | 'box'
+    | 'cylinder'
+    | 'sphere'
+    | 'extrusion'
+    | 'revolution'
+    | 'compound'
+    | string;
   geometryId?: string;
   dimensions: {
     width?: number;
@@ -29,9 +36,10 @@ export interface WorkspaceObject {
   };
   features?: Array<{
     type: string;
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
   }>;
   material?: string;
+  finish?: string;
   visible: boolean;
   selected: boolean;
   meshData?: {
@@ -40,7 +48,7 @@ export interface WorkspaceObject {
     normals?: Float32Array;
   };
   color?: string;
-  params?: Record<string, any>;
+  params?: Record<string, unknown>;
   description?: string;
   process?: string;
   toolpath?: {
@@ -51,7 +59,12 @@ export interface WorkspaceObject {
   };
   manufacturability?: {
     score: number;
-    issues: Array<{ id: string; severity: string; message: string; fix: string }>;
+    issues: Array<{
+      id: string;
+      severity: string;
+      message: string;
+      fix: string;
+    }>;
   };
   sourceFile?: {
     bucket: string;
@@ -72,14 +85,17 @@ interface WorkspaceState {
   addObject: (id: string, data: Partial<WorkspaceObject>) => void;
   deleteObject: (id: string) => void;
   updateObject: (id: string, data: Partial<WorkspaceObject>) => void;
-  getObjectParameters: (id: string) => any;
-  updateObjectParameters: (id: string, params: any) => void;
-  updateObjectGeometry: (id: string, geometry: Partial<WorkspaceObject>) => void;
+  getObjectParameters: (id: string) => Record<string, unknown> | undefined;
+  updateObjectParameters: (id: string, params: Record<string, unknown>) => void;
+  updateObjectGeometry: (
+    id: string,
+    geometry: Partial<WorkspaceObject>,
+  ) => void;
   getObjectGeometry: (id: string) => WorkspaceObject | undefined;
   performBoolean: (
     operation: 'union' | 'subtract' | 'intersect',
     targetId: string,
-    toolId: string
+    toolId: string,
   ) => Promise<void>;
   clearWorkspace: () => void;
   undo: () => void;
@@ -124,9 +140,9 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       engineRef.current = new ExecutionEngine();
-      
+
       // Initialize kernel bridge
-      kernelBridgeRef.current.initialize().catch(err => {
+      kernelBridgeRef.current.initialize().catch((err) => {
         console.warn('Failed to initialize geometry kernel:', err);
       });
     }
@@ -175,7 +191,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         idsToUpdate.forEach((objId) => {
           const obj = nextObjects[objId];
           if (!obj) return;
-          nextObjects[objId] = { ...obj, selected: nextSelected.includes(objId) };
+          nextObjects[objId] = {
+            ...obj,
+            selected: nextSelected.includes(objId),
+          };
         });
 
         return nextObjects;
@@ -232,11 +251,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  const getObjectParameters = (id: string) => {
+  const getObjectParameters = (
+    id: string,
+  ): Record<string, unknown> | undefined => {
     return objects[id]?.params || objects[id]?.dimensions;
   };
 
-  const updateObjectParameters = (id: string, params: any) => {
+  const updateObjectParameters = (
+    id: string,
+    params: Record<string, unknown>,
+  ) => {
     saveHistory();
 
     setObjects((prev) => {
@@ -253,7 +277,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const updateObjectGeometry = (id: string, geometry: Partial<WorkspaceObject>) => {
+  const updateObjectGeometry = (
+    id: string,
+    geometry: Partial<WorkspaceObject>,
+  ) => {
     saveHistory();
 
     setObjects((prev) => {
@@ -278,7 +305,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const performBoolean = async (
     op: 'union' | 'subtract' | 'intersect',
     targetId: string,
-    toolId: string
+    toolId: string,
   ) => {
     if (!engineRef.current) return;
 
@@ -292,23 +319,29 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       const ops = [
         {
           id: 'base',
-          type: 'CREATE',
-          operation: target.meshData ? 'LOAD_MESH' : `CREATE_${target.type.toUpperCase()}`,
-          parameters: target.meshData ? { mesh: target.meshData } : target.dimensions,
+          type: 'CREATE' as const,
+          operation: target.meshData
+            ? 'LOAD_MESH'
+            : `CREATE_${target.type.toUpperCase()}`,
+          parameters: target.meshData
+            ? { mesh: target.meshData }
+            : target.dimensions,
           dependsOn: [],
           description: 'Initialize base',
         },
         {
           id: 'tool',
-          type: 'CREATE',
-          operation: tool.meshData ? 'LOAD_MESH' : `CREATE_${tool.type.toUpperCase()}`,
+          type: 'CREATE' as const,
+          operation: tool.meshData
+            ? 'LOAD_MESH'
+            : `CREATE_${tool.type.toUpperCase()}`,
           parameters: tool.meshData ? { mesh: tool.meshData } : tool.dimensions,
           dependsOn: [],
           description: 'Initialize tool',
         },
         {
           id: 'result',
-          type: 'BOOLEAN',
+          type: 'BOOLEAN' as const,
           operation: `BOOLEAN_${op.toUpperCase()}`,
           parameters: { toolGeometryId: 'tool' },
           dependsOn: ['base', 'tool'],
@@ -316,7 +349,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         },
       ];
 
-      const resultId = await engineRef.current.executeSequence(ops as any);
+      const resultId = await engineRef.current.executeSequence(ops);
       const resultData = engineRef.current.getGeometry(resultId);
 
       if (resultData?.mesh) {
@@ -387,32 +420,31 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       try {
         // Compile workspace to intent
         const ir = intentCompilerRef.current.compileWorkspace(objects);
-        
+
         // Push to intent history (only if it's a new intent hash)
         const currentIntent = intentHistoryRef.current.current();
         if (!currentIntent || currentIntent.hash !== ir.hash) {
           intentHistoryRef.current.push(ir);
         }
-        
+
         // Send to kernel (if available)
         const result = await kernelBridgeRef.current.compileIntent(ir);
         setKernelResult(result);
-        
+
         // Log the compilation
         console.log('🔧 Intent compiled:', {
           hash: result.intentHash,
           status: result.status,
           operations: ir.operations.length,
-          hasMesh: result.mesh !== null
+          hasMesh: result.mesh !== null,
         });
-        
       } catch (error) {
         console.error('Intent compilation failed:', error);
       }
     };
-    
+
     compileAsync();
-  }, [objects]);  // Recompile whenever objects change
+  }, [objects]); // Recompile whenever objects change
 
   return (
     <WorkspaceContext.Provider
