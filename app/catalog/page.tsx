@@ -14,68 +14,60 @@ import { useAuth } from '@/lib/auth-context';
 import { useCurrency } from '@/hooks/use-currency';
 import { PriceDisplay } from '@/components/price-display';
 import { CurrencySelector } from '@/components/currency-selector';
-
-const categories = [
-  { id: 'all', label: 'All Parts' },
-  { id: 'fasteners', label: 'Fasteners' },
-  { id: 'brackets', label: 'Brackets' },
-  { id: 'enclosures', label: 'Enclosures' },
-  { id: 'shafts', label: 'Shafts' },
-  { id: 'gears', label: 'Gears' },
-];
+import {
+  CATALOG_CATEGORIES,
+  type CatalogPart,
+  type CategoryId,
+} from '@/lib/catalog-data';
+import { QuickAddModal } from '@/components/catalog/quick-add-modal';
+import { CustomizeAddModal } from '@/components/catalog/customize-add-modal';
 
 const materials = [
   { name: 'Aluminum', checked: false },
   { name: 'Steel', checked: false },
+  { name: 'Stainless Steel', checked: false },
   { name: 'Brass', checked: false },
-  { name: 'ABS', checked: false },
-  { name: 'Nylon', checked: false },
+  { name: 'Basalt', checked: false },
+  { name: 'Plastic', checked: false },
+  { name: 'Ceramic', checked: false },
+  { name: 'Rubber', checked: false },
 ];
 
 const processes = [
   { name: 'CNC Milling', checked: false },
+  { name: 'CNC', checked: false },
   { name: 'Laser Cutting', checked: false },
-  { name: '3D Printing', checked: false },
+  { name: 'Cut', checked: false },
   { name: 'Sheet Metal', checked: false },
   { name: 'Welding', checked: false },
   { name: 'Casting', checked: false },
+  { name: 'Cast', checked: false },
+  { name: 'Machined', checked: false },
+  { name: 'Molded', checked: false },
+  { name: 'Stamped', checked: false },
 ];
 
 const finishes = [
   { id: 'powder-coat', name: 'Powder Coat', checked: false },
   { id: 'anodize', name: 'Anodize', checked: false },
   { id: 'hard-anodize', name: 'Hard Anodize', checked: false },
-  { id: 'electroplate', name: 'Electroplate', checked: false },
   { id: 'paint', name: 'Paint', checked: false },
   { id: 'polished', name: 'Polished', checked: false },
   { id: 'brushed', name: 'Brushed', checked: false },
-  { id: 'raw-unfinished', name: 'Raw/Unfinished', checked: false },
-  { id: 'nickel-plated', name: 'Nickel Plated', checked: false },
-  { id: 'chrome-plated', name: 'Chrome Plated', checked: false },
+  { id: 'raw', name: 'Raw', checked: false },
+  { id: 'galvanized', name: 'Galvanized', checked: false },
+  { id: 'zinc-plated', name: 'Zinc Plated', checked: false },
+  { id: 'stainless', name: 'Stainless', checked: false },
 ];
-
-interface CatalogPart {
-  id: string;
-  name: string;
-  description?: string;
-  category: string;
-  material: string;
-  process?: string;
-  finish?: string;
-  basePrice: number;
-  leadTime?: string;
-  leadTimeDays?: number;
-  manufacturability?: number;
-  thumbnail?: string;
-  materials?: Array<{ name: string; priceMultiplier: number }>;
-}
 
 function CatalogContent() {
   const { user } = useAuth();
   const { currency } = useCurrency();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState<CategoryId | 'all'>(
+    'all',
+  );
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [unitSystem, setUnitSystem] = useState<'mm' | 'in'>('mm');
   const [parts, setParts] = useState<CatalogPart[]>([]);
@@ -84,7 +76,15 @@ function CatalogContent() {
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
   const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>(
+    [],
+  );
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 20000]);
+
+  // Modal states
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
+  const [customizeModalOpen, setCustomizeModalOpen] = useState(false);
+  const [selectedPart, setSelectedPart] = useState<CatalogPart | null>(null);
 
   const fetchParts = useCallback(async () => {
     setIsLoading(true);
@@ -104,6 +104,9 @@ function CatalogContent() {
       }
       if (selectedFinishes.length > 0) {
         params.set('finishes', selectedFinishes.join(','));
+      }
+      if (selectedCategories.length > 0) {
+        params.set('categories', selectedCategories.join(','));
       }
       params.set('minPrice', priceRange[0].toString());
       params.set('maxPrice', priceRange[1].toString());
@@ -125,6 +128,7 @@ function CatalogContent() {
     selectedMaterials,
     selectedProcesses,
     selectedFinishes,
+    selectedCategories,
     priceRange,
   ]);
 
@@ -136,9 +140,19 @@ function CatalogContent() {
     router.push(`/catalog/${partId}`);
   };
 
-  const handleAddToProject = (partId: string) => {
-    router.push(`/catalog/${partId}?action=addToWorkspace`);
+  const handleQuickAdd = (part: CatalogPart) => {
+    setSelectedPart(part);
+    setQuickAddModalOpen(true);
   };
+
+  const handleCustomizeAdd = (part: CatalogPart) => {
+    setSelectedPart(part);
+    setCustomizeModalOpen(true);
+  };
+
+  const activeCategoryData = CATALOG_CATEGORIES.find(
+    (cat) => cat.id === activeCategory,
+  );
 
   return (
     <div className="min-h-screen bg-[var(--bg-50)]">
@@ -195,13 +209,69 @@ function CatalogContent() {
                 Parts Catalog
               </h1>
               <p className="text-[var(--neutral-500)]">
-                Browse thousands of ready-to-manufacture parts
+                465 production-ready parts across 11 categories
               </p>
             </div>
             <CurrencySelector />
           </div>
         </div>
       </div>
+
+      {/* Category Navigation */}
+      <div className="border-b border-[var(--neutral-200)] bg-white">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <button
+              onClick={() => setActiveCategory('all')}
+              className={`rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeCategory === 'all'
+                  ? 'bg-[var(--primary-700)] text-white'
+                  : 'bg-[var(--neutral-100)] text-[var(--neutral-700)] hover:bg-[var(--neutral-200)]'
+              }`}
+            >
+              All Parts (465)
+            </button>
+            {CATALOG_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeCategory === cat.id
+                    ? 'bg-[var(--primary-700)] text-white'
+                    : 'bg-[var(--neutral-100)] text-[var(--neutral-700)] hover:bg-[var(--neutral-200)]'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>
+                  {cat.name} ({cat.count})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Category Description */}
+      {activeCategoryData && (
+        <div className="border-b border-[var(--neutral-200)] bg-[var(--accent-50)]">
+          <div className="mx-auto max-w-7xl px-6 py-4">
+            <div className="flex items-start gap-4">
+              <span className="text-3xl">{activeCategoryData.icon}</span>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-[var(--neutral-900)]">
+                  {activeCategoryData.name}
+                </h2>
+                <p className="mt-1 text-sm text-[var(--neutral-600)]">
+                  {activeCategoryData.description}
+                </p>
+                <p className="mt-2 text-xs text-[var(--accent-700)]">
+                  <strong>Unlocks:</strong> {activeCategoryData.unlocks}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex gap-8">
@@ -222,23 +292,36 @@ function CatalogContent() {
               </div>
             </div>
 
+            {/* Category Filter */}
             <div className="mb-6">
               <h3 className="mb-3 text-xs font-semibold tracking-wider text-[var(--neutral-400)] uppercase">
-                Categories
+                Filter by Category
               </h3>
-              <div className="space-y-1">
-                {categories.map((cat) => (
-                  <button
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {CATALOG_CATEGORIES.map((cat) => (
+                  <label
                     key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeCategory === cat.id
-                        ? 'bg-[var(--primary-700)] font-medium text-white'
-                        : 'text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]'
-                    }`}
+                    className="flex cursor-pointer items-center gap-2 text-sm text-[var(--neutral-700)]"
                   >
-                    {cat.label}
-                  </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(cat.id)}
+                      onChange={() => {
+                        const newCategories = selectedCategories.includes(
+                          cat.id,
+                        )
+                          ? selectedCategories.filter((c) => c !== cat.id)
+                          : [...selectedCategories, cat.id];
+                        setSelectedCategories(newCategories);
+                      }}
+                      className="rounded border-[var(--neutral-300)]"
+                    />
+                    <span>{cat.icon}</span>
+                    <span className="flex-1">{cat.name}</span>
+                    <span className="text-xs text-[var(--neutral-400)]">
+                      ({cat.count})
+                    </span>
+                  </label>
                 ))}
               </div>
             </div>
@@ -276,7 +359,7 @@ function CatalogContent() {
               <h3 className="mb-3 text-xs font-semibold tracking-wider text-[var(--neutral-400)] uppercase">
                 Process
               </h3>
-              <div className="space-y-2">
+              <div className="max-h-48 space-y-2 overflow-y-auto">
                 {processes.map((proc) => (
                   <label
                     key={proc.name}
@@ -342,8 +425,8 @@ function CatalogContent() {
                     <input
                       type="range"
                       min="0"
-                      max="1000"
-                      step="10"
+                      max="20000"
+                      step="500"
                       value={priceRange[0]}
                       onChange={(e) =>
                         setPriceRange([Number(e.target.value), priceRange[1]])
@@ -361,8 +444,8 @@ function CatalogContent() {
                     <input
                       type="range"
                       min="0"
-                      max="1000"
-                      step="10"
+                      max="20000"
+                      step="500"
                       value={priceRange[1]}
                       onChange={(e) =>
                         setPriceRange([priceRange[0], Number(e.target.value)])
@@ -448,69 +531,119 @@ function CatalogContent() {
               <div
                 className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
               >
-                {parts.map((part) => (
-                  <div
-                    key={part.id}
-                    className={`cursor-pointer overflow-hidden rounded-xl border border-[var(--neutral-200)] bg-white transition-all hover:border-[var(--primary-500)] hover:shadow-lg ${viewMode === 'list' ? 'flex' : ''}`}
-                    onClick={() => handlePreview(part.id)}
-                  >
+                {parts.map((part) => {
+                  const categoryData = CATALOG_CATEGORIES.find(
+                    (c) => c.id === part.category,
+                  );
+                  return (
                     <div
-                      className={`bg-[var(--bg-100)] ${viewMode === 'list' ? 'h-32 w-40' : 'aspect-square'}`}
+                      key={part.id}
+                      className={`overflow-hidden rounded-xl border border-[var(--neutral-200)] bg-white transition-all hover:border-[var(--primary-500)] hover:shadow-lg ${viewMode === 'list' ? 'flex' : ''}`}
                     >
-                      <img
-                        src={part.thumbnail || '/placeholder.svg'}
-                        alt={part.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    <div className="flex-1 p-4">
-                      <div className="mb-2 flex items-start justify-between">
-                        <div>
-                          <h3 className="font-medium text-[var(--neutral-900)]">
-                            {part.name}
-                          </h3>
-                          <p className="text-xs text-[var(--neutral-500)]">
-                            {part.material}
-                          </p>
-                        </div>
-                        {part.manufacturability && (
-                          <span className="rounded-full bg-[var(--accent-100)] px-2 py-1 text-xs text-[var(--accent-700)]">
-                            {part.manufacturability}%
-                          </span>
-                        )}
+                      <div
+                        className={`cursor-pointer bg-[var(--bg-100)] ${viewMode === 'list' ? 'h-32 w-40' : 'aspect-square'}`}
+                        onClick={() => handlePreview(part.id)}
+                      >
+                        <img
+                          src={part.thumbnail || '/placeholder.svg'}
+                          alt={part.name}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between">
-                        <div>
-                          <PriceDisplay
-                            amount={part.basePrice}
-                            variant="default"
-                          />
-                          <p className="text-xs text-[var(--neutral-500)]">
-                            {part.leadTime || '5 days'}
-                          </p>
+                      <div className="flex-1 p-4">
+                        <div className="mb-2 flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="mb-1 flex items-center gap-2">
+                              {categoryData && (
+                                <span className="rounded bg-[var(--accent-100)] px-2 py-0.5 text-xs text-[var(--accent-700)]">
+                                  {categoryData.icon} {categoryData.name}
+                                </span>
+                              )}
+                            </div>
+                            <h3
+                              className="cursor-pointer font-medium text-[var(--neutral-900)] hover:text-[var(--primary-700)]"
+                              onClick={() => handlePreview(part.id)}
+                            >
+                              {part.name}
+                            </h3>
+                            <p className="text-xs text-[var(--neutral-500)]">
+                              {part.material} • {part.process || 'Standard'}
+                            </p>
+                          </div>
+                          {part.manufacturability && (
+                            <span className="ml-2 rounded-full bg-[var(--accent-100)] px-2 py-1 text-xs text-[var(--accent-700)]">
+                              {part.manufacturability}%
+                            </span>
+                          )}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-transparent"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddToProject(part.id);
-                          }}
-                        >
-                          Quick Quote
-                        </Button>
+
+                        <div className="mt-4 flex items-center justify-between">
+                          <div>
+                            <PriceDisplay
+                              amount={part.basePrice}
+                              variant="default"
+                            />
+                            <p className="text-xs text-[var(--neutral-500)]">
+                              {part.leadTime || '3-5 days'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 bg-transparent text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickAdd(part);
+                            }}
+                          >
+                            Quick Add
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCustomizeAdd(part);
+                            }}
+                          >
+                            Customize
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </main>
         </div>
       </div>
+
+      {/* Modals */}
+      {selectedPart && (
+        <>
+          <QuickAddModal
+            open={quickAddModalOpen}
+            onClose={() => {
+              setQuickAddModalOpen(false);
+              setSelectedPart(null);
+            }}
+            part={selectedPart}
+          />
+          <CustomizeAddModal
+            open={customizeModalOpen}
+            onClose={() => {
+              setCustomizeModalOpen(false);
+              setSelectedPart(null);
+            }}
+            part={selectedPart}
+          />
+        </>
+      )}
     </div>
   );
 }
