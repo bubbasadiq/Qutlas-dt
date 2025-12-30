@@ -31,6 +31,9 @@ const explicitMap: Record<string, keyof typeof LucideIcons> = {
   'chevron-down': 'ChevronDown',
   'chevron-right': 'ChevronRight',
   'info': 'Info',
+  'filter': 'Filter',
+  'box': 'Box',
+  'x': 'X',
 }
 
 function toPascalCase(value: string) {
