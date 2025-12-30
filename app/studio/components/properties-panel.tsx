@@ -100,6 +100,22 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     const type = obj.type;
 
     switch (type) {
+      case 'catalog-part':
+        // For catalog parts, display specs from params
+        const catalogParams = [];
+        if (obj.params) {
+          if (obj.params.width) catalogParams.push({ key: 'width', label: 'Width', unit: 'mm' });
+          if (obj.params.height) catalogParams.push({ key: 'height', label: 'Height', unit: 'mm' });
+          if (obj.params.length) catalogParams.push({ key: 'length', label: 'Length', unit: 'mm' });
+          if (obj.params.diameter) catalogParams.push({ key: 'diameter', label: 'Diameter', unit: 'mm' });
+          if (obj.params.wallThickness) catalogParams.push({ key: 'wallThickness', label: 'Wall Thickness', unit: 'mm' });
+          if (obj.params.sideLength) catalogParams.push({ key: 'sideLength', label: 'Side Length', unit: 'mm' });
+          if (obj.params.unitLength) catalogParams.push({ key: 'unitLength', label: 'Unit Length', unit: 'mm' });
+          if (obj.params.threadSize) catalogParams.push({ key: 'threadSize', label: 'Thread Size', unit: '' });
+        }
+        return catalogParams.length > 0 ? catalogParams : [
+          { key: 'quantity', label: 'Quantity', unit: 'pcs' }
+        ];
       case 'cylinder':
         return [
           { key: 'radius', label: 'Radius', unit: 'mm' },
@@ -191,13 +207,24 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <h3
                 className={`mb-1 font-semibold text-[var(--neutral-900)] ${isMobile ? 'text-lg' : 'text-base'}`}
               >
-                {selectedObject || 'No Selection'}
+                {selectedObject ? (
+                  getObjectGeometry(selectedObject)?.type === 'catalog-part' 
+                    ? getObjectGeometry(selectedObject)?.description || selectedObject
+                    : selectedObject
+                ) : 'No Selection'}
               </h3>
               <p
                 className={`text-[var(--neutral-500)] ${isMobile ? 'text-base' : 'text-sm'}`}
               >
-                Parametric Object
+                {selectedObject && getObjectGeometry(selectedObject)?.type === 'catalog-part' 
+                  ? 'Catalog Part'
+                  : 'Parametric Object'}
               </p>
+              {selectedObject && getObjectGeometry(selectedObject)?.type === 'catalog-part' && getObjectGeometry(selectedObject)?.params?.category && (
+                <p className={`text-[var(--neutral-400)] ${isMobile ? 'text-sm' : 'text-xs'} mt-1`}>
+                  Category: {getObjectGeometry(selectedObject)?.params?.category}
+                </p>
+              )}
             </div>
 
             {/* Material Selection */}

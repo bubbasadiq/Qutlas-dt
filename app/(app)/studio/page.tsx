@@ -69,7 +69,65 @@ function StudioContent() {
     if (intent) {
       setInitialIntent(decodeURIComponent(intent))
     }
-  }, [searchParams])
+
+    // Handle catalog part import
+    const importPartId = searchParams.get("import")
+    if (importPartId) {
+      // Find the most recent workspace import in localStorage
+      const allKeys = Object.keys(localStorage)
+      const importKeys = allKeys.filter((key) => key.startsWith("workspace-import-"))
+      
+      if (importKeys.length > 0) {
+        // Sort by timestamp (most recent first)
+        importKeys.sort((a, b) => {
+          const timestampA = parseInt(a.replace("workspace-import-", ""))
+          const timestampB = parseInt(b.replace("workspace-import-", ""))
+          return timestampB - timestampA
+        })
+        
+        const mostRecentKey = importKeys[0]
+        const dataStr = localStorage.getItem(mostRecentKey)
+        
+        if (dataStr) {
+          try {
+            const catalogPartData = JSON.parse(dataStr)
+            
+            // Convert catalog part data to WorkspaceObject format
+            const workspaceId = `catalog-${catalogPartData.partId}-${Date.now()}`
+            const workspaceObject = {
+              type: "catalog-part",
+              dimensions: catalogPartData.specs || {},
+              material: catalogPartData.material || "aluminum",
+              finish: catalogPartData.finish || "Raw",
+              visible: true,
+              selected: false,
+              description: catalogPartData.name || "",
+              params: {
+                ...catalogPartData.specs,
+                partId: catalogPartData.partId,
+                category: catalogPartData.category,
+                quantity: catalogPartData.quantity || 1,
+                basePrice: catalogPartData.basePrice || 0,
+                totalPrice: catalogPartData.totalPrice || 0,
+              },
+            }
+            
+            // Add the part to workspace
+            addObject(workspaceId, workspaceObject)
+            selectObject(workspaceId)
+            
+            // Clean up localStorage
+            localStorage.removeItem(mostRecentKey)
+            
+            toast.success(`Added ${catalogPartData.name} to workspace`)
+          } catch (error) {
+            console.error("Failed to import catalog part:", error)
+            toast.error("Failed to import catalog part")
+          }
+        }
+      }
+    }
+  }, [searchParams, addObject, selectObject])
 
   // Advanced Keyboard shortcuts
   useEffect(() => {

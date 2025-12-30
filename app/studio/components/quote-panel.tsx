@@ -52,6 +52,35 @@ export function QuotePanel() {
     const obj = getObjectGeometry(selectedObjectId);
     if (!obj) return null;
 
+    // For catalog parts, use their stored pricing
+    if (obj.type === 'catalog-part' && obj.params?.basePrice) {
+      const basePrice = obj.params.basePrice as number;
+      const catalogQuantity = (obj.params.quantity as number) || 1;
+      const totalQuantity = catalogQuantity * quantity;
+      const unitPrice = basePrice;
+      const totalPrice = unitPrice * totalQuantity;
+
+      return {
+        unitPrice,
+        totalPrice,
+        manufacturability: {
+          score: 95,
+          issues: [],
+          recommendations: [],
+        },
+        breakdown: {
+          materialCost: unitPrice * 0.4,
+          laborCost: unitPrice * 0.3,
+          setupCost: unitPrice * 0.1,
+          finishingCost: unitPrice * 0.1,
+          overheadCost: unitPrice * 0.1,
+          totalPrice,
+          quantity: totalQuantity,
+        },
+        leadTime: '3-5 days',
+      };
+    }
+
     return generateQuote({
       geometryParams: obj.dimensions,
       objectType: obj.type,
