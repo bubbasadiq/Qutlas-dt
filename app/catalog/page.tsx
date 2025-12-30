@@ -769,7 +769,7 @@ function CatalogContent() {
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {parts.map((part) => {
                   const categoryData = CATALOG_CATEGORIES.find(
                     (c) => c.id === part.category,
@@ -792,7 +792,7 @@ function CatalogContent() {
                       </div>
 
                       {/* Content */}
-                      <div className="p-4">
+                      <div className="p-3">
                         {/* Category badge */}
                         {categoryData && (
                           <div className="mb-2">
@@ -839,7 +839,7 @@ function CatalogContent() {
                             <PriceDisplay
                               amount={part.basePrice}
                               variant="default"
-                              className="text-lg"
+                              className="text-base"
                             />
                           </div>
                           <Button

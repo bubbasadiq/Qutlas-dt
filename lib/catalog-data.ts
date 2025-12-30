@@ -145,7 +145,7 @@ export const CATALOG_CATEGORIES: CatalogCategory[] = [
   },
   {
     id: 'tooling',
-    name: 'Tooling & Jigs (Strategic Moat)',
+    name: 'Tooling & Jigs',
     icon: '🔨',
     description: 'These improve the platform itself',
     unlocks: 'Faster iteration, precision manufacturing, quality improvement',

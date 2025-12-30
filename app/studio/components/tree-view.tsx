@@ -107,6 +107,7 @@ function TreeNode({
         
         <Icon
           name={
+            object.type === 'catalog-part' ? 'box' :
             object.type === 'sketch' ? 'pencil' :
             object.type === 'cylinder' ? 'cylinder' :
             object.type === 'sphere' ? 'sphere' :
@@ -117,7 +118,9 @@ function TreeNode({
         />
         
         <button onClick={onSelect} className={`flex-1 text-left ${isMobile ? 'text-base' : 'text-sm'} text-[var(--neutral-900)]`}>
-          {object.type || 'Object'}
+          {object.type === 'catalog-part' && object.description 
+            ? object.description 
+            : object.type || 'Object'}
         </button>
         
         <button
