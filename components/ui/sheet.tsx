@@ -29,26 +29,34 @@ export function Sheet({ open, onOpenChange, children }: SheetProps) {
 
 interface SheetContentProps {
   children: React.ReactNode
-  onClose: () => void
+  onClose?: () => void
   className?: string
+  side?: 'left' | 'right' | 'bottom'
 }
 
-export function SheetContent({ children, onClose, className }: SheetContentProps) {
+export function SheetContent({ children, onClose, className, side = 'bottom' }: SheetContentProps) {
+  const isLeft = side === 'left'
+  const isRight = side === 'right'
+  const isBottom = side === 'bottom'
+
   return (
     <div
       className={cn(
-        "fixed z-50 bg-white shadow-2xl animate-in slide-in-from-bottom duration-300",
-        "max-h-[85vh] w-full rounded-t-2xl flex flex-col",
-        "bottom-0 left-0 right-0",
+        "fixed z-50 bg-white shadow-2xl animate-in",
+        isLeft && "slide-in-from-left h-full w-full max-w-xs rounded-r-xl top-0 left-0 bottom-0",
+        isRight && "slide-in-from-right h-full w-full max-w-xs rounded-l-xl top-0 right-0 bottom-0",
+        isBottom && "slide-in-from-bottom h-[85vh] w-full rounded-t-2xl bottom-0 left-0 right-0",
         className
       )}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Handle bar */}
-      <div
-        className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2 flex-shrink-0 cursor-pointer"
-        onClick={onClose}
-      />
+      {/* Handle bar for bottom sheet */}
+      {isBottom && (
+        <div
+          className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2 flex-shrink-0 cursor-pointer"
+          onClick={onClose}
+        />
+      )}
       {children}
     </div>
   )
