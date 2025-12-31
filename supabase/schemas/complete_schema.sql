@@ -2,6 +2,19 @@
 -- QUTLAS PLATFORM - COMPLETE DATABASE SCHEMA
 -- Production-ready Supabase schema with tables, relationships, RLS, triggers, functions
 -- Last Updated: 2025
+--
+-- FIXES APPLIED (2025):
+-- 1. Table dependency: Moved project_shares table definition before projects RLS policies
+--    (lines 508-573) to resolve foreign key reference errors in RLS policies.
+-- 2. hub_performance view: Fixed malformed CASE statement by adding missing "CASE WHEN"
+--    (line 1553) - corrected syntax from incomplete condition to proper CASE WHEN...THEN...ELSE...END.
+-- 3. UUID to TEXT conversion: Changed catalog tables (catalog_materials, catalog_finishes,
+--    catalog_parts, hubs) to use TEXT id columns instead of UUID with gen_random_uuid()
+--    to match seed data format (e.g., 'mat-al6061', 'hub-techhub-la').
+-- 4. Messages table: Added updated_at column (line 164) and corresponding trigger
+--    (lines 215-229) for consistency with other tables.
+-- 5. User stats triggers: Added update_stats_on_message trigger (lines 1346-1349) to
+--    update user statistics when messages are inserted or updated.
 -- =============================================================================
 
 -- =============================================================================
@@ -150,6 +163,7 @@ CREATE POLICY "Service role can access all conversations" ON conversations
 -- TABLE: messages
 -- Chat messages within conversations
 -- =============================================================================
+-- FIX: Added updated_at column for consistency with other tables
 CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL,
@@ -159,12 +173,14 @@ CREATE TABLE IF NOT EXISTS messages (
   token_count INT DEFAULT 0,
   model_used TEXT,
   metadata JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS messages_conversation_id_idx ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS messages_created_at_idx ON messages(created_at);
+CREATE INDEX IF NOT EXISTS messages_updated_at_idx ON messages(updated_at);
 CREATE INDEX IF NOT EXISTS messages_parent_message_id_idx ON messages(parent_message_id);
 CREATE INDEX IF NOT EXISTS messages_role_idx ON messages(role);
 
@@ -212,11 +228,29 @@ CREATE TRIGGER update_leaf_trigger
   EXECUTE FUNCTION update_conversation_leaf();
 
 -- =============================================================================
+-- FIX: Added messages updated_at trigger
+-- =============================================================================
+CREATE OR REPLACE FUNCTION update_messages_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_messages_updated_at ON messages;
+CREATE TRIGGER update_messages_updated_at
+  BEFORE UPDATE ON messages
+  FOR EACH ROW
+  EXECUTE FUNCTION update_messages_updated_at();
+
+-- =============================================================================
 -- TABLE: catalog_materials
 -- Material definitions with properties and pricing multipliers
 -- =============================================================================
+-- FIX: Changed id from UUID to TEXT to match seed data format (e.g., 'mat-al6061')
 CREATE TABLE IF NOT EXISTS catalog_materials (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   category TEXT NOT NULL,
   description TEXT,
@@ -269,8 +303,9 @@ CREATE TRIGGER update_catalog_materials_updated_at
 -- TABLE: catalog_finishes
 -- Finish options with compatibility and pricing
 -- =============================================================================
+-- FIX: Changed id from UUID to TEXT to match seed data format (e.g., 'fin-raw')
 CREATE TABLE IF NOT EXISTS catalog_finishes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   category TEXT NOT NULL,
   description TEXT,
@@ -322,8 +357,9 @@ CREATE TRIGGER update_catalog_finishes_updated_at
 -- TABLE: catalog_parts
 -- Product catalog with parameters, materials, and specifications
 -- =============================================================================
+-- FIX: Changed id from UUID to TEXT to match seed data format (e.g., 'part-bracket-001')
 CREATE TABLE IF NOT EXISTS catalog_parts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
@@ -396,8 +432,9 @@ CREATE TRIGGER update_catalog_parts_updated_at
 -- TABLE: hubs
 -- Manufacturing hubs with capabilities and location
 -- =============================================================================
+-- FIX: Changed id from UUID to TEXT to match seed data format (e.g., 'hub-techhub-la')
 CREATE TABLE IF NOT EXISTS hubs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   location JSONB DEFAULT '{"city": "", "country": "", "lat": 0, "lng": 0}'::jsonb,
   address TEXT,
@@ -505,64 +542,11 @@ ALTER TABLE projects ADD CONSTRAINT projects_user_id_fkey
 ALTER TABLE projects ADD CONSTRAINT projects_parent_project_id_fkey
   FOREIGN KEY (parent_project_id) REFERENCES projects(id) ON DELETE SET NULL;
 
--- RLS
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-
--- Users can view their own projects
-CREATE POLICY "Users can view own projects" ON projects
-  FOR SELECT TO authenticated
-  USING (
-    auth.uid() = user_id OR
-    privacy = 'public' OR
-    (privacy = 'shared' AND EXISTS (
-      SELECT 1 FROM project_shares WHERE project_id = projects.id AND shared_with = auth.uid()
-    ))
-  );
-
--- Users can create projects
-CREATE POLICY "Users can create projects" ON projects
-  FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
-
--- Users can update their own projects
-CREATE POLICY "Users can update own projects" ON projects
-  FOR UPDATE TO authenticated
-  USING (
-    auth.uid() = user_id OR
-    EXISTS (
-      SELECT 1 FROM project_shares WHERE project_id = projects.id AND shared_with = auth.uid() AND can_edit = true
-    )
-  );
-
--- Users can delete their own projects
-CREATE POLICY "Users can delete own projects" ON projects
-  FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
-
--- Service role can access all projects
-CREATE POLICY "Service role can access all projects" ON projects
-  FOR SELECT TO service_role
-  USING (true);
-
--- Trigger
-CREATE OR REPLACE FUNCTION update_projects_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  NEW.last_accessed_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_projects_updated_at
-  BEFORE UPDATE ON projects
-  FOR EACH ROW
-  EXECUTE FUNCTION update_projects_updated_at();
-
 -- =============================================================================
 -- TABLE: project_shares
 -- Project sharing permissions
 -- =============================================================================
+-- FIX: Moved before projects RLS policies to resolve dependency issue
 CREATE TABLE IF NOT EXISTS project_shares (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL,
@@ -624,6 +608,60 @@ CREATE POLICY "Project owners can delete shares" ON project_shares
     EXISTS (SELECT 1 FROM projects WHERE id = project_shares.project_id AND user_id = auth.uid()) OR
     shared_with = auth.uid()
   );
+
+-- RLS
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own projects
+CREATE POLICY "Users can view own projects" ON projects
+  FOR SELECT TO authenticated
+  USING (
+    auth.uid() = user_id OR
+    privacy = 'public' OR
+    (privacy = 'shared' AND EXISTS (
+      SELECT 1 FROM project_shares WHERE project_id = projects.id AND shared_with = auth.uid()
+    ))
+  );
+
+-- Users can create projects
+CREATE POLICY "Users can create projects" ON projects
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can update their own projects
+CREATE POLICY "Users can update own projects" ON projects
+  FOR UPDATE TO authenticated
+  USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM project_shares WHERE project_id = projects.id AND shared_with = auth.uid() AND can_edit = true
+    )
+  );
+
+-- Users can delete their own projects
+CREATE POLICY "Users can delete own projects" ON projects
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
+
+-- Service role can access all projects
+CREATE POLICY "Service role can access all projects" ON projects
+  FOR SELECT TO service_role
+  USING (true);
+
+-- Trigger
+CREATE OR REPLACE FUNCTION update_projects_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  NEW.last_accessed_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_projects_updated_at
+  BEFORE UPDATE ON projects
+  FOR EACH ROW
+  EXECUTE FUNCTION update_projects_updated_at();
 
 -- =============================================================================
 -- TABLE: workspaces
@@ -1318,6 +1356,11 @@ CREATE TRIGGER update_stats_on_conversation
   FOR EACH ROW
   EXECUTE FUNCTION update_user_stats();
 
+CREATE TRIGGER update_stats_on_message
+  AFTER INSERT OR UPDATE ON messages
+  FOR EACH ROW
+  EXECUTE FUNCTION update_user_stats();
+
 CREATE TRIGGER update_stats_on_job
   AFTER INSERT OR UPDATE ON jobs
   FOR EACH ROW
@@ -1508,6 +1551,7 @@ WHERE j.status NOT IN ('completed', 'cancelled')
 ORDER BY j.created_at DESC;
 
 -- View: Hub performance
+-- FIX: Corrected malformed CASE statement - added missing "CASE WHEN"
 CREATE OR REPLACE VIEW hub_performance AS
 SELECT
   h.id,
@@ -1519,7 +1563,8 @@ SELECT
   h.certified,
   COUNT(j.id) as active_jobs,
   COALESCE(AVG(j.total_price), 0) as avg_job_value,
-  EXTRACT(YEAR FROM AGE(NOW(), MIN(j.created_at))) > 0
+  CASE
+    WHEN EXTRACT(YEAR FROM AGE(NOW(), MIN(j.created_at))) > 0
     THEN EXTRACT(YEAR FROM AGE(NOW(), MIN(j.created_at)))
     ELSE 0
   END as years_active
@@ -1563,7 +1608,7 @@ INSERT INTO catalog_materials (id, name, category, description, price_multiplier
 ('mat-petg', 'PETG', 'Plastics', 'Easy to print transparent plastic', 0.55, 1.27, ARRAY['3D Printing'], ARRAY['None'], 12),
 ('mat-carbon', 'Carbon Fiber', 'Composites', 'Carbon fiber reinforced polymer', 2.50, 1.55, ARRAY['3D Printing', 'CNC Milling'], ARRAY['None'], 13),
 ('mat-wood', 'Birch Plywood', 'Wood', 'High quality birch plywood', 0.40, 0.68, ARRAY['Laser Cutting', 'CNC Milling'], ARRAY['Varnish', 'Lacquer'], 14)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
 -- SEED DATA: Finishes
@@ -1581,7 +1626,7 @@ INSERT INTO catalog_finishes (id, name, category, description, compatible_materi
 ('fin-chrome', 'Chrome Plated', 'Plating', 'Decorative chrome plating', ARRAY['Steel', 'Copper', 'Brass', 'Bronze', 'Cast Iron'], 1.30, 5, 10),
 ('fin-bead', 'Bead Blasted', 'Surface', 'Uniform matte finish from bead blasting', ARRAY['Aluminum', 'Steel', 'Stainless', 'Titanium'], 1.05, 1, 11),
 ('fin-pass', 'Passivate', 'Surface', 'Acid treatment to remove free iron and enhance corrosion resistance', ARRAY['Stainless Steel'], 1.03, 1, 12)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
 -- SEED DATA: Hubs
