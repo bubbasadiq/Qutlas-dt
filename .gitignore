@@ -1,82 +1,84 @@
-<<<<<<< HEAD
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
+# Dependencies
+node_modules
 /.pnp
 .pnp.js
 
-# next.js
+# Testing
+/coverage
+.nyc_output
+*.lcov
+
+# Next.js
 /.next/
 /out/
-
-# production
-/build
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
 next-env.d.ts
 
-# testing
-/coverage
+# Production
+/build
+/dist
+/dist-ssr
 
-# misc
-.DS_Store
-*.pem
-
-# OCCT build artifacts
-/occt-wrapper/build/
-
-# Note: Mock OCCT files are kept in git for development
-# Real compiled WASM should replace these when available
-=======
-# Logs
-logs
-*.log
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Local env files
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.pem
+*.swp
+*.swo
+*.bak
+*.backup
+*.log
+Thumbs.db
+
+# OCCT build artifacts
+/occt-wrapper/build/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 
-*.tsbuildinfo
-.env
+# WASM build artifacts
+wasm/*/target/
+# Note: wasm/cadmium-core/pkg is committed and required for production
+# wasm/geometry-kernel/pkg needs to be built using ./build.sh
 
-.vercel
+# Test results and reports
+test-results/
+playwright-report/
+playwright/.cache/
 
-# other secret files
-.env.local
-.env.langfuse
->>>>>>> cada/master
+# Performance test results
+load-performance.json
+worker-performance.json
+
+# Supabase local
+.supabase/
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
