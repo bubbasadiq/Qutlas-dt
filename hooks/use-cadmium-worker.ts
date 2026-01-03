@@ -45,10 +45,7 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
       try {
         console.log('🔄 Initializing Cadmium Worker...')
         
-        workerRef.current = new Worker(
-          new URL('../workers/cadmium-worker.ts', import.meta.url),
-          { type: 'module' }
-        )
+        workerRef.current = new Worker('/workers/cadmium-worker.js', { type: 'module' })
         
         // Set initialization timeout
         initTimeoutRef.current = setTimeout(() => {

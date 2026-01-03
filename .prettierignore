@@ -1,2 +1,8 @@
 src/vendor/openscad-wasm/
 src/assets/
+
+# Generated WASM bundles
+public/wasm/
+wasm/**/pkg/*_bg.*
+wasm/**/pkg/*.wasm
+wasm/**/pkg/*.d.ts
