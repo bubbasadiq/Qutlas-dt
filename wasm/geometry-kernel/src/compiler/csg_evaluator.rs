@@ -4,7 +4,8 @@
 //! memoization and optimization.
 
 use crate::compiler::csg_tree::CsgNode;
-use crate::geometry::{PreviewMesh, Primitive, create_primitive};
+use crate::types::PreviewMesh;
+use crate::geometry::{Primitive, create_primitive};
 use crate::errors::{KernelError, KernelResult};
 use std::collections::HashMap;
 
@@ -14,7 +15,7 @@ use std::collections::HashMap;
 /// for performance.
 pub struct CsgEvaluator {
     /// Cache of evaluated results
-    cache: HashMap<String, PreviewMesh>,
+    pub(crate) cache: HashMap<String, PreviewMesh>,
     /// Subdivision level for mesh generation
     subdivisions: u32,
 }

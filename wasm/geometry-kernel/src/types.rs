@@ -171,7 +171,7 @@ impl CsgNode {
 }
 
 /// Axis-aligned bounding box for optimization
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub struct BoundingBox {
     pub min: [f64; 3],
     pub max: [f64; 3],

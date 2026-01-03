@@ -129,10 +129,7 @@ fn check_tool_diameter(mesh: &PreviewMesh, tool_diameter: f64) -> Option<Constra
         return None;
     }
 
-    let bbox = match crate::geometry::bounding_box::compute_bounding_box(mesh) {
-        Ok(bbox) => bbox,
-        Err(_) => return None,
-    };
+    let bbox = crate::geometry::bounding_box::compute_bounding_box(mesh);
 
     let size = bbox.size();
     let min_dimension = size[0].min(size[1]).min(size[2]);
@@ -163,7 +160,7 @@ fn check_overhang_angle(mesh: &PreviewMesh, max_overhang_deg: f64) -> Option<Con
     }
 
     let max_overhang_rad = max_overhang_deg.to_radians();
-    let mut max_overhang_found = 0.0;
+    let mut max_overhang_found: f64 = 0.0;
 
     // Sample normals to find worst overhang
     let sample_count = mesh.normals.len().min(3000) / 3;
@@ -211,10 +208,7 @@ fn check_feature_size(mesh: &PreviewMesh) -> Option<ConstraintViolation> {
         return None;
     }
 
-    let bbox = match crate::geometry::bounding_box::compute_bounding_box(mesh) {
-        Ok(bbox) => bbox,
-        Err(_) => return None,
-    };
+    let bbox = crate::geometry::bounding_box::compute_bounding_box(mesh);
 
     let volume = bbox_volume(&bbox);
 

@@ -4,9 +4,9 @@
 //! compilation pipeline.
 
 use crate::compiler::{IntentParser, CsgEvaluator};
-use crate::types::{GeometryIR, CompileResult, CompileStatus, ManufacturabilityReport};
+use crate::types::{GeometryIR, CompileResult, CompileStatus, ManufacturabilityReport, PreviewMesh};
 use crate::errors::{KernelError, KernelResult};
-use crate::geometry::{PreviewMesh, bounding_box::compute_bounding_box};
+use crate::geometry::bounding_box::compute_bounding_box;
 use crate::hashing;
 use std::collections::HashMap;
 
@@ -90,7 +90,7 @@ impl CsgCompiler {
     }
 
     /// Validate intent without full compilation
-    pub fn validate(&self, ir: &GeometryIR) -> KernelResult<()> {
+    pub fn validate(&mut self, ir: &GeometryIR) -> KernelResult<()> {
         let csg_tree = self.parser.parse(ir)?;
         csg_tree.validate()?;
         Ok(())

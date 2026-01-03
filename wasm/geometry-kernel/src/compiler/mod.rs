@@ -13,7 +13,7 @@ pub use intent_parser::*;
 pub use csg_evaluator::*;
 pub use csg_compiler::*;
 
-use crate::geometry::PreviewMesh;
+use crate::types::PreviewMesh;
 use crate::errors::{KernelError, KernelResult};
 use crate::types::{GeometryIR, CompileResult, CompileStatus};
 use crate::hashing;
@@ -77,7 +77,7 @@ impl GeometryCompiler {
 
     /// Pre-flight validation without compilation
     pub fn validate(&self, ir: &GeometryIR) -> KernelResult<()> {
-        let parser = IntentParser::new();
+        let mut parser = IntentParser::new();
         let _csg_tree = parser.parse(ir)?;
         Ok(())
     }

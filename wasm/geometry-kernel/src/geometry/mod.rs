@@ -13,7 +13,7 @@ pub use operations::*;
 pub use bounding_box::*;
 pub use constraints::*;
 
-use crate::types::{BoundingBox, PreviewMesh, PrimitiveType};
+use crate::types::{BoundingBox, PreviewMesh, PrimitiveType, Transform};
 use crate::errors::KernelResult;
 
 /// Base trait for geometric primitives
