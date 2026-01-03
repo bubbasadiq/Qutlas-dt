@@ -2,13 +2,14 @@
 //!
 //! Efficient AABB operations for early rejection in CSG operations.
 
-use crate::geometry::{constants, PreviewMesh};
-use crate::errors::{KernelError, KernelResult};
+use crate::types::BoundingBox;
+use crate::types::PreviewMesh;
+use crate::geometry::constants;
 
 /// Compute bounding box from mesh vertices
-pub fn compute_bounding_box(mesh: &PreviewMesh) -> KernelResult<BoundingBox> {
+pub fn compute_bounding_box(mesh: &PreviewMesh) -> BoundingBox {
     if mesh.vertices.is_empty() {
-        return Ok(BoundingBox::empty());
+        return BoundingBox::empty();
     }
 
     let mut bbox = BoundingBox::new(
@@ -30,7 +31,7 @@ pub fn compute_bounding_box(mesh: &PreviewMesh) -> KernelResult<BoundingBox> {
         bbox.max[2] = bbox.max[2].max(z);
     }
 
-    Ok(bbox)
+    bbox
 }
 
 /// Test if point is inside bounding box

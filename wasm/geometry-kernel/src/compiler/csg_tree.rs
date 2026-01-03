@@ -3,9 +3,9 @@
 //! Defines the CSG tree structure for representing boolean
 //! operations on geometric primitives.
 
-use crate::geometry::BoundingBox;
+use crate::types::BoundingBox;
 use crate::types::{PrimitiveType, Transform};
-use crate::errors::KernelResult;
+use crate::errors::{KernelError, KernelResult};
 use std::collections::HashMap;
 
 /// CSG tree node representing primitives and boolean operations

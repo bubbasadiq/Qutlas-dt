@@ -124,8 +124,8 @@ impl GeometryKernel {
     /// This is useful for pre-flight validation to check if an intent
     /// is structurally valid before attempting full compilation.
     #[wasm_bindgen]
-    pub fn validate_csg(&self, intent_json: &str) -> String {
-        let result: Result<(), KernelError> = (|| {
+    pub fn validate_csg(&mut self, intent_json: &str) -> String {
+        let result: Result<(), KernelError> = (|| -> Result<(), KernelError> {
             let ir: GeometryIR = serde_json::from_str(intent_json)
                 .map_err(|e| KernelError::invalid_json(format!("Invalid intent JSON: {}", e)))?;
 

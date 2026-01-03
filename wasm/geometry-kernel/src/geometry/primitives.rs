@@ -56,9 +56,10 @@ impl Box {
 }
 
 impl Primitive for Box {
-    fn to_mesh(&self, subdivisions: u32) -> PreviewMesh {
+    fn to_mesh(&self, _subdivisions: u32) -> PreviewMesh {
         let mut mesh = PreviewMesh::new();
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
 
         let w = self.width / 2.0;
         let h = self.height / 2.0;
@@ -94,7 +95,7 @@ impl Primitive for Box {
             .collect();
 
         // Generate vertices and indices
-        let vertex_offset = mesh.vertices.len() as u32 / 3;
+        let mut vertex_offset = mesh.vertices.len() as u32 / 3;
 
         for (face_indices, face_normal) in &faces {
             let normal = apply_transform_to_normal(*face_normal, transform);
@@ -136,7 +137,8 @@ impl Primitive for Box {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
         let corners = [
             [-self.width / 2.0, -self.height / 2.0, -self.depth / 2.0],
             [self.width / 2.0, self.height / 2.0, self.depth / 2.0],
@@ -202,13 +204,14 @@ impl Cylinder {
 impl Primitive for Cylinder {
     fn to_mesh(&self, subdivisions: u32) -> PreviewMesh {
         let mut mesh = PreviewMesh::new();
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
 
         let segments = subdivisions.max(8) as usize;
         let h = self.height / 2.0;
 
         // Generate vertices
-        let vertex_offset = mesh.vertices.len() as u32 / 3;
+        let mut vertex_offset = mesh.vertices.len() as u32 / 3;
 
         // Top and bottom center vertices
         let top_center = apply_transform_to_point([0.0, h, 0.0], transform);
@@ -323,7 +326,8 @@ impl Primitive for Cylinder {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
         let corners = [
             [-self.radius, -self.height / 2.0, -self.radius],
             [self.radius, self.height / 2.0, self.radius],
@@ -382,12 +386,13 @@ impl Sphere {
 impl Primitive for Sphere {
     fn to_mesh(&self, subdivisions: u32) -> PreviewMesh {
         let mut mesh = PreviewMesh::new();
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
 
         let lat_segments = (subdivisions / 2).max(4) as usize;
         let lon_segments = subdivisions.max(8) as usize;
 
-        let vertex_offset = mesh.vertices.len() as u32 / 3;
+        let mut vertex_offset = mesh.vertices.len() as u32 / 3;
 
         // Generate vertices
         for lat in 0..=lat_segments {
@@ -432,7 +437,8 @@ impl Primitive for Sphere {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
         let corners = [
             [-self.radius, -self.radius, -self.radius],
             [self.radius, self.radius, self.radius],
@@ -498,12 +504,13 @@ impl Cone {
 impl Primitive for Cone {
     fn to_mesh(&self, subdivisions: u32) -> PreviewMesh {
         let mut mesh = PreviewMesh::new();
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
 
         let segments = subdivisions.max(8) as usize;
         let h = self.height;
 
-        let vertex_offset = mesh.vertices.len() as u32 / 3;
+        let mut vertex_offset = mesh.vertices.len() as u32 / 3;
 
         // Apex vertex
         let apex = apply_transform_to_point([0.0, h / 2.0, 0.0], transform);
@@ -580,7 +587,8 @@ impl Primitive for Cone {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
         let corners = [
             [-self.radius, -self.height / 2.0, -self.radius],
             [self.radius, self.height / 2.0, self.radius],
@@ -646,12 +654,13 @@ impl Torus {
 impl Primitive for Torus {
     fn to_mesh(&self, subdivisions: u32) -> PreviewMesh {
         let mut mesh = PreviewMesh::new();
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
 
         let major_segments = subdivisions.max(12) as usize;
         let minor_segments = (subdivisions / 2).max(8) as usize;
 
-        let vertex_offset = mesh.vertices.len() as u32 / 3;
+        let mut vertex_offset = mesh.vertices.len() as u32 / 3;
 
         // Generate vertices
         for i in 0..=major_segments {
@@ -699,7 +708,8 @@ impl Primitive for Torus {
     }
 
     fn bounding_box(&self) -> BoundingBox {
-        let transform = self.transform.as_ref().unwrap_or(&Transform::identity());
+        let identity = Transform::identity();
+        let transform = self.transform.as_ref().unwrap_or(&identity);
         let max_r = self.major_radius + self.minor_radius;
         let corners = [[-max_r, -self.minor_radius, -max_r], [max_r, self.minor_radius, max_r]];
 
@@ -732,12 +742,12 @@ impl Primitive for Torus {
 pub fn create_primitive(
     type_: PrimitiveType,
     params: &HashMap<String, f64>,
-) -> KernelResult<Box<dyn Primitive>> {
+) -> KernelResult<std::boxed::Box<dyn Primitive>> {
     match type_ {
-        PrimitiveType::Box => Ok(Box::new(Box::from_params(params)?)),
-        PrimitiveType::Cylinder => Ok(Box::new(Cylinder::from_params(params)?)),
-        PrimitiveType::Sphere => Ok(Box::new(Sphere::from_params(params)?)),
-        PrimitiveType::Cone => Ok(Box::new(Cone::from_params(params)?)),
-        PrimitiveType::Torus => Ok(Box::new(Torus::from_params(params)?)),
+        PrimitiveType::Box => Ok(std::boxed::Box::new(Box::from_params(params)?)),
+        PrimitiveType::Cylinder => Ok(std::boxed::Box::new(Cylinder::from_params(params)?)),
+        PrimitiveType::Sphere => Ok(std::boxed::Box::new(Sphere::from_params(params)?)),
+        PrimitiveType::Cone => Ok(std::boxed::Box::new(Cone::from_params(params)?)),
+        PrimitiveType::Torus => Ok(std::boxed::Box::new(Torus::from_params(params)?)),
     }
 }

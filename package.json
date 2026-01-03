@@ -12,7 +12,10 @@
     "format": "prettier --write .",
     "lint:supabase": "deno lint supabase",
     "prepare": "husky",
-    "test": "vitest"
+    "test": "vitest",
+    "build:wasm": "npm run build:wasm:cadmium && npm run build:wasm:kernel",
+    "build:wasm:cadmium": "cd wasm/cadmium-core && wasm-pack build --release --target bundler && cd ../..",
+    "build:wasm:kernel": "cd wasm/geometry-kernel && wasm-pack build --target bundler --out-dir pkg --release && cd ../.."
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.3",
