@@ -59,10 +59,7 @@ export class ExecutionEngine {
   private async initWorker(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Use proper worker path for Next.js
-        const workerPath = new URL('@/workers/cadmium-worker.ts', import.meta.url)
-        
-        this.worker = new Worker(workerPath, {
+        this.worker = new Worker('/workers/cadmium-worker.js', {
           type: 'module',
           name: 'cadmium-worker'
         })

@@ -52,10 +52,16 @@ export class CadmiumClient {
     try {
       // Dynamic import of Cadmium WASM module
       const module = await import('../wasm/cadmium-core/pkg/cadmium_core')
-      await module.default()
+
+      // wasm-pack `--target bundler` initializes on import and does not expose a default init.
+      // If we ever switch targets, this keeps compatibility.
+      if (typeof (module as any).default === 'function') {
+        await (module as any).default()
+      }
+
       cadmiumModule = module
       isInitialized = true
-      
+
       console.log('✅ Cadmium WASM module initialized successfully')
     } catch (error) {
       console.error('❌ Failed to initialize Cadmium WASM:', error)

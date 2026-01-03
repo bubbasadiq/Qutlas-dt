@@ -1,0 +1,15 @@
+{
+  "name": "cadmium-core",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "cadmium_core_bg.wasm",
+    "cadmium_core.js",
+    "cadmium_core.d.ts"
+  ],
+  "main": "cadmium_core.js",
+  "types": "cadmium_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

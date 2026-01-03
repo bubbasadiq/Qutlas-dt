@@ -28,7 +28,9 @@ const nextConfig = {
       test: /\.wasm$/,
       type: 'webassembly/async',
     })
-    
+
+    config.output.webassemblyModuleFilename = 'static/wasm/[modulehash].wasm'
+
     return config
   },
   turbopack: {
