@@ -837,11 +837,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
   // Desktop view with full controls
   return (
-    <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col">
+    <div className="flex-1 bg-[var(--bg-100)] relative flex flex-col h-full w-full">
       {/* Three.js Canvas */}
       <div
         ref={mountRef}
-        className="flex-1 w-full h-full cursor-crosshair"
+        className="flex-1 w-full cursor-crosshair"
         style={{
           cursor:
             activeTool === "select"

@@ -15,10 +15,20 @@ const nextConfig = {
         tls: false,
       }
     }
+    
+    // Enable async WebAssembly support
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    }
+    
+    // Configure WASM module handling
     config.module.rules.push({
       test: /\.wasm$/,
-      type: 'asset/resource',
+      type: 'webassembly/async',
     })
+    
     return config
   },
   turbopack: {
