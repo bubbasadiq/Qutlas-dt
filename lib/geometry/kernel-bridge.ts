@@ -29,12 +29,12 @@ export class KernelBridge {
       // Try to dynamically import WASM
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const wasmModule = await import('../../wasm/pkg') as any
-        
+        const wasmModule = await import('../wasm/cadmium-core/pkg') as any
+
         // Create kernel instance
         this.kernel = new wasmModule.GeometryKernel()
         this.isReady = true
-        
+
         console.log('✅ Geometry Kernel ready (WASM)')
       } catch (wasmError) {
         console.warn('WASM kernel not available, will use fallback mode:', wasmError)
