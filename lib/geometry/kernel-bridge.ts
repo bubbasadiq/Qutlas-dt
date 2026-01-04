@@ -29,7 +29,7 @@ export class KernelBridge {
       // Try to dynamically import WASM
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const wasmModule = await import('../wasm/cadmium-core/pkg') as any
+        const wasmModule = await import('../../wasm/cadmium-core/pkg') as any
 
         // Create kernel instance
         this.kernel = new wasmModule.GeometryKernel()
