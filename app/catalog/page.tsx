@@ -769,7 +769,7 @@ function CatalogContent() {
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
                 {parts.map((part) => {
                   const categoryData = CATALOG_CATEGORIES.find(
                     (c) => c.id === part.category,
@@ -777,79 +777,72 @@ function CatalogContent() {
                   return (
                     <div
                       key={part.id}
-                      className="group overflow-hidden rounded-xl border border-[var(--neutral-200)] bg-white transition-all hover:border-[var(--primary-300)] hover:shadow-md"
+                      className="group flex flex-col overflow-hidden rounded-lg border border-[var(--neutral-200)] bg-white transition-all duration-300 hover:border-[var(--primary-400)] hover:shadow-lg"
                     >
-                      {/* Thumbnail */}
+                      {/* Thumbnail Area */}
                       <div
-                        className="aspect-square cursor-pointer bg-[var(--bg-100)]"
+                        className="relative aspect-square w-full cursor-pointer bg-[var(--bg-100)] overflow-hidden"
                         onClick={() => handlePreview(part.id)}
                       >
                         <img
                           src={part.thumbnail || '/placeholder.svg'}
                           alt={part.name}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
+                        <div className="absolute top-3 right-3">
+                           <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-bold text-[var(--success-700)] shadow-sm border border-[var(--success-100)]">
+                            In Stock
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Content */}
-                      <div className="p-3">
-                        {/* Category badge */}
-                        {categoryData && (
-                          <div className="mb-2">
-                            <span className="inline-flex items-center gap-1 rounded bg-[var(--accent-50)] px-2 py-0.5 text-xs text-[var(--accent-700)]">
-                              <Icon name="box" size={12} />
-                              {categoryData.name}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Title */}
+                      {/* Content Area */}
+                      <div className="flex flex-1 flex-col p-4">
+                        {/* Part Name */}
                         <h3
-                          className="mb-1 cursor-pointer font-medium text-[var(--neutral-900)] line-clamp-2 hover:text-[var(--primary-700)]"
+                          className="mb-1 cursor-pointer text-[15px] font-semibold leading-tight text-[var(--neutral-900)] hover:text-[var(--primary-700)] transition-colors"
                           onClick={() => handlePreview(part.id)}
                         >
                           {part.name}
                         </h3>
 
-                        {/* Tags */}
-                        <div className="mb-3 flex flex-wrap gap-1">
-                          <span className="rounded bg-[var(--neutral-100)] px-2 py-0.5 text-xs text-[var(--neutral-600)]">
-                            {part.material}
-                          </span>
-                          {part.process && (
-                            <span className="rounded bg-[var(--neutral-100)] px-2 py-0.5 text-xs text-[var(--neutral-600)]">
-                              {part.process}
-                            </span>
-                          )}
-                          {part.finish && (
-                            <span className="rounded bg-[var(--neutral-100)] px-2 py-0.5 text-xs text-[var(--neutral-600)]">
-                              {part.finish}
-                            </span>
-                          )}
+                        {/* Metadata */}
+                        <div className="mb-3 flex items-center gap-1.5 text-[12px] text-[var(--neutral-500)] font-medium">
+                          <span>{part.material}</span>
+                          <span className="text-[var(--neutral-300)]">•</span>
+                          <span>{categoryData?.name || part.category}</span>
                         </div>
 
-                        {/* Lead time */}
-                        <p className="mb-3 text-xs text-[var(--neutral-500)]">
-                          Lead time: {part.leadTime || '3-5 days'}
-                        </p>
+                        {/* Quantity/Lead Time */}
+                        <div className="mb-4 flex items-center justify-between">
+                           <p className="text-[11px] font-medium text-[var(--neutral-400)] uppercase tracking-wider">
+                            Lead: {part.leadTime || '3-5 days'}
+                          </p>
+                        </div>
 
-                        {/* Price and action */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <PriceDisplay
-                              amount={part.basePrice}
-                              variant="default"
-                              className="text-base"
-                            />
+                        <div className="mt-auto pt-3 border-t border-[var(--neutral-100)]">
+                          {/* Prices */}
+                          <div className="mb-3 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-bold text-[var(--neutral-900)]">
+                                {formatPriceNGN(part.basePrice)}
+                              </span>
+                            </div>
+                            <span className="text-[12px] font-medium text-[var(--neutral-500)]">
+                              ${(part.basePrice / 1500).toFixed(2)} USD
+                            </span>
                           </div>
+
+                          {/* Action Button */}
                           <Button
                             size="sm"
+                            className="w-full bg-[var(--primary-700)] hover:bg-[var(--primary-800)] text-white shadow-sm transition-all active:scale-[0.98]"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleQuickAdd(part);
                             }}
                           >
-                            Add to Workspace
+                            Add to Quote
                           </Button>
                         </div>
                       </div>

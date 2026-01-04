@@ -8,24 +8,31 @@ let wasmAvailable = false;
 async function initializeCadmiumCore() {
   try {
     // Try to import the WASM module
+    // Using a relative path that Webpack can resolve during bundling
+    console.log('🔄 Attempting to load Cadmium WASM module...');
     const wasmModule = await import('../../wasm/cadmium-core/pkg');
-    CadmiumCore = wasmModule;
-    wasmAvailable = true;
-    console.log('✅ Cadmium WASM module loaded');
-    return true;
+    
+    if (wasmModule && (wasmModule.create_box || wasmModule.default)) {
+      CadmiumCore = wasmModule.default || wasmModule;
+      wasmAvailable = true;
+      console.log('✅ Cadmium WASM module loaded successfully');
+      return true;
+    }
+    throw new Error('WASM module loaded but seems invalid');
   } catch (wasmError) {
-    console.warn('WASM module not available, checking for JS fallback...', wasmError);
+    console.warn('⚠️ WASM module not available or failed to load:', wasmError);
     try {
       // Try JavaScript fallback if WASM fails
+      console.log('🔄 Attempting to load JavaScript fallback...');
       const jsModule = await import('../lib/cadmium/javascript-core');
       if (jsModule && jsModule.create_box) {
         CadmiumCore = jsModule;
         wasmAvailable = false;
-        console.log('✅ Cadmium JavaScript fallback loaded');
+        console.log('✅ Cadmium JavaScript fallback loaded successfully');
         return true;
       }
     } catch (jsError) {
-      console.warn('JavaScript fallback not available either:', jsError);
+      console.error('❌ JavaScript fallback not available either:', jsError);
     }
     return false;
   }

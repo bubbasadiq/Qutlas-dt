@@ -451,14 +451,6 @@ export function Toolbar({ onMobileMenuOpen, onAnalyzeClick, onQuoteClick }: Tool
             </button>
           )}
           <button
-            onClick={onAnalyzeClick}
-            disabled={Object.keys(objects).length === 0}
-            className="px-2.5 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-            title="Analyze Manufacturability"
-          >
-            Analyze
-          </button>
-          <button
             onClick={onQuoteClick}
             disabled={Object.keys(objects).length === 0}
             className="px-2.5 py-1 text-xs bg-[var(--primary-700)] text-white rounded hover:bg-[var(--primary-800)] transition disabled:opacity-40 disabled:cursor-not-allowed font-medium"

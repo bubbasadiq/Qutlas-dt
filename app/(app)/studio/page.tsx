@@ -9,7 +9,6 @@ import { PropertiesPanel } from "../../studio/components/properties-panel"
 import { TreeView } from "../../studio/components/tree-view"
 import { Toolbar } from "../../studio/components/toolbar"
 import { ContextMenu } from "../../studio/components/context-menu"
-import { ManufacturabilityPanel } from "../../studio/components/manufacturability-panel"
 import { QuotePanel } from "../../studio/components/quote-panel"
 import { MobileBottomNav, DEFAULT_BOTTOM_NAV_TABS } from "../../studio/components/mobile-bottom-nav"
 import { SegmentedPanel, SegmentedPanelGroup } from "@/components/segmented-panel"
@@ -472,8 +471,9 @@ function StudioContent() {
               <SegmentedPanelGroup allowMultipleOpen={false}>
                 <SegmentedPanel
                   title="Properties"
-                  icon="settings"
-                  defaultOpen={true}
+                  icon="Settings"
+                  isOpen={false} // Managed by SegmentedPanelGroup
+                  onToggle={() => {}} // Managed by SegmentedPanelGroup
                 >
                   <PropertiesPanel
                     selectedObject={selectedObjectId || undefined}
@@ -481,14 +481,10 @@ function StudioContent() {
                   />
                 </SegmentedPanel>
                 <SegmentedPanel
-                  title="DFM Analysis"
-                  icon="activity"
-                >
-                  <ManufacturabilityPanel />
-                </SegmentedPanel>
-                <SegmentedPanel
                   title="Quote"
-                  icon="file-text"
+                  icon="FileText"
+                  isOpen={false} // Managed by SegmentedPanelGroup
+                  onToggle={() => {}} // Managed by SegmentedPanelGroup
                 >
                   <QuotePanel />
                 </SegmentedPanel>
