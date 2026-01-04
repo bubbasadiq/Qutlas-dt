@@ -11,8 +11,8 @@ import { Toolbar } from "../../studio/components/toolbar"
 import { ContextMenu } from "../../studio/components/context-menu"
 import { ManufacturabilityPanel } from "../../studio/components/manufacturability-panel"
 import { QuotePanel } from "../../studio/components/quote-panel"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/radix-tabs"
 import { MobileBottomNav, DEFAULT_BOTTOM_NAV_TABS } from "../../studio/components/mobile-bottom-nav"
+import { SegmentedPanel, SegmentedPanelGroup } from "@/components/segmented-panel"
 import { MobileMenu } from "../../studio/components/mobile-menu"
 import { BottomSheet } from "@/components/ui/sheet"
 import { SaveWorkspaceDialog } from "../../studio/components/save-workspace-dialog"
@@ -47,7 +47,6 @@ function StudioContent() {
   const [showTreeSheet, setShowTreeSheet] = useState(false)
   const [showPropertiesSheet, setShowPropertiesSheet] = useState(false)
   const [showAISheet, setShowAISheet] = useState(false)
-  const [rightPanelTab, setRightPanelTab] = useState("properties")
 
   const {
     objects,
@@ -404,40 +403,12 @@ function StudioContent() {
     }
   }
 
-  const handleAnalyzeClick = () => {
-    const ids = Object.keys(objects)
-    if (ids.length === 0) {
-      toast.error('Add objects to workspace first')
-      return
-    }
-
-    if (!selectedObjectId) {
-      selectObject(ids[0])
-    }
-
-    setRightPanelTab('manufacturability')
-  }
-
-  const handleQuoteClick = () => {
-    const ids = Object.keys(objects)
-    if (ids.length === 0) {
-      toast.error('Add objects to workspace first')
-      return
-    }
-
-    if (!selectedObjectId) {
-      selectObject(ids[0])
-    }
-
-    setRightPanelTab('quote')
-  }
-
   // Desktop 3-column layout
   if (!isMobile) {
     return (
       <div className="flex flex-col h-screen bg-[var(--bg-100)]">
         {/* Toolbar */}
-        <Toolbar onAnalyzeClick={handleAnalyzeClick} onQuoteClick={handleQuoteClick} />
+        <Toolbar />
         
         {/* Main workspace - 3-column layout */}
         <div className="flex flex-1 overflow-hidden">
@@ -488,35 +459,40 @@ function StudioContent() {
             />
           </div>
           
-          {/* Right column: Tree view + Tabbed panels */}
+          {/* Right column: Tree view + Segmented panels */}
           <div className="w-80 bg-white border-l border-[var(--neutral-200)] flex flex-col">
             {/* Tree view - top section */}
             <div className="h-48 overflow-y-auto border-b border-[var(--neutral-200)] p-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-600)] mb-2">Scene</h3>
               <TreeView />
             </div>
-            
-            {/* Tabbed panels - bottom section */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <Tabs value={rightPanelTab} onValueChange={setRightPanelTab} className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-3 bg-gray-50 h-9 p-0.5 rounded-none border-b">
-                  <TabsTrigger value="properties" className="text-xs data-[state=active]:bg-white">Properties</TabsTrigger>
-                  <TabsTrigger value="manufacturability" className="text-xs data-[state=active]:bg-white">DFM</TabsTrigger>
-                  <TabsTrigger value="quote" className="text-xs data-[state=active]:bg-white">Quote</TabsTrigger>
-                </TabsList>
-                <TabsContent value="properties" className="flex-1 overflow-y-auto m-0 border-0">
-                  <PropertiesPanel 
-                    selectedObject={selectedObjectId || undefined} 
+
+            {/* Segmented panels - bottom section */}
+            <div className="flex-1 overflow-y-auto">
+              <SegmentedPanelGroup allowMultipleOpen={false}>
+                <SegmentedPanel
+                  title="Properties"
+                  icon="settings"
+                  defaultOpen={true}
+                >
+                  <PropertiesPanel
+                    selectedObject={selectedObjectId || undefined}
                     selectedObjects={selectedObjectIds}
                   />
-                </TabsContent>
-                <TabsContent value="manufacturability" className="flex-1 overflow-y-auto m-0 border-0">
+                </SegmentedPanel>
+                <SegmentedPanel
+                  title="DFM Analysis"
+                  icon="activity"
+                >
                   <ManufacturabilityPanel />
-                </TabsContent>
-                <TabsContent value="quote" className="flex-1 overflow-hidden m-0 border-0">
+                </SegmentedPanel>
+                <SegmentedPanel
+                  title="Quote"
+                  icon="file-text"
+                >
                   <QuotePanel />
-                </TabsContent>
-              </Tabs>
+                </SegmentedPanel>
+              </SegmentedPanelGroup>
             </div>
           </div>
         </div>
@@ -527,10 +503,7 @@ function StudioContent() {
           onClose={() => setShowSaveDialog(false)}
           onSave={async (name) => {
             try {
-              const data = JSON.stringify(Object.keys(objects).map(id => ({
-                id,
-                ...objects[id]
-              })))
+              const data = JSON.stringify(Object.keys(objects).map(id => objects[id]))
               const response = await fetch('/api/workspace/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -668,10 +641,7 @@ function StudioContent() {
         onClose={() => setShowSaveDialog(false)}
         onSave={async (name) => {
           try {
-            const data = JSON.stringify(Object.keys(objects).map(id => ({
-              id,
-              ...objects[id]
-            })))
+            const data = JSON.stringify(Object.keys(objects).map(id => objects[id]))
             const response = await fetch('/api/workspace/save', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
