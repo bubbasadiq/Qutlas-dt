@@ -1,4 +1,5 @@
-import init, * as cadmium from '../wasm/pkg/cadmium_core.js';
+// Cadmium Worker - Handles all geometry operations in a background thread
+// Uses JavaScript fallback for now
 
 let CadmiumCore = null;
 let isInitialized = false;
@@ -94,28 +95,45 @@ function convertMeshToTransferable(mesh) {
   };
 }
 
-const initPromise = (async () => {
+// Initialize Cadmium Worker
+async function initialize() {
   try {
-    await init();
-    CadmiumCore = cadmium;
-    isInitialized = true;
+    console.log('🔄 Initializing Cadmium Worker...');
+
+    // Import the JavaScript fallback
+    try {
+      const cadmiumModule = await import('../wasm/pkg/cadmium_core.js');
+      CadmiumCore = cadmiumModule;
+      isInitialized = true;
+      console.log('✅ Cadmium JavaScript fallback loaded successfully');
+    } catch (importError) {
+      throw new Error(`Failed to import Cadmium module: ${importError.message}`);
+    }
+
+    if (!CadmiumCore || typeof CadmiumCore.create_box !== 'function') {
+      throw new Error('Cadmium module does not export required functions');
+    }
 
     self.postMessage({
       type: 'READY',
       message: 'Cadmium Worker initialized successfully',
     });
 
+    console.log('✅ Cadmium Worker ready');
+
     setInterval(cleanupCache, 5 * 60 * 1000);
   } catch (error) {
     initializationError = error;
     const message = error instanceof Error ? error.message : String(error);
+
+    console.error('❌ Failed to initialize Cadmium Worker:', error);
 
     self.postMessage({
       type: 'ERROR',
       error: `Initialization failed: ${message}`,
     });
   }
-})();
+}
 
 async function handleOperation(operation, payload) {
   if (!CadmiumCore) {
@@ -321,15 +339,35 @@ async function handleOperation(operation, payload) {
   }
 }
 
+// Start initialization immediately
+initialize();
+
 self.onmessage = async (event) => {
   const { id, operation, payload } = event.data || {};
 
-  await initPromise;
+  // Wait for initialization
+  if (!isInitialized) {
+    if (initializationError) {
+      const message = initializationError instanceof Error
+        ? initializationError.message
+        : 'Worker not initialized';
+
+      self.postMessage({
+        id,
+        type: 'ERROR',
+        error: message,
+      });
+      return;
+    }
+
+    // If not initialized yet but no error, wait a bit
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
 
   if (!isInitialized) {
     const message = initializationError instanceof Error
       ? initializationError.message
-      : 'Worker not initialized';
+      : 'Worker initialization timeout';
 
     self.postMessage({
       id,
