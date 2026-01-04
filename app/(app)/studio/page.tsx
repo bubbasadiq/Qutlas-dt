@@ -513,7 +513,7 @@ function StudioContent() {
                 <TabsContent value="manufacturability" className="flex-1 overflow-y-auto m-0 border-0">
                   <ManufacturabilityPanel />
                 </TabsContent>
-                <TabsContent value="quote" className="flex-1 overflow-y-auto m-0 border-0">
+                <TabsContent value="quote" className="flex-1 overflow-hidden m-0 border-0">
                   <QuotePanel />
                 </TabsContent>
               </Tabs>
