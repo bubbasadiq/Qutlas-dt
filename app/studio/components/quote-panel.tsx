@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CheckoutModal } from './checkout-modal';
-import { exportQuoteAsPDF, downloadQuoteAsJSON } from '@/lib/quote/pdf-export';
+import { exportQuoteAsPDF } from '@/lib/quote/pdf-export';
 import { FINISHES, type FinishType } from '@/lib/finishes';
 
 const PROCESSES = [
@@ -137,7 +137,7 @@ export function QuotePanel() {
   }
 
   return (
-    <div className={cn('flex h-full flex-col', isMobile ? '' : '')}>
+    <div className={cn('flex h-full flex-col overflow-y-auto', isMobile ? '' : '')}>
       {/* Process Selection */}
       <div className="border-b p-3">
         <h3 className="mb-3 text-sm font-semibold tracking-wider text-[var(--neutral-600)] uppercase">
@@ -302,39 +302,25 @@ export function QuotePanel() {
 
       {/* Actions */}
       <div className="space-y-2 border-t p-3">
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={() => {
-              downloadQuoteAsJSON(quote);
-              toast.success('Quote downloaded as JSON');
-            }}
-            variant="outline"
-            size={isMobile ? 'default' : 'sm'}
-            className="w-full"
-          >
-            <Icon name="download" className="mr-1 h-4 w-4" />
-            JSON
-          </Button>
-          <Button
-            onClick={async () => {
-              try {
-                await exportQuoteAsPDF(quote, {
-                  includeBreakdown: true,
-                  includeNotes: true,
-                });
-                toast.success('Quote PDF opened for printing');
-              } catch {
-                toast.error('Failed to export PDF');
-              }
-            }}
-            variant="outline"
-            size={isMobile ? 'default' : 'sm'}
-            className="w-full"
-          >
-            <Icon name="file-text" className="mr-1 h-4 w-4" />
-            PDF
-          </Button>
-        </div>
+        <Button
+          onClick={async () => {
+            try {
+              await exportQuoteAsPDF(quote, {
+                includeBreakdown: true,
+                includeNotes: true,
+              });
+              toast.success('Quote PDF opened for printing');
+            } catch {
+              toast.error('Failed to export PDF');
+            }
+          }}
+          variant="outline"
+          size={isMobile ? 'default' : 'sm'}
+          className="w-full"
+        >
+          <Icon name="file-text" className="mr-1 h-4 w-4" />
+          Export as PDF
+        </Button>
         <Button
           onClick={() => setShowCheckout(true)}
           size={isMobile ? 'default' : 'sm'}

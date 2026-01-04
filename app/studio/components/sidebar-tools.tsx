@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
-import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Crosshair, Disc, ChevronRight } from "lucide-react"
+import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, MousePointer2, Pencil, Ruler, Plus, Minus, Crosshair, Disc, ChevronRight, Triangle, ArrowUpDown, RefreshCw, CheckSquare, SquareX, Move3D, Gauge, Ruler as Ruler2, Maximize2 } from "lucide-react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
@@ -19,21 +19,35 @@ const tools: Tool[] = [
   { id: "sketch", label: "Sketch", icon: Pencil, shortcut: "S" },
   { id: "extrude", label: "Extrude", icon: Box, shortcut: "E" },
   { id: "fillet", label: "Fillet", icon: Wrench, shortcut: "F" },
-  { id: "measure", label: "Measure", icon: Ruler, shortcut: "M" },
+  { id: "measure-distance", label: "Measure Distance", icon: Ruler },
+  { id: "measure-angle", label: "Measure Angle", icon: Maximize2 },
   { id: "section", label: "Section", icon: Layers, shortcut: "X" },
 ]
 
 const booleanTools: Tool[] = [
   { id: "union", label: "Union", icon: Plus, shortcut: "U" },
-  { id: "subtract", label: "Subtract", icon: Minus, shortcut: "D" },
+  { id: "subtract", label: "Subtract", icon: Minus, shortcut: "S" },
   { id: "intersect", label: "Intersect", icon: Crosshair, shortcut: "I" },
   { id: "hole", label: "Hole", icon: Disc, shortcut: "H" },
+]
+
+const transformTools: Tool[] = [
+  { id: "move", label: "Move", icon: Move3D, shortcut: "M" },
+  { id: "rotate", label: "Rotate", icon: RefreshCw, shortcut: "R" },
+  { id: "scale", label: "Scale", icon: ArrowUpDown, shortcut: "S" },
+]
+
+const selectTools: Tool[] = [
+  { id: "select-all", label: "Select All", icon: CheckSquare, shortcut: "A" },
+  { id: "select-none", label: "Select None", icon: SquareX, shortcut: "Esc" },
 ]
 
 const shapeTools: Tool[] = [
   { id: "create-box", label: "Box", icon: Square },
   { id: "create-cylinder", label: "Cylinder", icon: Circle },
   { id: "create-sphere", label: "Sphere", icon: CircleDot },
+  { id: "create-cone", label: "Cone", icon: Triangle },
+  { id: "create-torus", label: "Torus", icon: Circle },
 ]
 
 interface SidebarToolsProps {
@@ -48,7 +62,9 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     tools: true,
     modify: true,
-    shapes: !isMobile, // Collapsed on mobile by default, expanded on desktop
+    shapes: !isMobile,
+    transform: false,
+    select: false,
   })
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject, performBoolean } = useWorkspace()
   
@@ -159,6 +175,53 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       })
       selectObject(id)
       toast.success('Sphere created')
+    } else if (toolId === 'create-cone') {
+      const id = `cone_${Date.now()}`
+      addObject(id, {
+        type: 'cone',
+        dimensions: { radius: 50, height: 100 },
+        visible: true,
+        selected: true,
+      })
+      selectObject(id)
+      toast.success('Cone created')
+    } else if (toolId === 'create-torus') {
+      const id = `torus_${Date.now()}`
+      addObject(id, {
+        type: 'torus',
+        dimensions: { majorRadius: 50, minorRadius: 15 },
+        visible: true,
+        selected: true,
+      })
+      selectObject(id)
+      toast.success('Torus created')
+    } else if (toolId === 'move') {
+      toast.info('Move tool activated - drag object to move')
+      selectTool('move')
+    } else if (toolId === 'rotate') {
+      toast.info('Rotate tool activated - use handles to rotate')
+      selectTool('rotate')
+    } else if (toolId === 'scale') {
+      toast.info('Scale tool activated - use handles to scale')
+      selectTool('scale')
+    } else if (toolId === 'select-all') {
+      const allIds = Object.keys(objects)
+      allIds.forEach(id => selectObject(id))
+      toast.success(`Selected ${allIds.length} objects`)
+    } else if (toolId === 'select-none') {
+      Object.keys(objects).forEach(id => {
+        const obj = objects[id]
+        if (obj.selected) {
+          selectObject(id)
+        }
+      })
+      toast.success('Deselected all objects')
+    } else if (toolId === 'measure-distance') {
+      toast.info('Measure Distance tool activated - select two points')
+      selectTool('measure-distance')
+    } else if (toolId === 'measure-angle') {
+      toast.info('Measure Angle tool activated - select three points')
+      selectTool('measure-angle')
     } else if (toolId === 'union' || toolId === 'subtract' || toolId === 'intersect') {
       // Boolean operations require exactly 2 objects selected
       const selectedIds = Object.values(objects)
@@ -317,6 +380,100 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
           )}
         </div>
 
+        {/* Transform Group */}
+        <div className="border-b border-[var(--neutral-200)]">
+          <button
+            onClick={() => toggleGroup('transform')}
+            className="w-full flex items-center gap-2 px-3 py-3 hover:bg-[var(--neutral-50)] transition-colors"
+          >
+            <RefreshCw size={16} className="text-[var(--neutral-600)]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Transform</span>
+            <span className="ml-auto text-xs text-[var(--neutral-500)]">{transformTools.length}</span>
+            <ChevronRight
+              size={14}
+              className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.transform ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {expandedGroups.transform && (
+            <div className="px-3 pb-3 space-y-1.5">
+              {transformTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
+                  className={`${mobileButtonClass} ${
+                    activeTool === tool.id
+                      ? "bg-[var(--primary-700)] text-white"
+                      : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <tool.icon size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
+                    <span className="font-medium">{tool.label}</span>
+                  </div>
+                  {tool.shortcut && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        activeTool === tool.id
+                          ? "bg-white/20 text-white"
+                          : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"
+                      }`}
+                    >
+                      {tool.shortcut}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Select Group */}
+        <div className="border-b border-[var(--neutral-200)]">
+          <button
+            onClick={() => toggleGroup('select')}
+            className="w-full flex items-center gap-2 px-3 py-3 hover:bg-[var(--neutral-50)] transition-colors"
+          >
+            <CheckSquare size={16} className="text-[var(--neutral-600)]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Select</span>
+            <span className="ml-auto text-xs text-[var(--neutral-500)]">{selectTools.length}</span>
+            <ChevronRight
+              size={14}
+              className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.select ? 'rotate-90' : ''}`}
+            />
+          </button>
+          {expandedGroups.select && (
+            <div className="px-3 pb-3 space-y-1.5">
+              {selectTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => handleToolSelect(tool.id)}
+                  className={`${mobileButtonClass} ${
+                    activeTool === tool.id
+                      ? "bg-[var(--primary-700)] text-white"
+                      : "text-[var(--neutral-700)] hover:bg-[var(--neutral-100)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <tool.icon size={iconSize} className={activeTool === tool.id ? "text-white" : ""} />
+                    <span className="font-medium">{tool.label}</span>
+                  </div>
+                  {tool.shortcut && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        activeTool === tool.id
+                          ? "bg-white/20 text-white"
+                          : "bg-[var(--neutral-100)] text-[var(--neutral-500)]"
+                      }`}
+                    >
+                      {tool.shortcut}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Create Shapes Group */}
         <div className="border-b border-[var(--neutral-200)]">
           <button
@@ -332,7 +489,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
             />
           </button>
           {expandedGroups.shapes && (
-            <div className="px-3 pb-3 grid grid-cols-3 gap-2">
+            <div className="px-3 pb-3 grid grid-cols-5 gap-2">
               {shapeTools.map((tool) => (
                 <button
                   key={tool.id}

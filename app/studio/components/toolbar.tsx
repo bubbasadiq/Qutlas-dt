@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Hexagon, Menu, Save, Undo, Redo, ChevronDown, ChevronUp } from "lucide-react"
+import { Hexagon, Menu, Save, Undo, Redo, ChevronDown, ChevronUp, Square, Circle, CircleDot, Triangle, RotateCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
@@ -234,8 +234,10 @@ export function Toolbar({ onMobileMenuOpen, onAnalyzeClick, onQuoteClick }: Tool
   ]
 
   const viewMenuItems: MenuItem[] = [
-    { id: 'fit', label: 'Fit View', icon: 'maximize', shortcut: ['f'], onClick: () => document.querySelector('[title="Fit view to all objects (F)"]')?.dispatchEvent(new MouseEvent('click')) },
-    { id: 'reset', label: 'Reset Camera', icon: 'camera', onClick: () => toast.info('Reset Camera - Coming soon') },
+    { id: 'fit', label: 'Fit to Screen', icon: 'maximize', shortcut: ['f'], onClick: () => document.querySelector('[title="Fit view to all objects (F)"]')?.dispatchEvent(new MouseEvent('click')) },
+    { id: 'zoom-in', label: 'Zoom In', icon: 'plus', shortcut: ['+'], onClick: () => toast.info('Zoom In - Use mouse wheel') },
+    { id: 'zoom-out', label: 'Zoom Out', icon: 'minus', shortcut: ['-'], onClick: () => toast.info('Zoom Out - Use mouse wheel') },
+    { id: 'reset-camera', label: 'Reset Camera', icon: 'camera', onClick: () => toast.info('Reset Camera - Coming soon') },
     { divider: true },
     { id: 'toggle-grid', label: 'Toggle Grid', icon: 'grid', onClick: () => toast.info('Toggle Grid - Coming soon') },
   ]
