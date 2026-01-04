@@ -1,4 +1,4 @@
-import { Database } from './database.ts';
+import { Database } from './database';
 export type Model = string;
 
 export type Message = Omit<

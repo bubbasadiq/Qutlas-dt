@@ -1,6 +1,6 @@
 // Test WASM geometry determinism: op-log replay produces identical results
 import { describe, it, expect } from "vitest"
-import * as wasmModule from "../../wasm/cadmium-core/pkg"
+import * as wasmModule from "../../../wasm/cadmium-core/pkg"
 
 describe("WASM Geometry Determinism", () => {
   it("should produce identical mesh hashes for same operation log", async () => {

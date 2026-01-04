@@ -86,7 +86,7 @@ try {
   const workerPath = join(__dirname, 'workers/cadmium-worker.ts');
   const workerContent = readFileSync(workerPath, 'utf8');
   
-  if (workerContent.includes("import('../wasm/cadmium-core/pkg/cadmium_core')")) {
+  if (workerContent.includes("import('../../wasm/cadmium-core/pkg')")) {
     console.log('  ✅ Worker imports WASM module correctly');
   } else {
     console.log('  ❌ Worker import path incorrect');

@@ -8,7 +8,7 @@ let wasmAvailable = false;
 async function initializeCadmiumCore() {
   try {
     // Try to import the WASM module
-    const wasmModule = await import('../wasm/cadmium-core/pkg/cadmium_core');
+    const wasmModule = await import('../../wasm/cadmium-core/pkg');
     CadmiumCore = wasmModule;
     wasmAvailable = true;
     console.log('✅ Cadmium WASM module loaded');
