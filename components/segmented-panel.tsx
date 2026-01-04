@@ -1,87 +1,79 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { useState, useRef, useEffect } from 'react';
-import { cn } from '@/lib/utils';
-import { Icon } from '@/components/ui/icon';
+import * as React from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { ChevronDown } from 'lucide-react'
+import * as Icons from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface SegmentedPanelProps {
-  title: string;
-  icon?: string;
-  isOpen?: boolean;
-  defaultOpen?: boolean;
-  onToggle?: (isOpen: boolean) => void;
-  children: React.ReactNode;
-  className?: string;
-  allowMultipleOpen?: boolean;
+  title: string
+  icon?: keyof typeof Icons
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+  className?: string
 }
 
 export function SegmentedPanel({
   title,
   icon,
-  isOpen: controlledIsOpen,
-  defaultOpen = false,
+  isOpen,
   onToggle,
   children,
   className,
-  allowMultipleOpen = true,
 }: SegmentedPanelProps) {
-  const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | 'auto'>('auto');
-
-  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [contentHeight, setContentHeight] = useState<number | 'auto'>(0)
+  const IconComponent = icon ? (Icons[icon] as React.ElementType) : null
 
   useEffect(() => {
     if (contentRef.current) {
       if (isOpen) {
-        setHeight(contentRef.current.scrollHeight);
-        // After animation completes, set to auto for dynamic content
-        const timeout = setTimeout(() => setHeight('auto'), 200);
-        return () => clearTimeout(timeout);
+        setContentHeight(contentRef.current.scrollHeight)
+        const timer = setTimeout(() => {
+          setContentHeight('auto')
+        }, 200)
+        return () => clearTimeout(timer)
       } else {
-        setHeight(0);
+        if (contentHeight === 'auto') {
+          setContentHeight(contentRef.current.scrollHeight)
+          const timer = setTimeout(() => {
+            setContentHeight(0)
+          }, 10)
+          return () => clearTimeout(timer)
+        } else {
+          setContentHeight(0)
+        }
       }
     }
-  }, [isOpen, children]);
-
-  const handleToggle = () => {
-    const newIsOpen = !isOpen;
-    if (onToggle) {
-      onToggle(newIsOpen);
-    } else {
-      setInternalIsOpen(newIsOpen);
-    }
-  };
+  }, [isOpen])
 
   return (
-    <div className={cn('border-b border-[var(--neutral-200)]', className)}>
+    <div className={cn('border-b border-[var(--neutral-200)] bg-white', className)}>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={onToggle}
         className={cn(
-          'w-full flex items-center justify-between px-4 py-3',
-          'hover:bg-[var(--neutral-50)] transition-colors duration-150',
-          'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--primary-500)]',
-          'group'
+          'w-full flex items-center justify-between px-4 py-4',
+          'hover:bg-[var(--neutral-50)] transition-colors duration-200 ease-in-out',
+          'focus:outline-none group'
         )}
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-3">
-          {icon && (
-            <Icon
-              name={icon}
-              className="w-4 h-4 text-[var(--neutral-500)] group-hover:text-[var(--primary-600)] transition-colors"
+          {IconComponent && (
+            <IconComponent
+              className="w-5 h-5 text-[var(--neutral-500)] group-hover:text-[var(--primary-600)] transition-colors duration-200"
             />
           )}
-          <span className="text-sm font-semibold text-[var(--neutral-700)]">
+          <span className="text-[15px] font-semibold text-[var(--neutral-800)]">
             {title}
           </span>
         </div>
-        <Icon
-          name="chevron-down"
+        <ChevronDown
           className={cn(
-            'w-4 h-4 text-[var(--neutral-400)] transition-transform duration-200',
+            'w-5 h-5 text-[var(--neutral-400)] transition-transform duration-200 ease-in-out',
             isOpen && 'rotate-180'
           )}
         />
@@ -89,57 +81,56 @@ export function SegmentedPanel({
 
       <div
         ref={contentRef}
+        style={{ height: contentHeight }}
         className="overflow-hidden transition-all duration-200 ease-in-out"
-        style={{ height: isOpen ? height : 0, opacity: isOpen ? 1 : 0 }}
       >
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-6 pt-0">
           {children}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 interface SegmentedPanelGroupProps {
-  children: React.ReactNode;
-  allowMultipleOpen?: boolean;
-  className?: string;
+  children: React.ReactNode
+  allowMultipleOpen?: boolean
+  className?: string
 }
 
 export function SegmentedPanelGroup({
   children,
-  allowMultipleOpen = true,
+  allowMultipleOpen = false,
   className,
 }: SegmentedPanelGroupProps) {
-  const [openPanels, setOpenPanels] = useState<Set<number>>(new Set());
+  const [openIndexes, setOpenIndexes] = useState<Set<number>>(new Set([0])) // Default first open
 
-  const handleToggle = (index: number, isOpen: boolean) => {
-    setOpenPanels((prev) => {
-      const next = new Set(prev);
-      if (isOpen) {
-        if (!allowMultipleOpen) {
-          next.clear();
-        }
-        next.add(index);
+  const handleToggle = (index: number) => {
+    setOpenIndexes((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
       } else {
-        next.delete(index);
+        if (!allowMultipleOpen) {
+          next.clear()
+        }
+        next.add(index)
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   return (
     <div className={cn('flex flex-col', className)}>
       {React.Children.map(children, (child, index) => {
         if (React.isValidElement<SegmentedPanelProps>(child)) {
           return React.cloneElement(child, {
-            isOpen: openPanels.has(index),
-            onToggle: (isOpen: boolean) => handleToggle(index, isOpen),
-            allowMultipleOpen,
-          });
+            isOpen: openIndexes.has(index),
+            onToggle: () => handleToggle(index),
+          })
         }
-        return child;
+        return child
       })}
     </div>
-  );
+  )
 }

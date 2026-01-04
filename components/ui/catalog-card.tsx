@@ -1,17 +1,21 @@
 "use client"
 
 import type React from "react"
-import { Card, CardContent } from "./card"
+import { Card } from "./card"
 import { Button } from "./button"
 import { Icon } from "./icon"
+import { cn } from "@/lib/utils"
 
 export interface CatalogCardProps {
   id: string
   title: string
   description?: string
   priceRange: string
+  secondaryPrice?: string
+  material?: string
+  category?: string
   thumbnailUrl: string
-  aiScore: number
+  inStock?: boolean
   onPreview: (id: string) => void
   onAddToProject: (id: string) => void
 }
@@ -21,44 +25,90 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
   title,
   description,
   priceRange,
+  secondaryPrice,
+  material,
+  category,
   thumbnailUrl,
-  aiScore,
+  inStock = true,
   onPreview,
   onAddToProject,
 }) => {
   return (
-    <Card variant="elevated" padding="md" className="flex flex-col h-full">
-      {/* Thumbnail */}
-      <div className="relative w-full h-40 bg-[var(--bg-200)] rounded-[var(--radius-md)] overflow-hidden mb-4">
-        <img src={thumbnailUrl || "/placeholder.svg"} alt={title} className="w-full h-full object-cover" />
-        {/* AI Score Badge */}
-        <div className="absolute top-2 right-2 bg-[var(--accent-700)] text-white px-2 py-1 rounded-[var(--radius-md)] text-xs font-medium">
-          {(aiScore * 100).toFixed(0)}%
-        </div>
+    <Card variant="elevated" className="group flex flex-col h-full overflow-hidden border border-[var(--neutral-200)] hover:border-[var(--primary-400)] hover:shadow-lg transition-all duration-300">
+      {/* Thumbnail Area */}
+      <div 
+        className="relative aspect-square w-full bg-[var(--bg-100)] overflow-hidden cursor-pointer"
+        onClick={() => onPreview(id)}
+      >
+        <img 
+          src={thumbnailUrl || "/placeholder.svg"} 
+          alt={title} 
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+        />
+        {inStock && (
+          <div className="absolute top-3 right-3">
+            <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[11px] font-bold text-[var(--success-700)] shadow-sm border border-[var(--success-100)]">
+              In Stock
+            </span>
+          </div>
+        )}
       </div>
 
-      <CardContent className="pt-0 flex-1">
-        <h4 className="font-semibold text-[var(--neutral-900)] mb-1 line-clamp-2">{title}</h4>
-        {description && <p className="text-sm text-[var(--neutral-500)] line-clamp-2 mb-3">{description}</p>}
-
-        {/* Price and Stock */}
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-lg font-semibold text-[var(--primary-700)]">{priceRange}</span>
-          <span className="text-xs text-[var(--success)] font-medium flex items-center gap-1">
-            <Icon name="icon-quality-check" size="xs" />
-            In Stock
-          </span>
+      <div className="flex flex-1 flex-col p-4">
+        {/* Title */}
+        <h4 
+          className="font-semibold text-[15px] leading-tight text-[var(--neutral-900)] mb-1 cursor-pointer hover:text-[var(--primary-700)] transition-colors"
+          onClick={() => onPreview(id)}
+        >
+          {title}
+        </h4>
+        
+        {/* Metadata */}
+        <div className="flex items-center gap-1.5 text-[12px] text-[var(--neutral-500)] font-medium mb-3">
+          {material && <span>{material}</span>}
+          {material && category && <span className="text-[var(--neutral-300)]">•</span>}
+          {category && <span>{category}</span>}
         </div>
-      </CardContent>
 
-      {/* Actions */}
-      <div className="flex gap-2 pt-4 border-t border-[var(--neutral-100)]">
-        <Button variant="outline" size="sm" className="flex-1 bg-transparent" onClick={() => onPreview(id)}>
-          Preview
-        </Button>
-        <Button variant="primary" size="sm" className="flex-1" onClick={() => onAddToProject(id)}>
-          Add
-        </Button>
+        {description && (
+          <p className="text-[13px] text-[var(--neutral-500)] line-clamp-2 mb-4 leading-relaxed">
+            {description}
+          </p>
+        )}
+
+        <div className="mt-auto pt-3 border-t border-[var(--neutral-100)]">
+          {/* Prices */}
+          <div className="mb-3 flex flex-col">
+            <span className="text-lg font-bold text-[var(--neutral-900)]">
+              {priceRange}
+            </span>
+            {secondaryPrice && (
+              <span className="text-[12px] font-medium text-[var(--neutral-500)]">
+                {secondaryPrice}
+              </span>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 border-[var(--neutral-200)] text-[var(--neutral-700)] hover:bg-[var(--neutral-50)]" 
+              onClick={() => onPreview(id)}
+            >
+              Preview
+            </Button>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              className="flex-1 bg-[var(--primary-700)] hover:bg-[var(--primary-800)]" 
+              onClick={() => onAddToProject(id)}
+            >
+              Add
+            </Button>
+          </div>
+        </div>
       </div>
     </Card>
   )

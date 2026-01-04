@@ -45,7 +45,11 @@ export function useCadmiumWorker(): UseCadmiumWorkerReturn {
       try {
         console.log('🔄 Initializing Cadmium Worker...')
 
-        workerRef.current = new Worker('/workers/cadmium-worker.js', { type: 'module' })
+        // Use new URL for worker to allow Next.js/Webpack to bundle it correctly
+        workerRef.current = new Worker(
+          new URL('../workers/cadmium-worker.ts', import.meta.url),
+          { type: 'module' }
+        )
 
         // Set initialization timeout (increased from 10s to 30s)
         initTimeoutRef.current = setTimeout(() => {
