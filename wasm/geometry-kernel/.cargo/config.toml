@@ -5,10 +5,6 @@ target = "wasm32-unknown-unknown"
 rustflags = [
     # Optimize for size
     "-C", "opt-level=z",
-    # Link-time optimization
-    "-C", "lto=fat",
-    # Strip debug symbols
-    "-C", "strip=symbols",
     # Reduce code size
     "-C", "codegen-units=1",
 ]

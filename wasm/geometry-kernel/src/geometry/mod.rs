@@ -1,20 +1,39 @@
-//! Geometry primitives and operations.
+//! Enhanced geometry kernel with semantic IR and manufacturing awareness.
 //!
-//! This module provides deterministic generation of primitive solids
-//! and boolean operations for CSG compilation.
+//! This module provides the complete geometry system including:
+//! - Semantic IR for deterministic, replayable geometry operations
+//! - Legacy primitive and operation support for backward compatibility
+//! - Manufacturing-aware constraints and validation
+//! - Analysis capabilities for derived properties
 
-pub mod primitives;
-pub mod operations;
-pub mod bounding_box;
+// Enhanced IR system (new semantic geometry)
+pub mod analysis;
+pub mod ir;
+
+// Legacy geometry system (preserved for compatibility)
 pub mod constraints;
+pub mod operations;
+pub mod primitives;
 
-pub use primitives::*;
-pub use operations::*;
-pub use bounding_box::*;
+// Enhanced topology system
+pub mod topology;
+
+// Re-export enhanced IR system as primary interface
+pub use ir::{
+    Feature, FeatureParameters, FeatureType, IRGraph, IRNode, IRValidator, ManufacturingProcess,
+    NodeContent, NodeId, NodeType, ValidationResult,
+};
+
+// Re-export analysis capabilities
+pub use analysis::{GeometricAnalysis, GeometricAnalyzer, MassProperties, MaterialProperties};
+
+// Legacy exports for backward compatibility
 pub use constraints::*;
+pub use operations::*;
+pub use primitives::*;
 
-use crate::types::{BoundingBox, PreviewMesh, PrimitiveType, Transform};
 use crate::errors::KernelResult;
+use crate::types::{BoundingBox, PreviewMesh, PrimitiveType, Transform};
 
 /// Base trait for geometric primitives
 pub trait Primitive {
@@ -42,7 +61,11 @@ pub fn apply_transform_to_point(point: [f64; 3], transform: &crate::types::Trans
     let scale = transform.get_scale();
 
     // Apply scale
-    let mut p = [point[0] * scale[0], point[1] * scale[1], point[2] * scale[2]];
+    let mut p = [
+        point[0] * scale[0],
+        point[1] * scale[1],
+        point[2] * scale[2],
+    ];
 
     // Apply rotation (Euler angles in radians)
     let (sx, cx) = rotation[0].sin_cos();
@@ -68,14 +91,13 @@ pub fn apply_transform_to_point(point: [f64; 3], transform: &crate::types::Trans
     p[1] = y;
 
     // Apply translation
-    [
-        p[0] + position[0],
-        p[1] + position[1],
-        p[2] + position[2],
-    ]
+    [p[0] + position[0], p[1] + position[1], p[2] + position[2]]
 }
 
-pub fn apply_transform_to_normal(normal: [f64; 3], transform: &crate::types::Transform) -> [f64; 3] {
+pub fn apply_transform_to_normal(
+    normal: [f64; 3],
+    transform: &crate::types::Transform,
+) -> [f64; 3] {
     // Normals only affected by rotation and scale
     let rotation = transform.get_rotation();
     let scale = transform.get_scale();
@@ -132,13 +154,43 @@ pub fn compute_face_normal(v0: [f64; 3], v1: [f64; 3], v2: [f64; 3]) -> [f64; 3]
     }
 }
 
-/// Validate primitive parameters
-pub fn validate_primitive_params(
-    type_: PrimitiveType,
+/// Create a new IR graph for semantic geometry operations
+pub fn create_ir_graph() -> IRGraph {
+    ir::new_graph()
+}
+
+/// Create a new IR validator with manufacturing constraints
+pub fn create_validator() -> IRValidator {
+    ir::new_validator()
+}
+
+/// Create a geometric analyzer for mass properties and analysis
+pub fn create_analyzer() -> GeometricAnalyzer {
+    GeometricAnalyzer::new()
+}
+
+/// Bridge function: Convert legacy parameters to IR node content
+pub fn legacy_to_ir_content(
+    primitive_type: &str,
+    params: &std::collections::HashMap<String, f64>,
+) -> KernelResult<NodeContent> {
+    // Validate legacy parameters first
+    validate_legacy_primitive_params(primitive_type, params)?;
+
+    Ok(NodeContent::Primitive {
+        primitive_type: primitive_type.to_string(),
+        parameters: params.clone(),
+        transform: None,
+    })
+}
+
+/// Validate primitive parameters (legacy compatibility)
+pub fn validate_legacy_primitive_params(
+    primitive_type: &str,
     params: &std::collections::HashMap<String, f64>,
 ) -> KernelResult<()> {
-    match type_ {
-        PrimitiveType::Box => {
+    match primitive_type {
+        "box" => {
             if !params.contains_key("width") {
                 return Err(crate::errors::KernelError::missing_parameter("width"));
             }
@@ -149,7 +201,7 @@ pub fn validate_primitive_params(
                 return Err(crate::errors::KernelError::missing_parameter("depth"));
             }
         }
-        PrimitiveType::Cylinder => {
+        "cylinder" => {
             if !params.contains_key("radius") {
                 return Err(crate::errors::KernelError::missing_parameter("radius"));
             }
@@ -157,12 +209,12 @@ pub fn validate_primitive_params(
                 return Err(crate::errors::KernelError::missing_parameter("height"));
             }
         }
-        PrimitiveType::Sphere => {
+        "sphere" => {
             if !params.contains_key("radius") {
                 return Err(crate::errors::KernelError::missing_parameter("radius"));
             }
         }
-        PrimitiveType::Cone => {
+        "cone" => {
             if !params.contains_key("radius") {
                 return Err(crate::errors::KernelError::missing_parameter("radius"));
             }
@@ -170,14 +222,39 @@ pub fn validate_primitive_params(
                 return Err(crate::errors::KernelError::missing_parameter("height"));
             }
         }
-        PrimitiveType::Torus => {
+        "torus" => {
             if !params.contains_key("major_radius") {
-                return Err(crate::errors::KernelError::missing_parameter("major_radius"));
+                return Err(crate::errors::KernelError::missing_parameter(
+                    "major_radius",
+                ));
             }
             if !params.contains_key("minor_radius") {
-                return Err(crate::errors::KernelError::missing_parameter("minor_radius"));
+                return Err(crate::errors::KernelError::missing_parameter(
+                    "minor_radius",
+                ));
             }
+        }
+        _ => {
+            return Err(crate::errors::KernelError::internal(format!(
+                "Unknown primitive type: {}",
+                primitive_type
+            )));
         }
     }
     Ok(())
+}
+
+/// Validate primitive parameters (backward compatibility alias)
+pub fn validate_primitive_params(
+    type_: crate::types::PrimitiveType,
+    params: &std::collections::HashMap<String, f64>,
+) -> KernelResult<()> {
+    let type_str = match type_ {
+        crate::types::PrimitiveType::Box => "box",
+        crate::types::PrimitiveType::Cylinder => "cylinder",
+        crate::types::PrimitiveType::Sphere => "sphere",
+        crate::types::PrimitiveType::Cone => "cone",
+        crate::types::PrimitiveType::Torus => "torus",
+    };
+    validate_legacy_primitive_params(type_str, params)
 }

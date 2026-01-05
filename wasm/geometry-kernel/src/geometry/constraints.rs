@@ -3,8 +3,8 @@
 //! Validates geometry against manufacturing process constraints
 //! such as minimum wall thickness, tool diameter, and overhang angles.
 
-use crate::geometry::{PreviewMesh, BoundingBox};
 use crate::errors::{KernelError, KernelResult};
+use crate::geometry::{BoundingBox, PreviewMesh};
 use crate::types::{
     ConstraintType, ConstraintViolation, ManufacturabilityReport, ViolationSeverity,
 };
@@ -129,7 +129,7 @@ fn check_tool_diameter(mesh: &PreviewMesh, tool_diameter: f64) -> Option<Constra
         return None;
     }
 
-    let bbox = crate::geometry::bounding_box::compute_bounding_box(mesh);
+    let bbox = crate::geometry::analysis::bounding_box::compute_bounding_box(mesh);
 
     let size = bbox.size();
     let min_dimension = size[0].min(size[1]).min(size[2]);
@@ -208,7 +208,7 @@ fn check_feature_size(mesh: &PreviewMesh) -> Option<ConstraintViolation> {
         return None;
     }
 
-    let bbox = crate::geometry::bounding_box::compute_bounding_box(mesh);
+    let bbox = crate::geometry::analysis::bounding_box::compute_bounding_box(mesh);
 
     let volume = bbox_volume(&bbox);
 
@@ -303,9 +303,8 @@ fn check_mesh_integrity(mesh: &PreviewMesh) -> Option<ConstraintViolation> {
                     e1[0] * e2[1] - e1[1] * e2[0],
                 ];
 
-                let area = (cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2])
-                    .sqrt()
-                    / 2.0;
+                let area =
+                    (cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]).sqrt() / 2.0;
 
                 if area < crate::geometry::constants::EPSILON {
                     degenerate_count += 1;

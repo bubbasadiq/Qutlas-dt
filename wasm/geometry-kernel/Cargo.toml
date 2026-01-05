@@ -40,7 +40,4 @@ default = ["console_error_panic_hook"]
 console_error_panic_hook = ["dep:console_error_panic_hook"]
 
 [profile.release]
-opt-level = "z"     # Optimize for size
-lto = "fat"         # Link-time optimization (fat works for cdylib)
-codegen-units = 1   # Better optimization
-strip = true        # Strip debug symbols
+opt-level = "s"     # Optimize for size

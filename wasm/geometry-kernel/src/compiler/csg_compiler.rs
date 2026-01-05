@@ -3,11 +3,13 @@
 //! Combines parsing, evaluation, and optimization into a single
 //! compilation pipeline.
 
-use crate::compiler::{IntentParser, CsgEvaluator};
-use crate::types::{GeometryIR, CompileResult, CompileStatus, ManufacturabilityReport, PreviewMesh};
+use crate::compiler::{CsgEvaluator, IntentParser};
 use crate::errors::{KernelError, KernelResult};
-use crate::geometry::bounding_box::compute_bounding_box;
+use crate::geometry::analysis::bounding_box::compute_bounding_box;
 use crate::hashing;
+use crate::types::{
+    CompileResult, CompileStatus, GeometryIR, ManufacturabilityReport, PreviewMesh,
+};
 use std::collections::HashMap;
 
 /// High-level CSG compiler
@@ -76,7 +78,7 @@ impl CsgCompiler {
             status: CompileStatus::Compiled,
             intent_hash: intent_hash.clone(),
             mesh: Some(mesh),
-            step: None, // TODO: Implement STEP export
+            step: None,     // TODO: Implement STEP export
             topology: None, // TODO: Implement B-rep extraction
             mfg_report: Some(mfg_report),
             error: None,
@@ -168,7 +170,7 @@ pub struct CacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Intent, PrimitiveIntent, OperationIntent, PrimitiveType, OperationType};
+    use crate::types::{Intent, OperationIntent, OperationType, PrimitiveIntent, PrimitiveType};
 
     fn create_test_box_intent(id: &str) -> PrimitiveIntent {
         PrimitiveIntent {

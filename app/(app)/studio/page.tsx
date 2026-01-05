@@ -10,6 +10,8 @@ import { TreeView } from "../../studio/components/tree-view"
 import { Toolbar } from "../../studio/components/toolbar"
 import { ContextMenu } from "../../studio/components/context-menu"
 import { QuotePanel } from "../../studio/components/quote-panel"
+import { ManufacturabilityPanel } from "../../studio/components/manufacturability-panel"
+import { SemanticIRPanel } from "../../studio/components/semantic-ir-panel"
 import { MobileBottomNav, DEFAULT_BOTTOM_NAV_TABS } from "../../studio/components/mobile-bottom-nav"
 import { SegmentedPanel, SegmentedPanelGroup } from "@/components/segmented-panel"
 import { MobileMenu } from "../../studio/components/mobile-menu"
@@ -74,7 +76,7 @@ function StudioContent() {
       // Find the most recent workspace import in localStorage
       const allKeys = Object.keys(localStorage)
       const importKeys = allKeys.filter((key) => key.startsWith("workspace-import-"))
-      
+
       if (importKeys.length > 0) {
         // Sort by timestamp (most recent first)
         importKeys.sort((a, b) => {
@@ -82,14 +84,14 @@ function StudioContent() {
           const timestampB = parseInt(b.replace("workspace-import-", ""))
           return timestampB - timestampA
         })
-        
+
         const mostRecentKey = importKeys[0]
         const dataStr = localStorage.getItem(mostRecentKey)
-        
+
         if (dataStr) {
           try {
             const catalogPartData = JSON.parse(dataStr)
-            
+
             // Convert catalog part data to WorkspaceObject format
             const workspaceId = `catalog-${catalogPartData.partId}-${Date.now()}`
             const workspaceObject = {
@@ -109,14 +111,14 @@ function StudioContent() {
                 totalPrice: catalogPartData.totalPrice || 0,
               },
             }
-            
+
             // Add the part to workspace
             addObject(workspaceId, workspaceObject)
             selectObject(workspaceId)
-            
+
             // Clean up localStorage
             localStorage.removeItem(mostRecentKey)
-            
+
             toast.success(`Added ${catalogPartData.name} to workspace`)
           } catch (error) {
             console.error("Failed to import catalog part:", error)
@@ -408,7 +410,7 @@ function StudioContent() {
       <div className="flex flex-col h-screen bg-[var(--bg-100)]">
         {/* Toolbar */}
         <Toolbar />
-        
+
         {/* Main workspace - 3-column layout */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left column: Sidebar with tools and AI Assistant */}
@@ -417,7 +419,7 @@ function StudioContent() {
             <div className="border-b border-[var(--neutral-200)] p-2">
               <SidebarTools activeTool={activeTool} onToolSelect={setActiveTool} />
             </div>
-            
+
             {/* AI Assistant - Takes remaining space */}
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="bg-gradient-to-r from-[var(--primary-700)] to-[var(--primary-600)] px-4 py-3 flex items-center gap-3">
@@ -437,10 +439,10 @@ function StudioContent() {
               </div>
             </div>
           </div>
-          
+
           {/* Center column: Canvas */}
           <div className="flex-1 relative">
-            <CanvasViewer 
+            <CanvasViewer
               activeTool={activeTool}
               workspaceObjects={objects}
               selectedObjectId={selectedObjectId}
@@ -457,7 +459,7 @@ function StudioContent() {
               onClose={() => setContextMenu(null)}
             />
           </div>
-          
+
           {/* Right column: Tree view + Segmented panels */}
           <div className="w-80 bg-white border-l border-[var(--neutral-200)] flex flex-col">
             {/* Tree view - top section */}
@@ -487,6 +489,22 @@ function StudioContent() {
                   onToggle={() => {}} // Managed by SegmentedPanelGroup
                 >
                   <QuotePanel />
+                </SegmentedPanel>
+                <SegmentedPanel
+                  title="Manufacturing"
+                  icon="Factory"
+                  isOpen={false} // Managed by SegmentedPanelGroup
+                  onToggle={() => {}} // Managed by SegmentedPanelGroup
+                >
+                  <ManufacturabilityPanel />
+                </SegmentedPanel>
+                <SegmentedPanel
+                  title="Semantic IR"
+                  icon="GitBranch"
+                  isOpen={false} // Managed by SegmentedPanelGroup
+                  onToggle={() => {}} // Managed by SegmentedPanelGroup
+                >
+                  <SemanticIRPanel />
                 </SegmentedPanel>
               </SegmentedPanelGroup>
             </div>
@@ -598,8 +616,8 @@ function StudioContent() {
         title="Properties"
       >
         <div className="pb-4">
-          <PropertiesPanel 
-            selectedObject={selectedObjectId || undefined} 
+          <PropertiesPanel
+            selectedObject={selectedObjectId || undefined}
             selectedObjects={selectedObjectIds}
           />
         </div>
