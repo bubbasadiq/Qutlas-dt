@@ -6,6 +6,7 @@ import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, Mouse
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
+import { EnhancedGeometryFactory, type GeometryCreationOptions } from "@/lib/geometry/enhanced-geometry-factory"
 
 interface Tool {
   id: string
@@ -67,7 +68,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
     select: false,
   })
   const { activeTool: contextActiveTool, selectTool, selectObject, objects, addObject, performBoolean } = useWorkspace()
-  
+
   const activeTool = externalActiveTool || contextActiveTool
 
   const toggleGroup = (groupId: string) => {
@@ -78,7 +79,7 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
   const handleUpload = async (file: File) => {
     setIsUploading(true)
     const uploadToast = toast.loading(`Uploading ${file.name}...`)
-    
+
     try {
       // Upload the raw CAD file to Supabase Storage via the S3-compatible endpoint.
       const objectKey = `uploads/${Date.now()}-${file.name}`
@@ -137,64 +138,74 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       setIsUploading(false)
     }
   }
-  
+
   const handleToolSelect = async (toolId: string) => {
     selectTool(toolId)
     if (onToolSelect) {
       onToolSelect(toolId)
     }
 
+    // Enhanced geometry creation options
+    const defaultOptions: GeometryCreationOptions = {
+      targetProcess: 'cnc_milling',
+      material: 'aluminum_6061',
+      includeFeatures: true,
+      autoConstraints: true,
+      qualityLevel: 'production',
+      volume: 'medium'
+    }
+
     // Handle shape creation tools
     if (toolId === 'create-box') {
       const id = `box_${Date.now()}`
-      addObject(id, {
-        type: 'box',
-        dimensions: { width: 100, height: 100, depth: 100 },
-        visible: true,
-        selected: true,
-      })
+      const enhancedBox = EnhancedGeometryFactory.createBox(
+        id,
+        { width: 100, height: 100, depth: 100 },
+        defaultOptions
+      )
+      addObject(id, enhancedBox)
       selectObject(id)
-      toast.success('Box created')
+      toast.success('Enhanced Box created with manufacturing awareness')
     } else if (toolId === 'create-cylinder') {
       const id = `cylinder_${Date.now()}`
-      addObject(id, {
-        type: 'cylinder',
-        dimensions: { radius: 50, height: 100 },
-        visible: true,
-        selected: true,
-      })
+      const enhancedCylinder = EnhancedGeometryFactory.createCylinder(
+        id,
+        { radius: 50, height: 100 },
+        defaultOptions
+      )
+      addObject(id, enhancedCylinder)
       selectObject(id)
-      toast.success('Cylinder created')
+      toast.success('Enhanced Cylinder created with manufacturing awareness')
     } else if (toolId === 'create-sphere') {
       const id = `sphere_${Date.now()}`
-      addObject(id, {
-        type: 'sphere',
-        dimensions: { radius: 50 },
-        visible: true,
-        selected: true,
-      })
+      const enhancedSphere = EnhancedGeometryFactory.createSphere(
+        id,
+        { radius: 50 },
+        defaultOptions
+      )
+      addObject(id, enhancedSphere)
       selectObject(id)
-      toast.success('Sphere created')
+      toast.success('Enhanced Sphere created with manufacturing awareness')
     } else if (toolId === 'create-cone') {
       const id = `cone_${Date.now()}`
-      addObject(id, {
-        type: 'cone',
-        dimensions: { radius: 50, height: 100 },
-        visible: true,
-        selected: true,
-      })
+      const enhancedCone = EnhancedGeometryFactory.createCone(
+        id,
+        { radius: 50, height: 100 },
+        defaultOptions
+      )
+      addObject(id, enhancedCone)
       selectObject(id)
-      toast.success('Cone created')
+      toast.success('Enhanced Cone created with manufacturing awareness')
     } else if (toolId === 'create-torus') {
       const id = `torus_${Date.now()}`
-      addObject(id, {
-        type: 'torus',
-        dimensions: { majorRadius: 50, minorRadius: 15 },
-        visible: true,
-        selected: true,
-      })
+      const enhancedTorus = EnhancedGeometryFactory.createTorus(
+        id,
+        { majorRadius: 50, minorRadius: 15 },
+        defaultOptions
+      )
+      addObject(id, enhancedTorus)
       selectObject(id)
-      toast.success('Torus created')
+      toast.success('Enhanced Torus created with manufacturing awareness')
     } else if (toolId === 'move') {
       toast.info('Move tool activated - drag object to move')
       selectTool('move')
@@ -308,8 +319,8 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
             <Wrench size={16} className="text-[var(--neutral-600)]" />
             <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Tools</span>
             <span className="ml-auto text-xs text-[var(--neutral-500)]">{tools.length}</span>
-            <ChevronRight 
-              size={14} 
+            <ChevronRight
+              size={14}
               className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.tools ? 'rotate-90' : ''}`}
             />
           </button>
@@ -355,8 +366,8 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
             <Layers size={16} className="text-[var(--neutral-600)]" />
             <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Modify</span>
             <span className="ml-auto text-xs text-[var(--neutral-500)]">{booleanTools.length}</span>
-            <ChevronRight 
-              size={14} 
+            <ChevronRight
+              size={14}
               className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.modify ? 'rotate-90' : ''}`}
             />
           </button>
@@ -483,8 +494,8 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
             <Box size={16} className="text-[var(--neutral-600)]" />
             <span className="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-700)]">Create Shapes</span>
             <span className="ml-auto text-xs text-[var(--neutral-500)]">{shapeTools.length}</span>
-            <ChevronRight 
-              size={14} 
+            <ChevronRight
+              size={14}
               className={`transition-transform text-[var(--neutral-500)] ${expandedGroups.shapes ? 'rotate-90' : ''}`}
             />
           </button>

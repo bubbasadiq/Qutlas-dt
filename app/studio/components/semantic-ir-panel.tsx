@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { KernelBridge, type SemanticIR, type ValidationResult, type IRGraphStats, type ManufacturingAnalysis } from "@/lib/geometry/kernel-bridge"
+import { SemanticIRGenerator } from "@/lib/geometry/semantic-ir-generator"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -73,39 +74,13 @@ export function SemanticIRPanel({ className }: SemanticIRPanelProps) {
     }
   }, [isKernelReady, kernelBridge])
 
-  // Generate semantic IR from current workspace
+  // Generate enhanced semantic IR from workspace with manufacturing awareness
   const generateSemanticIR = useCallback((): SemanticIR => {
-    const nodes = Object.entries(objects).map(([id, obj]) => ({
-      id,
-      node_type: 'primitive' as const,
-      content: {
-        type: obj.type || 'box',
-        data: {
-          primitive_type: obj.type || 'box',
-          parameters: obj.dimensions || {},
-          transform: obj.transform || null,
-          material: obj.material || 'aluminum',
-          manufacturing_constraints: obj.features?.map(f => ({
-            type: f.type,
-            parameters: f.parameters || {}
-          })) || []
-        }
-      },
-      dependencies: [],
-      metadata: {
-        name: `Object ${id}`,
-        created_at: new Date().toISOString()
-      }
-    }))
-
-    return {
-      nodes,
-      metadata: {
-        version: '1.0',
-        created_at: new Date().toISOString(),
-        created_by: 'qutlas-studio'
-      }
-    }
+    return SemanticIRGenerator.generateFromWorkspace(objects, {
+      includeManufacturing: true,
+      targetProcess: 'cnc_milling', // Could be made configurable
+      featureDetection: true
+    })
   }, [objects])
 
   // Validate current semantic IR
