@@ -12,7 +12,7 @@ import { ContextMenu } from "../../studio/components/context-menu"
 import { QuotePanel } from "../../studio/components/quote-panel"
 import { ManufacturabilityPanel } from "../../studio/components/manufacturability-panel"
 import { SemanticIRPanel } from "../../studio/components/semantic-ir-panel"
-import { AdvancedFeaturesPanel } from "../../studio/components/advanced-features-panel"
+
 import { MobileBottomNav, DEFAULT_BOTTOM_NAV_TABS } from "../../studio/components/mobile-bottom-nav"
 import { SegmentedPanel, SegmentedPanelGroup } from "@/components/segmented-panel"
 import { MobileMenu } from "../../studio/components/mobile-menu"
@@ -507,14 +507,7 @@ function StudioContent() {
                 >
                   <SemanticIRPanel />
                 </SegmentedPanel>
-                <SegmentedPanel
-                  title="Advanced Features"
-                  icon="Zap"
-                  isOpen={false} // Managed by SegmentedPanelGroup
-                  onToggle={() => {}} // Managed by SegmentedPanelGroup
-                >
-                  <AdvancedFeaturesPanel />
-                </SegmentedPanel>
+
               </SegmentedPanelGroup>
             </div>
           </div>

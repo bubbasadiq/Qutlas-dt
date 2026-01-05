@@ -455,9 +455,9 @@ export class EnhancedGeometryFactory {
         precision: { roughness: 6, process: 'printed', requirements: ['Sanded', 'Vapor smoothed'] }
       },
       injection_molding: {
-        prototype: { roughness: 0.4, process: 'molded', requirements: ['Textured'] },
-        production: { roughness: 0.2, process: 'molded', requirements: ['Polished mold'] },
-        precision: { roughness: 0.1, process: 'molded', requirements: ['Mirror finish'] }
+        prototype: { roughness: 0.4, process: 'cast', requirements: ['Textured'] },
+        production: { roughness: 0.2, process: 'cast', requirements: ['Polished mold'] },
+        precision: { roughness: 0.1, process: 'cast', requirements: ['Mirror finish'] }
       }
     }
 
@@ -730,7 +730,9 @@ export class EnhancedGeometryFactory {
     }
 
     // Determine recommended processes
-    const material = object.material || this.materialDatabase.aluminum_6061
+    const material = typeof object.material === 'string'
+      ? this.materialDatabase[object.material] || this.materialDatabase.aluminum_6061
+      : object.material || this.materialDatabase.aluminum_6061
     const recommendedProcesses = []
 
     if (material.manufacturability.cnc_rating >= 7) recommendedProcesses.push('cnc_milling')
@@ -740,8 +742,8 @@ export class EnhancedGeometryFactory {
     return {
       complexity_score: Math.min(complexity, 10),
       manufacturing_time: timeMultiplier,
-      cost_multiplier,
-      recommended_processes
+      cost_multiplier: costMultiplier,
+      recommended_processes: recommendedProcesses
     }
   }
 

@@ -9,14 +9,19 @@
 import { WorkspaceObject } from '@/hooks/use-workspace'
 import { SemanticIR, IRNodeData, ConstraintData } from './kernel-bridge'
 
-export interface EnhancedWorkspaceObject extends WorkspaceObject {
+export interface EnhancedWorkspaceObject extends Omit<WorkspaceObject, 'material'> {
   // Enhanced properties for semantic IR
   features?: Feature[]
   manufacturingConstraints?: ManufacturingConstraint[]
-  material?: MaterialProperties
+  material?: MaterialProperties | string
   tolerances?: Tolerance[]
   surfaceFinish?: SurfaceFinish
   assemblyConstraints?: AssemblyConstraint[]
+  transform?: {
+    position: [number, number, number]
+    rotation: [number, number, number]
+    scale: [number, number, number]
+  }
 }
 
 export interface Feature {
@@ -159,11 +164,7 @@ export class SemanticIRGenerator {
       metadata: {
         version: '2.0', // Enhanced semantic IR version
         created_at: new Date().toISOString(),
-        created_by: 'qutlas-enhanced-generator',
-        target_process: targetProcess,
-        manufacturing_aware: includeManufacturing,
-        feature_count: nodes.filter(n => n.node_type === 'feature').length,
-        constraint_count: constraints.length
+        created_by: 'qutlas-enhanced-generator'
       }
     }
   }
@@ -176,7 +177,9 @@ export class SemanticIRGenerator {
     obj: EnhancedWorkspaceObject,
     materialDatabase: Record<string, MaterialProperties>
   ): IRNodeData {
-    const material = obj.material || materialDatabase[obj.material || 'aluminum'] || this.getDefaultMaterial('aluminum')
+    const material = typeof obj.material === 'string'
+      ? materialDatabase[obj.material] || this.getDefaultMaterial('aluminum')
+      : obj.material || this.getDefaultMaterial('aluminum')
 
     return {
       id,
@@ -209,8 +212,7 @@ export class SemanticIRGenerator {
       metadata: {
         name: obj.description || `${obj.type} ${id}`,
         description: `Enhanced ${obj.type} primitive with manufacturing awareness`,
-        created_at: new Date().toISOString(),
-        quality_score: this.assessGeometryQuality(obj)
+        created_at: new Date().toISOString()
       }
     }
   }
@@ -243,8 +245,7 @@ export class SemanticIRGenerator {
       metadata: {
         name: `${feature.type} feature`,
         description: `Manufacturing-aware ${feature.type} feature`,
-        created_at: new Date().toISOString(),
-        manufacturability_score: this.assessFeatureManufacturability(feature, targetProcess)
+        created_at: new Date().toISOString()
       }
     }
   }

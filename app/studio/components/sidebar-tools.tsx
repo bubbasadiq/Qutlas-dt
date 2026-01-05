@@ -6,7 +6,7 @@ import { Square, Circle, CircleDot, Upload, Box, Cylinder, Wrench, Layers, Mouse
 import { useWorkspace } from "@/hooks/use-workspace"
 import { useIsMobile } from "@/hooks/use-media-query"
 import { toast } from "sonner"
-import { EnhancedGeometryFactory, type GeometryCreationOptions } from "@/lib/geometry/enhanced-geometry-factory"
+
 
 interface Tool {
   id: string
@@ -145,67 +145,57 @@ export const SidebarTools: React.FC<SidebarToolsProps> = ({ activeTool: external
       onToolSelect(toolId)
     }
 
-    // Enhanced geometry creation options
-    const defaultOptions: GeometryCreationOptions = {
-      targetProcess: 'cnc_milling',
-      material: 'aluminum_6061',
-      includeFeatures: true,
-      autoConstraints: true,
-      qualityLevel: 'production',
-      volume: 'medium'
-    }
-
     // Handle shape creation tools
     if (toolId === 'create-box') {
       const id = `box_${Date.now()}`
-      const enhancedBox = EnhancedGeometryFactory.createBox(
-        id,
-        { width: 100, height: 100, depth: 100 },
-        defaultOptions
-      )
-      addObject(id, enhancedBox)
+      addObject(id, {
+        type: 'box',
+        dimensions: { width: 100, height: 100, depth: 100 },
+        visible: true,
+        selected: true,
+      })
       selectObject(id)
-      toast.success('Enhanced Box created with manufacturing awareness')
+      toast.success('Box created')
     } else if (toolId === 'create-cylinder') {
       const id = `cylinder_${Date.now()}`
-      const enhancedCylinder = EnhancedGeometryFactory.createCylinder(
-        id,
-        { radius: 50, height: 100 },
-        defaultOptions
-      )
-      addObject(id, enhancedCylinder)
+      addObject(id, {
+        type: 'cylinder',
+        dimensions: { radius: 50, height: 100 },
+        visible: true,
+        selected: true,
+      })
       selectObject(id)
-      toast.success('Enhanced Cylinder created with manufacturing awareness')
+      toast.success('Cylinder created')
     } else if (toolId === 'create-sphere') {
       const id = `sphere_${Date.now()}`
-      const enhancedSphere = EnhancedGeometryFactory.createSphere(
-        id,
-        { radius: 50 },
-        defaultOptions
-      )
-      addObject(id, enhancedSphere)
+      addObject(id, {
+        type: 'sphere',
+        dimensions: { radius: 50 },
+        visible: true,
+        selected: true,
+      })
       selectObject(id)
-      toast.success('Enhanced Sphere created with manufacturing awareness')
+      toast.success('Sphere created')
     } else if (toolId === 'create-cone') {
       const id = `cone_${Date.now()}`
-      const enhancedCone = EnhancedGeometryFactory.createCone(
-        id,
-        { radius: 50, height: 100 },
-        defaultOptions
-      )
-      addObject(id, enhancedCone)
+      addObject(id, {
+        type: 'cone',
+        dimensions: { radius: 50, height: 100 },
+        visible: true,
+        selected: true,
+      })
       selectObject(id)
-      toast.success('Enhanced Cone created with manufacturing awareness')
+      toast.success('Cone created')
     } else if (toolId === 'create-torus') {
       const id = `torus_${Date.now()}`
-      const enhancedTorus = EnhancedGeometryFactory.createTorus(
-        id,
-        { majorRadius: 50, minorRadius: 15 },
-        defaultOptions
-      )
-      addObject(id, enhancedTorus)
+      addObject(id, {
+        type: 'torus',
+        dimensions: { majorRadius: 50, minorRadius: 15 },
+        visible: true,
+        selected: true,
+      })
       selectObject(id)
-      toast.success('Enhanced Torus created with manufacturing awareness')
+      toast.success('Torus created')
     } else if (toolId === 'move') {
       toast.info('Move tool activated - drag object to move')
       selectTool('move')
