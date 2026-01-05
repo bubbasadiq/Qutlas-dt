@@ -209,6 +209,20 @@ export function ManufacturabilityPanel() {
     }
   }
 
+  const getStatusColor = (score: number) => {
+    if (score >= 80) return 'text-green-600'
+    if (score >= 60) return 'text-yellow-600'
+    if (score >= 40) return 'text-orange-600'
+    return 'text-red-600'
+  }
+
+  const getStatusBg = (score: number) => {
+    if (score >= 80) return 'bg-green-50 border-green-200'
+    if (score >= 60) return 'bg-yellow-50 border-yellow-200'
+    if (score >= 40) return 'bg-orange-50 border-orange-200'
+    return 'bg-red-50 border-red-200'
+  }
+
   return (
     <div className={cn("flex flex-col h-full", isMobile ? '' : '')}>
       {/* Enhanced Header with Mode Switcher */}
@@ -217,7 +231,7 @@ export function ManufacturabilityPanel() {
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-gray-800">Manufacturability</h2>
             {isKernelReady && (
-              <Badge variant="success" className="text-xs">Enhanced</Badge>
+              <Badge variant="default" className="text-xs">Enhanced</Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -370,7 +384,7 @@ export function ManufacturabilityPanel() {
                       {semanticAnalysis.compatible_processes.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {semanticAnalysis.compatible_processes.map((process) => (
-                            <Badge key={process} variant="success" className="text-xs">
+                            <Badge key={process} variant="default" className="text-xs">
                               {process.replace(/([A-Z])/g, ' $1').trim()}
                             </Badge>
                           ))}
@@ -518,7 +532,24 @@ export function ManufacturabilityPanel() {
                     {/* Warnings */}
                     {legacyAnalysis.issues.filter(v => v.severity === 'warning').length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-yellow-
+                        <h4 className="text-xs font-semibold text-yellow-600 uppercase tracking-wider flex items-center gap-1">
+                          <Icon name="alert-triangle" className="w-3 h-3" />
+                          Warnings ({legacyAnalysis.issues.filter(v => v.severity === 'warning').length})
+                        </h4>
+                        {legacyAnalysis.issues
+                          .filter(v => v.severity === 'warning')
+                          .map((issue, idx) => (
+                            <IssueCard key={idx} issue={issue} getSeverityIcon={getSeverityIcon} getSeverityBg={getSeverityBg} />
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
