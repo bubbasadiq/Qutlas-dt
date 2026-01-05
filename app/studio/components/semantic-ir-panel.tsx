@@ -271,7 +271,7 @@ export function SemanticIRPanel({ className }: SemanticIRPanelProps) {
             <TabsTrigger value="nodes" className="text-xs">Nodes</TabsTrigger>
             <TabsTrigger value="validation" className="text-xs">Validation</TabsTrigger>
             <TabsTrigger value="manufacturing" className="text-xs">Manufacturing</TabsTrigger>
-          </Tabs>
+          </TabsList>
 
           <div className="flex-1 overflow-hidden">
             {/* Overview Tab */}
