@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+// import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -349,31 +349,31 @@ export function SemanticIRPanel({ className }: SemanticIRPanelProps) {
 
                 {semanticIR.nodes.map((node, index) => (
                   <Card key={node.id || index}>
-                    <Collapsible
-                      open={nodeExpanded[node.id || index.toString()]}
-                      onOpenChange={() => toggleNode(node.id || index.toString())}
+                    <CardHeader
+                      className="pb-2 cursor-pointer hover:bg-gray-50"
+                      onClick={() => toggleNode(node.id || index.toString())}
                     >
-                      <CollapsibleTrigger asChild>
-                        <CardHeader className="pb-2 cursor-pointer hover:bg-gray-50">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Icon name="box" className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium text-sm">
-                                {node.metadata?.name || node.id || `Node ${index}`}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {node.node_type}
-                              </Badge>
-                            </div>
-                            <Icon
-                              name={nodeExpanded[node.id || index.toString()] ? "chevron-up" : "chevron-down"}
-                              className="w-4 h-4"
-                            />
-                          </div>
-                        </CardHeader>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <CardContent className="pt-0 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon name="box" className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-sm">
+                            {node.metadata?.name || node.id || `Node ${index}`}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {node.node_type}
+                          </Badge>
+                        </div>
+                        <Icon
+                          name="chevron-down"
+                          className={cn(
+                            "w-4 h-4 text-gray-500 transition-transform",
+                            nodeExpanded[node.id || index.toString()] && "transform rotate-180"
+                          )}
+                        />
+                      </div>
+                    </CardHeader>
+                    {nodeExpanded[node.id || index.toString()] && (
+                      <CardContent className="pt-0 space-y-2">
                           <div className="text-xs space-y-1">
                             <div className="flex justify-between">
                               <span className="text-gray-500">Type:</span>
@@ -404,8 +404,7 @@ export function SemanticIRPanel({ className }: SemanticIRPanelProps) {
                             </details>
                           )}
                         </CardContent>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    )}
                   </Card>
                 ))}
               </div>
